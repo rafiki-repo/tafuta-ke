@@ -1,0 +1,84 @@
+# Tafuta Caddyfile
+# Main domain and API
+
+tafuta.ke {
+    # API backend
+    handle /api/* {
+        reverse_proxy localhost:3000
+    }
+
+    # Frontend (React SPA)
+    handle {
+        root * /var/www/tafuta/frontend/dist
+        try_files {path} /index.html
+        file_server
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/tafuta.log
+        format json
+    }
+
+    # Enable compression
+    encode gzip
+
+    # HTTPS automatic
+    tls {
+        protocols tls1.2 tls1.3
+    }
+}
+
+# Wildcard subdomain for business websites
+*.tafuta.ke {
+    # Serve business websites
+    root * /var/www/tafuta/business-sites
+    
+    # Route to subdomain-specific folder
+    @subdomain {
+        path /*
+    }
+    
+    handle @subdomain {
+        # Extract subdomain and serve from corresponding folder
+        # This will be handled by a custom handler or file structure
+        # For now, serve static files
+        try_files /{host}/index.html /default/index.html
+        file_server
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/business-sites.log
+        format json
+    }
+
+    # Enable compression
+    encode gzip
+
+    # HTTPS automatic
+    tls {
+        protocols tls1.2 tls1.3
+    }
+}
+
+# Redirect www to non-www
+www.tafuta.ke {
+    redir https://tafuta.ke{uri} permanent
+}

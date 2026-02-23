@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <link rel="icon" type="image/png" href="images/icons/pamoja-icon-152.png">
+    <link rel="stylesheet" href="css/style.css" />
+    <title>Pamoja Kenya</title>
+
+    
+<!-- Bootstrap -->
+<link
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+rel="stylesheet"
+integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+crossorigin="anonymous"
+/>
+
+    <!-- Bootstrap links -->
+<script
+
+src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+crossorigin="anonymous"
+></script>
+<script
+src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
+integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
+crossorigin="anonymous"
+></script>
+
+<!-- JQuery -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+
+
+<link rel="manifest" href="manifest.json" />
+<!-- ios support -->
+<link rel="apple-touch-icon" href="images/icons/pamoja-72.png" />
+<link rel="apple-touch-icon" href="images/icons/pamoja-96.png" />
+<link rel="apple-touch-icon" href="images/icons/pamoja-128.png" />
+<link rel="apple-touch-icon" href="images/icons/pamoja-144.png" />
+<link rel="apple-touch-icon" href="images/icons/pamoja-152.png" />
+<link rel="apple-touch-icon" href="images/icons/pamoja-192.png" />
+<link rel="apple-touch-icon" href="images/icons/pamoja-384.png" />
+<link rel="apple-touch-icon" href="images/icons/pamoja-512.png" />
+<meta name="apple-mobile-web-app-status-bar" content="#186072" />
+<meta name="theme-color" content="#186072" />
+
+
+  </head>
+  <body class="bg-light">
+    <main>
+      <nav class="nav-bar px-3 py-1" style="background-color: #186072;">
+        <a href='/'><img style='width:5rem;margin:0;' src='/images/logos/pamoja2.png'></a>
+        <h1 class="fs-3 text-light"><span class="lang" data-lang='eng:Starting Point|ksw:Kituo cha Kuanzia|kmb:Kyũma kya kwambĩlĩlya'>Starting Point</span>&nbsp;</h1>
+        <button id="open-nav" class="bg-transparent border-0">
+          <img class="menu" src="/images/icons/menu.svg" alt="" srcset="" />
+        </button>
+      </nav>
+      <!-- Sidemenu -->
+      <nav id="side-menu" class="col-sm-2  p-2 d-none side-menu shadow position-fixed end-0 top-0 bottom-0 h-full bg-light" style="display:none;">
+        <!-- Close btn -->
+          <button id="close-nav" class="close-btn bg-light border-0 d-flex justify-content-end w-full">
+            <img src="/images/icons/close.svg" alt="Close" />
+          </button>
+          <!-- Sidemenu links -->
+          <ul class="list-unstyled d-flex flex-column align-items-end mt-4">
+            <li class="mb-1"><a href="/" class="text-decoration-none btn btn-primary py-0">
+              Launch Pad
+            </a>
+            </li>
+              <li class="mb-1">
+                <a href="/about" class="text-decoration-none btn btn-primary py-0">
+                  About
+                </a>
+              </li>
+              <li class="mb-1">
+                <a href='/register' class="text-decoration-none btn btn-primary py-0">
+                  Register
+                </a>
+              </li>
+          </ul>
+          <hr/>
+          <ul class="list-unstyled d-flex flex-column align-items-end mt-4">
+            <li class="mb-1"><a href="" class="text-decoration-none btn btn-secondary py-0" onclick="setLanguage('eng');doCloseNav();return false;">
+              English
+            </a>
+            </li>
+            <li class="mb-1"><a href="" class="text-decoration-none btn btn-secondary py-0" onclick="setLanguage('ksw');doCloseNav();return false;">
+              Kiswahili
+            </a>
+            </li>
+            <li class="mb-1"><a href="" class="text-decoration-none btn btn-secondary py-0" onclick="setLanguage('kmb');doCloseNav();return false;">
+              Kikamba
+            </a>
+            </li>
+          </ul>
+  
+          <!-- Account -->
+          <!-- <a id="a-login-logout" href="/login?return=/" class="account position-absolute   text-decoration-none text-dark d-flex flex-column">
+            <button id="btn-login-logout" class="btn d-flex flex-row align-items-center" style="background-color: #186072; color: white;"><span id="text-login-logout"></span> &nbsp;
+              <img src="/images/icons/login.svg" alt="">
+            </button>
+          </a> -->
+          <!--a href="/more" class="account position-absolute   text-decoration-none text-dark d-flex flex-column">
+            <button class="btn d-flex flex-row align-items-center" style="background-color: #186072; color: white;" data-lang='eng:More...|ksw:More..|kmb:More....'>More
+            </button>
+          </a -->
+          <a href="/more" class="text-decoration-none btn btn-primary py-0 account position-absolute" data-lang='eng:More...|ksw:More..|kmb:More....'>
+                  More
+                </a>
+        </nav>
+      <div class="container" ></div>
+      <nav class="nav-bar nav-footer px-3 py-1 justify-content-center" style="background-color: #186072;">
+        <p class="text-light">Pamoja Kenya - All rights reserved. &nbsp; <a href="https://info.sasakenya.net" target="_blank" style='color:white;'>&#9432;</a></p>
+      </nav>
+      <!-- Share modal -->
+<section id="custom-modal" class="custom-modal d-none position-fixed bg-dark"></section>
+      <!-- Description modal -->
+      <div id="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div id="modal-content" style="background: white; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+        </div>
+      </div>
+    </main>
+    <script src="/src/FlexJsonClass.js"></script>
+    <script src="/src/app.js"></script>
+    <script src="/src/home.js"></script>
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"e731181b27704593bef37bb1e244a909","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
