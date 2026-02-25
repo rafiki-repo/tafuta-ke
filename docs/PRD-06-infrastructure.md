@@ -34,7 +34,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 - **Build tool**: Vite
 - **Routing**: React Router v6
 - **State management**: React Context API (MVP)
-- **Internationalization**: next-intl
+- **Internationalization**: i18next / react-i18next
 - **CSS framework**: TailwindCSS 3.x
 - **Components**: Headless UI (accessible components)
 - **Icons**: Lucide React

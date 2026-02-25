@@ -22,7 +22,8 @@
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.2.0",
     "date-fns": "^3.0.6",
-    "next-intl": "^3.4.5",
+    "i18next": "^23.7.6",
+    "react-i18next": "^14.0.0",
     "workbox-window": "^7.0.0"
   },
   "devDependencies": {
