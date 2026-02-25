@@ -13,8 +13,11 @@ export default function RegisterPage() {
   const { setAuth } = useAuthStore();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState('register'); // 'register' | 'verify'
+  const [registeredPhone, setRegisteredPhone] = useState('');
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
+  const { register: registerOtp, handleSubmit: handleSubmitOtp, formState: { errors: otpErrors } } = useForm();
 
   const password = watch('password');
 
@@ -25,8 +28,8 @@ export default function RegisterPage() {
     try {
       // Clean phone number - remove spaces, dashes, parentheses
       const cleanPhone = data.phone.replace(/[\s\-()]/g, '');
-      
-      const response = await authAPI.register({
+
+      await authAPI.register({
         full_name: data.full_name.trim(),
         phone: cleanPhone,
         email: data.email || undefined,
@@ -35,20 +38,95 @@ export default function RegisterPage() {
         privacy_version: '1.0',
       });
 
+      setRegisteredPhone(cleanPhone);
+      setStep('verify');
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onVerifyOtp = async (data) => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await authAPI.verifyOTP({
+        phone: registeredPhone,
+        otp: data.otp,
+      });
+
       const { token } = response.data.data;
-      
-      // Get user profile
+
+      // Store token so getProfile request is authenticated
+      localStorage.setItem('token', token);
+
       const userResponse = await userAPI.getProfile();
       const user = userResponse.data.data;
 
       setAuth(user, token);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+      setError(err.response?.data?.error?.message || 'OTP verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (step === 'verify') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold">Verify your phone</h2>
+          <p className="text-muted-foreground mt-2">
+            Enter the OTP sent to {registeredPhone}
+          </p>
+        </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmitOtp(onVerifyOtp)} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">OTP Code</label>
+            <Input
+              type="text"
+              placeholder="Enter OTP"
+              inputMode="numeric"
+              {...registerOtp('otp', {
+                required: 'OTP is required',
+                pattern: {
+                  value: /^\d+$/,
+                  message: 'OTP must contain digits only',
+                },
+              })}
+            />
+            {otpErrors.otp && (
+              <p className="text-sm text-destructive mt-1">{otpErrors.otp.message}</p>
+            )}
+          </div>
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Spinner size="sm" className="mr-2" /> : null}
+            Verify & Continue
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => { setStep('register'); setError(''); }}
+          >
+            Back
+          </Button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -71,7 +149,7 @@ export default function RegisterPage() {
           <Input
             type="text"
             placeholder="John Doe"
-            {...register('full_name', { 
+            {...register('full_name', {
               validate: value => {
                 const trimmed = value?.trim() || '';
                 if (trimmed === '') return 'Please enter your full name';
@@ -90,22 +168,18 @@ export default function RegisterPage() {
           <Input
             type="tel"
             placeholder="+254712345678"
-            {...register('phone', { 
+            {...register('phone', {
               validate: value => {
                 const trimmed = value?.trim() || '';
                 if (trimmed === '') return 'Please enter your phone number';
-                
+
                 // Remove spaces, dashes, parentheses for validation
                 const cleaned = trimmed.replace(/[\s\-()]/g, '');
-                
-                if (!cleaned.startsWith('+')) {
-                  return 'Phone number must start with + (e.g., +254712345678)';
+
+                if (!/^\+(?:254|1)\d{5,18}$/.test(cleaned)) {
+                  return 'Phone must start with +254 (Kenya) or +1 (USA)';
                 }
-                
-                if (!/^\+\d{10,15}$/.test(cleaned)) {
-                  return 'Invalid phone format. Use: +[country code][number] (e.g., +254712345678)';
-                }
-                
+
                 return true;
               }
             })}
@@ -129,11 +203,11 @@ export default function RegisterPage() {
               validate: value => {
                 const trimmed = value?.trim() || '';
                 if (trimmed === '') return true; // Optional field
-                
+
                 if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(trimmed)) {
                   return 'Please enter a valid email address (e.g., name@example.com)';
                 }
-                
+
                 return true;
               }
             })}
@@ -148,7 +222,7 @@ export default function RegisterPage() {
           <Input
             type="password"
             placeholder="Create a password"
-            {...register('password', { 
+            {...register('password', {
               validate: value => {
                 if (!value || value === '') return 'Please create a password';
                 if (value.length < 8) return 'Password must be at least 8 characters long';
@@ -166,7 +240,7 @@ export default function RegisterPage() {
           <Input
             type="password"
             placeholder="Confirm your password"
-            {...register('confirm_password', { 
+            {...register('confirm_password', {
               validate: value => {
                 if (!value || value === '') return 'Please confirm your password';
                 if (value !== password) return 'Passwords do not match. Please try again';
@@ -184,7 +258,7 @@ export default function RegisterPage() {
             type="checkbox"
             id="terms"
             className="mt-1"
-            {...register('terms', { 
+            {...register('terms', {
               required: 'You must accept the terms and conditions'
             })}
           />

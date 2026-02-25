@@ -1,5 +1,5 @@
 export function isValidKenyanPhone(phone) {
-  const phoneRegex = /^\+254[17]\d{8}$/;
+  const phoneRegex = /^\+(?:254|1)\d{5,18}$/;
   return phoneRegex.test(phone);
 }
 

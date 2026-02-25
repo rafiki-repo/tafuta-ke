@@ -21,6 +21,9 @@ import adminRoutes from './routes/admin.js';
 const app = express();
 const PgStore = pgSession(session);
 
+// Trust proxy for rate limiting behind reverse proxy (Caddy)
+app.set('trust proxy', 'loopback');
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: {

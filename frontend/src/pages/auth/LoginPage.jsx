@@ -39,7 +39,7 @@ export default function LoginPage() {
       setAuth(user, token);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      setError(err.response?.data?.error?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export default function LoginPage() {
       await authAPI.requestOTP({ phone });
       setOtpSent(true);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send OTP. Please try again.');
+      setError(err.response?.data?.error?.message || 'Failed to send OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function LoginPage() {
       setAuth(user, token);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid OTP. Please try again.');
+      setError(err.response?.data?.error?.message || 'Invalid OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -139,8 +139,8 @@ export default function LoginPage() {
               {...register('phone', { 
                 required: 'Phone number is required',
                 pattern: {
-                  value: /^\+254\d{9}$/,
-                  message: 'Invalid phone number format'
+                  value: /^\+(?:254|1)\d{5,18}$/,
+                  message: 'Phone must start with +254 (Kenya) or +1 (USA)'
                 }
               })}
             />
@@ -176,8 +176,8 @@ export default function LoginPage() {
               {...register('phone', { 
                 required: 'Phone number is required',
                 pattern: {
-                  value: /^\+254\d{9}$/,
-                  message: 'Invalid phone number format'
+                  value: /^\+(?:254|1)\d{5,18}$/,
+                  message: 'Phone must start with +254 (Kenya) or +1 (USA)'
                 }
               })}
               disabled={otpSent}
@@ -200,12 +200,12 @@ export default function LoginPage() {
                   type="text"
                   placeholder="Enter 6-digit code"
                   maxLength={6}
-                  {...register('otp', { 
+                  {...register('otp', {
                     required: 'OTP is required',
                     pattern: {
-                      value: /^\d{6}$/,
-                      message: 'OTP must be 6 digits'
-                    }
+                      value: /^\d+$/,
+                      message: 'OTP must contain digits only',
+                    },
                   })}
                 />
                 {errors.otp && (
