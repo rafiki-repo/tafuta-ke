@@ -6,6 +6,10 @@ const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT, 10) || 3000,
   appUrl: process.env.APP_URL || 'http://localhost:3000',
+
+  auth: {
+    bdOtp: (process.env.BD_OTP || '').trim(),
+  },
   
   database: {
     url: process.env.DATABASE_URL,

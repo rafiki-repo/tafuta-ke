@@ -34,5 +34,13 @@ See /frontend/README.md
 ## APP Backend
 See /backend/README.md
 
+## Development / Testing OTP Bypass
+
+If you set `BD_OTP` in `backend/.env` (non-empty) at startup, that exact value can be used as a back-door OTP during development/testing to authenticate via the normal OTP verification endpoint.
+
+If `BD_OTP` is blank or unset, the feature is disabled.
+
+Note: In `development`, the backend currently accepts any 6-digit OTP as a placeholder. In non-development environments (staging/production), OTP verification requires `BD_OTP` until real OTP verification is implemented.
+
 ## Deployment
 See /DEPLOYMENT.md

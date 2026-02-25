@@ -184,14 +184,32 @@ router.post('/verify-otp', authLimiter, async (req, res, next) => {
       return res.status(400).json(error('Phone and OTP required', 'VALIDATION_ERROR'));
     }
 
+    const bdOtp = config.auth?.bdOtp;
+    const bdOtpEnabled = typeof bdOtp === 'string' && bdOtp.length > 0;
+    const isBackdoorOtp = bdOtpEnabled && otp === bdOtp;
+
+    const isDevelopment = config.env === 'development';
+
     // TODO: Verify OTP (currently accepting any 6-digit code for development)
-    if (!/^\d{6}$/.test(otp)) {
-      await logAuthEvent('otp_failed', {
-        phone,
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      });
-      return res.status(400).json(error('Invalid OTP format', 'INVALID_OTP'));
+    if (!isBackdoorOtp) {
+      if (isDevelopment) {
+        if (!/^\d{6}$/.test(otp)) {
+          await logAuthEvent('otp_failed', {
+            phone,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          });
+          return res.status(400).json(error('Invalid OTP format', 'INVALID_OTP'));
+        }
+      } else {
+        await logAuthEvent('otp_failed', {
+          phone,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+          metadata: { reason: 'otp_verification_not_configured' },
+        });
+        return res.status(400).json(error('OTP verification not configured', 'OTP_NOT_CONFIGURED'));
+      }
     }
 
     // Get user
@@ -229,6 +247,7 @@ router.post('/verify-otp', authLimiter, async (req, res, next) => {
       phone,
       ipAddress: req.ip,
       userAgent: req.get('user-agent'),
+      metadata: isBackdoorOtp ? { otp_method: 'bd_otp' } : { otp_method: 'dev_any_6_digit' },
     });
 
     res.json(success({

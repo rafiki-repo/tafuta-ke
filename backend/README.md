@@ -54,6 +54,13 @@ The server will start on `http://localhost:3000`
 - `POST /api/auth/verify-otp` - Verify OTP and login
 - `POST /api/auth/logout` - Logout
 
+## OTP Notes (Development / Staging)
+
+OTP delivery and verification is currently a placeholder implementation.
+
+- In `development`, the backend accepts any 6-digit OTP for `/api/auth/verify-otp`.
+- In non-development environments (staging/production), `/api/auth/verify-otp` only accepts the back-door OTP if `BD_OTP` is set (non-empty) at startup.
+
 ### Users
 - `GET /api/users/me` - Get current user profile
 - `PATCH /api/users/me` - Update user profile
