@@ -1,10 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Search, MapPin, ScanEye,
+  Search, MapPin,
   Scissors, UtensilsCrossed, Cpu, Wrench, ShoppingCart,
   Shirt, Car, Heart, Dumbbell, BookOpen, Music, Store, CheckCircle2,
 } from 'lucide-react';
+
+function BinocularsIcon({ className }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="6" cy="15" r="4" />
+      <circle cx="18" cy="15" r="4" />
+      <path d="M10 15h4" />
+      <path d="M2 11l2-5h3l3 5" />
+      <path d="M22 11l-2-5h-3l-3 5" />
+      <path d="M10 6h4" />
+    </svg>
+  );
+}
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { searchAPI } from '@/lib/api';
@@ -187,7 +210,7 @@ export default function HomePage() {
       <section className="bg-gradient-to-b from-primary to-[#D43D15] px-4 pt-8 pb-10">
         <div className="max-w-xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <ScanEye className="w-8 h-8 text-white/90" />
+            <BinocularsIcon className="w-8 h-8 text-white/90" />
           </div>
           <h1 className="text-2xl font-extrabold text-white mb-2 tracking-tight">
             Find Businesses<br />Near You
@@ -311,7 +334,7 @@ export default function HomePage() {
           </div>
         ) : businesses.length === 0 ? (
           <div className="text-center py-12">
-            <ScanEye className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+            <BinocularsIcon className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-muted-foreground font-medium">No businesses found</p>
             <p className="text-muted-foreground/60 text-sm mt-1">
               Try a different search or category
