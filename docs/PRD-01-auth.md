@@ -448,7 +448,7 @@ user_terms_consent:
 
 ### Implementation
 
-- **Library**: next-intl
+- **Library**: i18next / react-i18next
 - **Default language**: English
 - **Supported languages (MVP)**: English, Swahili, Kikamba, Kikuyu
 - **Translation method**: Manual entry by admin/users (no automatic translation)

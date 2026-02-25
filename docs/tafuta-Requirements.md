@@ -92,7 +92,7 @@ Tafuta is a super simple low-cost business directory with single-page website ho
 - **PWA caching strategy**: Network-first for all resources (static assets, business data, listings, ads)
 - Always fetch fresh data from server first; fall back to cached data only when offline
 - Minimal caching to ensure users see current business listings, ads, and content changes
-- **Multi-language support**: Use next-intl library for internationalization
+- **Multi-language support**: Use i18next / react-i18next library for internationalization
 - Support future languages (Swahili, Kikamba, Kikuyu, and others) without code changes
 - Defaults to English if translations are missing
 - All user-facing strings — including UI, menus, SMS templates, and email templates — must enable translation
@@ -351,7 +351,7 @@ See PRD-01 and PRD-02 for detailed schema.
 - **Session storage**: PostgreSQL (connect-pg-simple)
 - **Frontend**: React 18+ SPA
 - **Build tool**: Vite
-- **Internationalization**: next-intl
+- **Internationalization**: i18next / react-i18next
 - **Reverse proxy & SSL**: Caddy
 - **DNS management**: Cloudflare API
 - **Authentication**: jsonwebtoken (JWT), bcrypt
