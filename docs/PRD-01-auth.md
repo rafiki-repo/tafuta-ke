@@ -1,8 +1,8 @@
 # PRD-01: Authentication & User Management
 
-**Product Requirements Document**  
-**Version**: 1.0  
-**Last Updated**: Feb 21, 2026  
+**Product Requirements Document**
+**Version**: 1.0
+**Last Updated**: Feb 21, 2026
 **Status**: Draft
 
 ---
@@ -36,7 +36,7 @@ users:
 
 ### Verification Tiers
 
-- **Unverified**: Default for new accounts
+- **Unverified**: Default for all new accounts
 - **Basic**: Auto-assigned after phone verification
 - **Verified**: Admin manually confirms identity
 - **Premium**: Admin manually confirms high-trust status
@@ -196,15 +196,15 @@ user_business_roles:
 ### User Registration
 
 1. User provides: phone (required), full_name (required), nickname (optional), email (optional)
-2. System sends SMS OTP to phone
-3. User enters OTP
-4. System verifies OTP (phone must be verified before account creation)
-5. User accepts Terms of Service and Privacy Policy (required)
-6. User opts in/out of marketing SMS (separate from transactional)
-7. System creates user account with `verification_tier = 'basic'`
-8. System records consent in `user_terms_consent` table
+2. User accepts Terms of Service and Privacy Policy (required)
+3. User opts in/out of marketing SMS (separate from transactional)
+4. System creates user account with `verification_tier = 'unverified'`
+5. System records consent in `user_terms_consent` table
+6. System sends SMS OTP to phone number
+7. User enters OTP
+8. System verifies OTP and upgrades `verification_tier` to `'basic'`
 
-**Phone Verification**: Phone is verified during registration via OTP; account cannot be created without verified phone.
+**Phone Verification**: Phone is verified after account creation via OTP. The account exists in an unverified state until OTP is confirmed.
 
 **Email Verification**: Email is optional and does not require verification in MVP. If provided, email is saved without verification.
 
@@ -232,11 +232,11 @@ user_business_roles:
 4. Owner can update profile anytime without re-approval
 
 **If Rejected:**
-1. Admin sets `status = 'active'` with flag for review, or keeps as `pending` with `rejection_reason`
+1. Admin keeps status as `pending` with `rejection_reason`
 2. System sends notification to owner with rejection reason
 3. Owner can edit and resubmit (updates trigger new review)
 
-**MVP Note**: Once approved, subsequent profile updates do not require re-approval (build trust)
+**MVP Note**: Once approved, subsequent profile updates do not require re-approval (build trust).
 
 ---
 
@@ -284,6 +284,7 @@ sessions:
 ### Session Rules
 
 - **Token type**: JWT stored in HTTP-only cookie
+- **Storage**: PostgreSQL `sessions` table (connect-pg-simple)
 - **Expiry**: 60 minutes
 - **Refresh**: Not implemented in MVP; user re-authenticates after expiry
 - **Logout**: Delete session record; clear cookie
@@ -500,9 +501,9 @@ notification_preferences:
 ## API Endpoints (Summary)
 
 ### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login/otp` - Request OTP
-- `POST /api/auth/login/verify` - Verify OTP and create session
+- `POST /api/auth/register` - User registration (creates account, sends OTP)
+- `POST /api/auth/request-otp` - Request OTP for passwordless login
+- `POST /api/auth/verify-otp` - Verify OTP and create session
 - `POST /api/auth/login/password` - Password login
 - `POST /api/auth/logout` - End session
 - `POST /api/auth/password/reset` - Request password reset OTP
@@ -613,30 +614,6 @@ auth_logs:
 
 ---
 
-## MVP Exclusions (Post-Launch)
-
-- Google OAuth
-- Biometric authentication
-- Refresh tokens
-- "Remember me" functionality
-- Automated data export
-- Email-based password recovery
-- Multiple phone numbers per user
-- User-initiated account deletion (must visit office)
-
----
-
-## Dependencies
-
-- **SMS Gateway**: VintEx (OTP delivery)
-- **Email Service**: Mailgun (optional email notifications)
-- **Database**: PostgreSQL 15+ (includes session storage)
-- **Frontend**: React 18+ with next-intl
-
-**Note**: Sessions stored in PostgreSQL `sessions` table (no Redis required for MVP)
-
----
-
 ## Testing Requirements
 
 ### Unit Tests
@@ -647,7 +624,7 @@ auth_logs:
 - Permission checks for all roles
 
 ### Integration Tests
-- Complete registration flow (phone → OTP → consent → account creation)
+- Complete registration flow (register → OTP → account verified)
 - Login flows (OTP and password)
 - Business creation and user role assignment
 - Account state transitions (active → deactivated → active)
@@ -656,6 +633,19 @@ auth_logs:
 - User registers → creates business → adds employee → employee logs in
 - User deactivates account → reactivates account
 - Owner deactivates business → business not visible in listings
+
+---
+
+## MVP Exclusions (Post-Launch)
+
+- Google OAuth
+- Biometric authentication
+- Refresh tokens
+- "Remember me" functionality
+- Automated data export
+- Email-based password recovery
+- Multiple phone numbers per user
+- User-initiated account deletion (must visit office)
 
 ---
 

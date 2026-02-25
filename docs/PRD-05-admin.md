@@ -1,8 +1,8 @@
 # PRD-05: Admin Dashboard & Configuration
 
-**Product Requirements Document**  
-**Version**: 1.0  
-**Last Updated**: Feb 22, 2026  
+**Product Requirements Document**
+**Version**: 1.0
+**Last Updated**: Feb 22, 2026
 **Status**: Draft
 
 ---
@@ -62,9 +62,9 @@ admin_users:
 ├─────────────────────────────────────────────────────────┤
 │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │
 │ │ Pending │ │ Active  │ │ Total   │ │ Revenue │        │
-│ │ Approval│ │ Busines │ │ Users   │ │ (Month) │        │
+│ │ Approval│ │ Business│ │ Users   │ │ (Month) │        │
 │ │   12    │ │   456   │ │  1,234  │ │ 125,000 │        │
-│ │ ⚠️ Review│ │         │ │         │ │   KES   │        │
+│ │ Review  │ │         │ │         │ │   KES   │        │
 │ └─────────┘ └─────────┘ └─────────┘ └─────────┘        │
 │                                                          │
 │ Quick Actions                                            │
@@ -81,8 +81,8 @@ admin_users:
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ Alerts                                                   │
-│ ⚠️ 12 businesses pending approval (>24 hours: 3)        │
-│ ⚠️ 5 services expiring in next 7 days                   │
+│ 12 businesses pending approval (>24 hours: 3)           │
+│ 5 services expiring in next 7 days                      │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -93,44 +93,36 @@ admin_users:
 - **Total Users**: Registered user accounts
 - **Revenue (Month)**: Total revenue for current month
 
-**Quick Actions:**
-- Direct links to most common admin tasks
-- Badge showing pending count
+**Recent Activity**: Last 10 system events (registrations, payments, approvals). Refresh every 30 seconds.
 
-**Recent Activity:**
-- Last 10 system events (registrations, payments, approvals)
-- Real-time updates (refresh every 30 seconds)
-
-**Alerts:**
-- Pending businesses > 24 hours old
-- Services expiring soon
-- Failed payments requiring attention
+**Alerts**: Pending businesses > 24 hours old; services expiring soon; failed payments requiring attention.
 
 ### Side Navigation
 
-**Menu Items:**
-- **Dashboard** (home icon)
-- **Businesses** (building icon)
-  - Pending Approval
-  - All Businesses
-  - Suspended
-- **Users** (user icon)
-  - All Users
-  - Suspended Users
-- **Transactions** (money icon)
-  - All Transactions
-  - Refunds
-- **Services** (package icon)
-  - Active Subscriptions
-  - Expiring Soon
-- **Logs** (file icon)
-  - Auth Logs
-  - Audit Logs
-- **System** (settings icon)
-  - Configuration
-  - Admin Users
-  - Notifications
-- **Analytics** (chart icon)
+```
+Dashboard
+Businesses
+  ├── Pending Approval
+  ├── All Businesses
+  └── Suspended
+Users
+  ├── All Users
+  └── Suspended Users
+Transactions
+  ├── All Transactions
+  └── Refunds
+Services
+  ├── Active Subscriptions
+  └── Expiring Soon
+Logs
+  ├── Auth Logs
+  └── Audit Logs
+System
+  ├── Configuration
+  ├── Admin Users
+  └── Notifications
+Analytics
+```
 
 ---
 
@@ -151,35 +143,33 @@ admin_users:
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Grace Hair Studio                                  │  │
 │ │ Submitted: 2 days ago by John Doe (+254712345678)  │  │
-│ │ Category: Salon • Region: Machakos                 │  │
-│ │ Phone: +254712345679 • Email: grace@example.com    │  │
+│ │ Category: Salon  •  Region: Machakos               │  │
+│ │ Phone: +254712345679  •  Email: grace@example.com  │  │
 │ │                                                    │  │
 │ │ Description:                                       │  │
 │ │ Professional hair styling and makeup services...   │  │
 │ │                                                    │  │
-│ │ [View Full Profile] [Approve] [Reject]            │  │
+│ │ [View Full Profile]  [Approve]  [Reject]           │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Kiki's Restaurant                                  │  │
 │ │ Submitted: 1 day ago by Jane Smith (+254712345680) │  │
-│ │ Category: Restaurant • Region: Kisumu              │  │
-│ │ Phone: +254712345681 • Email: kiki@example.com     │  │
+│ │ Category: Restaurant  •  Region: Kisumu            │  │
+│ │ Phone: +254712345681  •  Email: kiki@example.com   │  │
 │ │                                                    │  │
-│ │ [View Full Profile] [Approve] [Reject]            │  │
+│ │ [View Full Profile]  [Approve]  [Reject]           │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ [Load More]                                              │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Features:**
-- **Sort options**: Oldest first, newest first, by region
-- **Filter options**: By region, by category
-- **Business cards**: Show key info for quick review
-- **Age indicator**: Highlight businesses pending > 24 hours (red)
-- **Bulk actions**: Select multiple, approve/reject all
+- Sort options: Oldest first, newest first, by region
+- Filter options: By region, by category
+- Age indicator: Highlight businesses pending > 24 hours
+- Bulk actions: Select multiple, approve/reject all
 
 **Approval Modal:**
 
@@ -193,7 +183,7 @@ admin_users:
 │ in public listings and the owner    │
 │ will be notified via SMS/email.     │
 │                                     │
-│ [Cancel] [Approve Business]         │
+│ [Cancel]  [Approve Business]        │
 └─────────────────────────────────────┘
 ```
 
@@ -208,7 +198,6 @@ admin_users:
 │ Reason for rejection: *             │
 │ ┌─────────────────────────────────┐ │
 │ │ Incomplete information          │ │
-│ │                                 │ │
 │ └─────────────────────────────────┘ │
 │                                     │
 │ Common reasons:                     │
@@ -217,14 +206,13 @@ admin_users:
 │ • Duplicate listing                 │
 │ • Inappropriate content             │
 │                                     │
-│ [Cancel] [Reject Business]          │
+│ [Cancel]  [Reject Business]         │
 └─────────────────────────────────────┘
 ```
 
 **Notification System:**
 - **Daily digest email**: "You have X pending businesses" (sent at 9 AM)
 - **Alert threshold**: When pending > 10, show alert on dashboard
-- **SMS notification**: Optional for urgent cases (>20 pending)
 
 ### All Businesses List
 
@@ -237,26 +225,25 @@ admin_users:
 │ All Businesses (456)                                     │
 ├─────────────────────────────────────────────────────────┤
 │ Search: [Business name, phone, email...]                 │
-│ Status: [All ▼] Region: [All ▼] Category: [All ▼]       │
+│ Status: [All ▼]  Region: [All ▼]  Category: [All ▼]     │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
-│ │ Doreen Beauty Parlour          Status: Active ✓    │  │
+│ │ Doreen Beauty Parlour          Status: Active      │  │
 │ │ Owner: John Doe (+254712345678)                    │  │
-│ │ Salon • Machakos • Verified                        │  │
+│ │ Salon  •  Machakos  •  Verified                    │  │
 │ │ Services: Website Hosting (expires Aug 21, 2026)   │  │
-│ │ [View] [Edit] [Suspend] [More ▼]                   │  │
+│ │ [View]  [Edit]  [Suspend]  [More ▼]                │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
-│ Page 1 of 23  [Previous] [Next]                         │
-│                                                          │
+│ Page 1 of 23  [Previous]  [Next]                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Features:**
-- **Search**: By business name, owner name, phone, email
-- **Filters**: Status, region, category, verification tier
-- **Actions**: View details, edit, suspend, delete
-- **Bulk actions**: Export to CSV, bulk suspend
+- Search by business name, owner name, phone, email
+- Filters: Status, region, category, verification tier
+- Actions: View details, edit, suspend, delete
+- Bulk actions: Export to CSV, bulk suspend
 
 **Business Detail View:**
 
@@ -264,29 +251,26 @@ admin_users:
 ┌─────────────────────────────────────────────────────────┐
 │ Business Details: Doreen Beauty Parlour                 │
 ├─────────────────────────────────────────────────────────┤
-│ Status: Active ✓  Verification: Verified ⭐             │
-│ Created: Jan 15, 2026  Approved: Jan 15, 2026           │
+│ Status: Active  •  Verification: Verified               │
+│ Created: Jan 15, 2026  •  Approved: Jan 15, 2026        │
 │ Approved by: Admin User (admin@tafuta.ke)               │
 │                                                          │
 │ Basic Information                                        │
 │ • Business Name: Doreen Beauty Parlour                   │
 │ • Category: Salon                                        │
-│ • Region: Machakos                                       │
-│ • City: Machakos Town                                    │
+│ • Region: Machakos  •  City: Machakos Town               │
 │ • Address: Kenyatta Avenue                               │
 │ • Phone: +254712345678                                   │
 │ • Email: doreen@example.com                              │
 │ • Website: doreen.machakos.tafuta.ke                     │
 │                                                          │
 │ Owner Information                                        │
-│ • Name: John Doe                                         │
-│ • Phone: +254712345678                                   │
-│ • Email: john@example.com                                │
+│ • Name: John Doe  •  Phone: +254712345678               │
 │ • Role: Owner                                            │
 │                                                          │
 │ Active Services                                          │
-│ • Website Hosting: 6 months paid, expires Aug 21, 2026   │
-│ • Ads: 3 months paid, expires May 21, 2026               │
+│ • Website Hosting: 6 months, expires Aug 21, 2026        │
+│ • Ads: 3 months, expires May 21, 2026                    │
 │                                                          │
 │ Transaction History                                      │
 │ • Feb 21, 2026: Website Hosting (6 months) - 1,392 KES  │
@@ -295,12 +279,9 @@ admin_users:
 │ Content Version                                          │
 │ • Current Version: 3                                     │
 │ • Last Updated: Feb 22, 2026 by John Doe                 │
-│ • [View Content History]                                 │
+│ [View Content History]                                   │
 │                                                          │
-│ Actions                                                  │
-│ [Edit Profile] [Adjust Services] [View History]         │
-│ [Suspend] [Delete]                                       │
-│                                                          │
+│ [Edit Profile]  [Adjust Services]  [Suspend]  [Delete]  │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -313,28 +294,25 @@ admin_users:
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Version 3 (Current)                                │  │
 │ │ Feb 22, 2026 at 2:30 PM                            │  │
-│ │ Changed by: John Doe (Owner)                       │  │
-│ │ Type: owner_edit                                   │  │
+│ │ Changed by: John Doe (Owner)  •  Type: owner_edit  │  │
 │ │ Summary: Added new service: Pedicure               │  │
-│ │ [View Content] [Rollback to Previous]              │  │
+│ │ [View Content]  [Rollback to Previous]             │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Version 2                                          │  │
 │ │ Feb 20, 2026 at 3:15 PM                            │  │
-│ │ Changed by: John Doe (Owner)                       │  │
-│ │ Type: owner_edit                                   │  │
+│ │ Changed by: John Doe (Owner)  •  Type: owner_edit  │  │
 │ │ Summary: Updated business hours                    │  │
-│ │ [View Content] [Restore This Version]              │  │
+│ │ [View Content]  [Restore This Version]             │  │
 │ └────────────────────────────────────────────────────┘  │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Admin Rollback Capability:**
 - Admin can view full content history for any business
 - Admin can rollback to any previous version
-- Rollback creates new version (doesn't delete history)
+- Rollback creates a new version (doesn't delete history)
 - Rollback logged in audit trail with admin user_id and reason
 - Business owner notified of admin rollback
 
@@ -358,7 +336,7 @@ admin_users:
 │ • Notify owner via SMS/email        │
 │ • Log action in audit trail         │
 │                                     │
-│ [Cancel] [Suspend Business]         │
+│ [Cancel]  [Suspend Business]        │
 └─────────────────────────────────────┘
 ```
 
@@ -369,7 +347,7 @@ admin_users:
 ├─────────────────────────────────────┤
 │ Doreen Beauty Parlour               │
 │                                     │
-│ ⚠️ This action cannot be undone     │
+│ This action cannot be undone.       │
 │                                     │
 │ Reason for deletion: *              │
 │ ┌─────────────────────────────────┐ │
@@ -381,7 +359,7 @@ admin_users:
 │ │                                 │ │
 │ └─────────────────────────────────┘ │
 │                                     │
-│ [Cancel] [Delete Business]          │
+│ [Cancel]  [Delete Business]         │
 └─────────────────────────────────────┘
 ```
 
@@ -400,26 +378,25 @@ admin_users:
 │ All Users (1,234)                                        │
 ├─────────────────────────────────────────────────────────┤
 │ Search: [Name, phone, email...]                          │
-│ Status: [All ▼] Verification: [All ▼]                    │
+│ Status: [All ▼]  Verification: [All ▼]                   │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
-│ │ John Doe                          Status: Active ✓ │  │
-│ │ +254712345678 • john@example.com                   │  │
-│ │ Verification: Basic • Joined: Jan 15, 2026         │  │
-│ │ Businesses: 2 (Owner: 2, Admin: 0, Employee: 0)    │  │
-│ │ [View] [Suspend] [More ▼]                          │  │
+│ │ John Doe                          Status: Active   │  │
+│ │ +254712345678  •  john@example.com                 │  │
+│ │ Verification: Basic  •  Joined: Jan 15, 2026       │  │
+│ │ Businesses: 2 (Owner: 2)                           │  │
+│ │ [View]  [Suspend]  [More ▼]                        │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
-│ Page 1 of 62  [Previous] [Next]                         │
-│                                                          │
+│ Page 1 of 62  [Previous]  [Next]                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Features:**
-- **Search**: By name, phone, email
-- **Filters**: Status, verification tier
-- **Actions**: View details, suspend, delete
-- **Export**: CSV export of user list
+- Search by name, phone, email
+- Filters: Status, verification tier
+- Actions: View details, suspend, delete
+- Export: CSV export of user list
 
 **User Detail View:**
 
@@ -427,14 +404,13 @@ admin_users:
 ┌─────────────────────────────────────────────────────────┐
 │ User Details: John Doe                                   │
 ├─────────────────────────────────────────────────────────┤
-│ Status: Active ✓  Verification: Basic                    │
-│ Created: Jan 15, 2026  Last Active: Feb 22, 2026         │
+│ Status: Active  •  Verification: Basic                   │
+│ Created: Jan 15, 2026  •  Last Active: Feb 22, 2026      │
 │                                                          │
 │ Contact Information                                      │
-│ • Full Name: John Doe                                    │
-│ • Nickname: Johnny                                       │
+│ • Full Name: John Doe  •  Nickname: Johnny               │
 │ • Phone: +254712345678 (verified)                        │
-│ • Email: john@example.com (unverified)                   │
+│ • Email: john@example.com                                │
 │ • Language: English                                      │
 │                                                          │
 │ Businesses                                               │
@@ -443,16 +419,13 @@ admin_users:
 │                                                          │
 │ Activity                                                 │
 │ • Last Login: Feb 22, 2026 at 2:30 PM                    │
-│ • Total Logins: 45                                       │
 │ • Failed Login Attempts: 0                               │
 │                                                          │
 │ Notification Preferences                                 │
 │ • Marketing SMS: Opted In                                │
 │ • Marketing Email: Opted Out                             │
 │                                                          │
-│ Actions                                                  │
-│ [Suspend User] [Delete User] [View Auth Logs]           │
-│                                                          │
+│ [Suspend User]  [Delete User]  [View Auth Logs]         │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -471,28 +444,27 @@ admin_users:
 │ All Transactions                                         │
 ├─────────────────────────────────────────────────────────┤
 │ Date Range: [Last 30 Days ▼]                             │
-│ Status: [All ▼] Type: [All ▼]                            │
+│ Status: [All ▼]  Type: [All ▼]                           │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Feb 21, 2026 2:30 PM                               │  │
 │ │ Doreen Beauty Parlour                              │  │
 │ │ Website Hosting (6 months)                         │  │
-│ │ 1,392 KES • Status: Completed ✓                    │  │
+│ │ 1,392 KES  •  Status: Completed                    │  │
 │ │ PesaPal Ref: TFT-TX-123456                         │  │
-│ │ [View Receipt] [View Details]                      │  │
+│ │ [View Receipt]  [View Details]                     │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ Total: 125,000 KES (this period)                         │
-│ Page 1 of 45  [Previous] [Next]                         │
-│                                                          │
+│ Page 1 of 45  [Previous]  [Next]                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Features:**
-- **Filters**: Date range, status, transaction type
-- **Export**: CSV export for accounting
-- **Search**: By business name, reference number
-- **Metrics**: Total revenue for selected period
+- Filters: Date range, status, transaction type
+- Export: CSV export for accounting
+- Search by business name, reference number
+- Total revenue metric for selected period
 
 ### Refund Management
 
@@ -521,17 +493,15 @@ admin_users:
 │ │ Net Refund: 380 KES                                │  │
 │ │                                                    │  │
 │ │ Notes: Customer request due to relocation          │  │
-│ │                                                    │  │
 │ │ Status: Pending Approval                           │  │
-│ │ [Approve] [Reject]                                 │  │
+│ │ [Approve]  [Reject]                                │  │
 │ └────────────────────────────────────────────────────┘  │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Refund Workflow:**
 1. Admin creates refund request (in-person at office)
-2. System calculates refund amount and processing fee
+2. System calculates refund amount and 5% processing fee
 3. Admin approves request
 4. Admin disburses cash to customer
 5. Admin marks refund as completed
@@ -551,16 +521,15 @@ admin_users:
 ┌─────────────────────────────────────────────────────────┐
 │ Active Service Subscriptions                             │
 ├─────────────────────────────────────────────────────────┤
-│ Service Type: [All ▼] Expiring: [All ▼]                 │
+│ Service Type: [All ▼]  Expiring: [All ▼]                │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Doreen Beauty Parlour                              │  │
 │ │ Website Hosting                                    │  │
 │ │ Expires: Aug 21, 2026 (6 months remaining)         │  │
-│ │ Status: Active ✓                                   │  │
-│ │ [Adjust] [View Details]                            │  │
+│ │ Status: Active                                     │  │
+│ │ [Adjust]  [View Details]                           │  │
 │ └────────────────────────────────────────────────────┘  │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -577,13 +546,12 @@ admin_users:
 │ • Months Paid: 6                    │
 │ • Expiration: Aug 21, 2026          │
 │                                     │
-│ New Values:                         │
-│ Months Paid:                        │
+│ New Months Paid:                    │
 │ ┌─────────────────────────────────┐ │
 │ │ 8                               │ │
 │ └─────────────────────────────────┘ │
 │                                     │
-│ Expiration Date:                    │
+│ New Expiration Date:                │
 │ ┌─────────────────────────────────┐ │
 │ │ Oct 21, 2026                    │ │
 │ └─────────────────────────────────┘ │
@@ -593,20 +561,11 @@ admin_users:
 │ │ Compensation for 2-day downtime │ │
 │ └─────────────────────────────────┘ │
 │                                     │
-│ [Cancel] [Save Adjustment]          │
+│ [Cancel]  [Save Adjustment]         │
 └─────────────────────────────────────┘
 ```
 
-**Audit Log Entry:**
-```
-Action: adjusted_expiration
-Actor: admin@tafuta.ke (Admin User)
-Entity: service_subscription (uuid)
-Old Value: {"months_paid": 6, "expiration_date": "2026-08-21"}
-New Value: {"months_paid": 8, "expiration_date": "2026-10-21"}
-Reason: "Compensation for 2-day downtime"
-Timestamp: Feb 22, 2026 3:45 PM
-```
+All manual adjustments are logged in the audit trail with actor, old values, new values, and reason.
 
 ### Expiring Soon
 
@@ -623,18 +582,17 @@ Timestamp: Feb 22, 2026 3:45 PM
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Grace Hair Studio                                  │  │
 │ │ Ads Service                                        │  │
-│ │ Expires: Feb 25, 2026 (3 days) ⚠️                  │  │
+│ │ Expires: Feb 25, 2026 (3 days)                     │  │
 │ │ Owner: Jane Smith (+254712345679)                  │  │
-│ │ [Send Reminder] [View Business]                    │  │
+│ │ [Send Reminder]  [View Business]                   │  │
 │ └────────────────────────────────────────────────────┘  │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Features:**
-- **Filters**: Next 7 days, next 30 days, expired
-- **Bulk actions**: Send reminder to all
-- **Auto-reminders**: System sends automatic reminders at 7 days, 3 days, 1 day before expiry
+- Filters: Next 7 days, next 30 days, expired
+- Bulk actions: Send reminder to all
+- System sends automatic reminders at 7 days, 3 days, 1 day before expiry
 
 ---
 
@@ -650,35 +608,34 @@ Timestamp: Feb 22, 2026 3:45 PM
 ┌─────────────────────────────────────────────────────────┐
 │ Authentication Logs                                      │
 ├─────────────────────────────────────────────────────────┤
-│ User: [All ▼] Event: [All ▼] Date: [Last 7 Days ▼]      │
+│ User: [All ▼]  Event: [All ▼]  Date: [Last 7 Days ▼]    │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Feb 22, 2026 2:30 PM                               │  │
 │ │ Login Success                                      │  │
 │ │ User: John Doe (+254712345678)                     │  │
-│ │ IP: 192.168.1.1 • Device: iPhone Safari           │  │
+│ │ IP: 192.168.1.1  •  Device: iPhone Safari          │  │
 │ │ [View Details]                                     │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Feb 22, 2026 2:15 PM                               │  │
-│ │ Login Failed ⚠️                                     │  │
+│ │ Login Failed                                       │  │
 │ │ Phone: +254712345999                               │  │
 │ │ Reason: Invalid OTP                                │  │
-│ │ IP: 192.168.1.2 • Device: Android Chrome          │  │
+│ │ IP: 192.168.1.2  •  Device: Android Chrome         │  │
 │ │ [View Details]                                     │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
-│ Page 1 of 120  [Previous] [Next]                        │
-│                                                          │
+│ Page 1 of 120  [Previous]  [Next]                       │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Features:**
-- **Filters**: User, event type, date range
-- **Search**: By phone number, IP address
-- **Export**: CSV export for security audits
-- **Alerts**: Flag suspicious activity (multiple failed attempts)
+- Filters: User, event type, date range
+- Search by phone number, IP address
+- Export: CSV for security audits
+- Alerts: Flag suspicious activity (multiple failed attempts)
 
 ### Audit Logs
 
@@ -690,7 +647,7 @@ Timestamp: Feb 22, 2026 3:45 PM
 ┌─────────────────────────────────────────────────────────┐
 │ Audit Logs                                               │
 ├─────────────────────────────────────────────────────────┤
-│ Actor: [All ▼] Action: [All ▼] Date: [Last 7 Days ▼]    │
+│ Actor: [All ▼]  Action: [All ▼]  Date: [Last 7 Days ▼]  │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Feb 22, 2026 3:45 PM                               │  │
@@ -712,7 +669,6 @@ Timestamp: Feb 22, 2026 3:45 PM
 │ │ Reason: "Inappropriate content added by owner"     │  │
 │ │ [View Details]                                     │  │
 │ └────────────────────────────────────────────────────┘  │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -722,9 +678,11 @@ Timestamp: Feb 22, 2026 3:45 PM
 - User suspensions/deletions
 - Subscription adjustments
 - Refund processing
-- **Content rollbacks** (admin-initiated)
+- Content rollbacks (admin-initiated)
 - System configuration changes
 - Admin user management
+
+**Retention**: Audit logs retained for 7 years (compliance requirement).
 
 ---
 
@@ -740,34 +698,15 @@ Timestamp: Feb 22, 2026 3:45 PM
 ┌─────────────────────────────────────────────────────────┐
 │ System Configuration                                     │
 ├─────────────────────────────────────────────────────────┤
-│ ⚠️ Super Admin Only                                      │
+│ Super Admin Only                                         │
 │                                                          │
-│ Legal Identity (for receipts)                            │
+│ Legal Identity (for VAT receipts)                        │
 │ ┌────────────────────────────────────────────────────┐  │
-│ │ Business Name: *                                   │  │
-│ │ ┌──────────────────────────────────────────────┐   │  │
-│ │ │ eBiashara Rahisi Ltd                         │   │  │
-│ │ └──────────────────────────────────────────────┘   │  │
-│ │                                                    │  │
-│ │ KRA PIN: *                                         │  │
-│ │ ┌──────────────────────────────────────────────┐   │  │
-│ │ │ P051234567X                                  │   │  │
-│ │ └──────────────────────────────────────────────┘   │  │
-│ │                                                    │  │
-│ │ VAT Registration Number: *                         │  │
-│ │ ┌──────────────────────────────────────────────┐   │  │
-│ │ │ 0123456789                                   │   │  │
-│ │ └──────────────────────────────────────────────┘   │  │
-│ │                                                    │  │
-│ │ Business Address: *                                │  │
-│ │ ┌──────────────────────────────────────────────┐   │  │
-│ │ │ Nairobi, Kenya                               │   │  │
-│ │ └──────────────────────────────────────────────┘   │  │
-│ │                                                    │  │
-│ │ Business Registration Number: *                    │  │
-│ │ ┌──────────────────────────────────────────────┐   │  │
-│ │ │ CPR/2024/123456                              │   │  │
-│ │ └──────────────────────────────────────────────┘   │  │
+│ │ Business Name: eBiashara Rahisi Ltd                │  │
+│ │ KRA PIN: P051234567X                               │  │
+│ │ VAT Registration Number: 0123456789                │  │
+│ │ Business Address: Nairobi, Kenya                   │  │
+│ │ Business Registration Number: CPR/2024/123456      │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ Service Pricing                                          │
@@ -779,18 +718,13 @@ Timestamp: Feb 22, 2026 3:45 PM
 │ │ [Edit Pricing]                                     │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
-│ VAT Rate                                                 │
-│ ┌────────────────────────────────────────────────────┐  │
-│ │ Current: 16%                                       │  │
-│ │ [Edit VAT Rate]                                    │  │
-│ └────────────────────────────────────────────────────┘  │
+│ VAT Rate: 16%  [Edit VAT Rate]                          │
 │                                                          │
 │ [Save Changes]                                           │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**MVP Note**: System config changes are logged in audit trail and require Super Admin role.
+System config changes are logged in audit trail and require Super Admin role.
 
 ### Admin User Management
 
@@ -802,24 +736,23 @@ Timestamp: Feb 22, 2026 3:45 PM
 ┌─────────────────────────────────────────────────────────┐
 │ Admin Users                                              │
 ├─────────────────────────────────────────────────────────┤
-│ ⚠️ Super Admin Only                                      │
+│ Super Admin Only                                         │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Admin User                                         │  │
-│ │ admin@tafuta.ke • Role: Super Admin                │  │
-│ │ Active • Created: Jan 1, 2026                      │  │
-│ │ [Edit] [Deactivate]                                │  │
+│ │ admin@tafuta.ke  •  Role: Super Admin              │  │
+│ │ Active  •  Created: Jan 1, 2026                    │  │
+│ │ [Edit]  [Deactivate]                               │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Support Staff                                      │  │
-│ │ support@tafuta.ke • Role: Support Staff            │  │
-│ │ Active • Created: Jan 15, 2026                     │  │
-│ │ [Edit] [Deactivate]                                │  │
+│ │ support@tafuta.ke  •  Role: Support Staff          │  │
+│ │ Active  •  Created: Jan 15, 2026                   │  │
+│ │ [Edit]  [Deactivate]                               │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ [+ Add Admin User]                                       │
-│                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -842,7 +775,7 @@ Timestamp: Feb 22, 2026 3:45 PM
 │ │ Search by phone...              │ │
 │ └─────────────────────────────────┘ │
 │                                     │
-│ [Cancel] [Add Admin User]           │
+│ [Cancel]  [Add Admin User]          │
 └─────────────────────────────────────┘
 ```
 
@@ -867,10 +800,9 @@ Timestamp: Feb 22, 2026 3:45 PM
 │ ○ Specific User                                          │
 │                                                          │
 │ Channel: *                                               │
-│ ☑ SMS  ☑ Email  ☑ In-App                                │
+│ [x] SMS  [x] Email  [x] In-App                          │
 │                                                          │
-│ Language: *                                              │
-│ [English ▼]                                              │
+│ Language: [English ▼]                                    │
 │                                                          │
 │ Subject (Email only):                                    │
 │ ┌────────────────────────────────────────────────────┐  │
@@ -881,7 +813,7 @@ Timestamp: Feb 22, 2026 3:45 PM
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Dear {nickname},                                   │  │
 │ │                                                    │  │
-│ │ We are excited to announce...                     │  │
+│ │ We are excited to announce...                      │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ Available variables: {nickname}, {business_name}         │
@@ -889,25 +821,23 @@ Timestamp: Feb 22, 2026 3:45 PM
 │ Preview:                                                 │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Dear John,                                         │  │
-│ │                                                    │  │
-│ │ We are excited to announce...                     │  │
+│ │ We are excited to announce...                      │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ Estimated Recipients: 1,234 users                        │
 │ Estimated Cost: 123 KES (SMS only)                       │
 │                                                          │
-│ [Cancel] [Send Notification]                             │
-│                                                          │
+│ [Cancel]  [Send Notification]                            │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Features:**
-- **Recipient targeting**: All users, business owners, specific business/user
-- **Multi-channel**: SMS, email, in-app notifications
-- **Multi-language**: Select language for message
-- **Template variables**: Personalize with user data
-- **Preview**: See how message will look
-- **Cost estimate**: Show SMS cost before sending
+- Recipient targeting: All users, business owners, specific business/user
+- Multi-channel: SMS, email, in-app
+- Multi-language: Select language for message
+- Template variables: Personalize with user data
+- Preview before sending
+- Cost estimate shown for SMS
 
 ---
 
@@ -925,19 +855,15 @@ Timestamp: Feb 22, 2026 3:45 PM
 ├─────────────────────────────────────────────────────────┤
 │ Date Range: [Last 30 Days ▼]                             │
 │                                                          │
-│ Key Metrics                                              │
 │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │
 │ │ New     │ │ New     │ │ Revenue │ │ Active  │        │
-│ │ Users   │ │ Busines │ │         │ │ Services│        │
+│ │ Users   │ │ Business│ │         │ │ Services│        │
 │ │   234   │ │    45   │ │ 125,000 │ │   456   │        │
 │ │ +12%    │ │  +8%    │ │  +15%   │ │  +5%    │        │
 │ └─────────┘ └─────────┘ └─────────┘ └─────────┘        │
 │                                                          │
 │ Revenue Trend                                            │
-│ ┌────────────────────────────────────────────────────┐  │
-│ │        [Line chart showing revenue over time]      │  │
-│ │                                                    │  │
-│ └────────────────────────────────────────────────────┘  │
+│ [Line chart showing revenue over time]                   │
 │                                                          │
 │ Top Categories                                           │
 │ 1. Salons (123 businesses)                               │
@@ -956,18 +882,9 @@ Timestamp: Feb 22, 2026 3:45 PM
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Key Metrics:**
-- New users (with % change)
-- New businesses (with % change)
-- Revenue (with % change)
-- Active services (with % change)
-- Top categories and regions
-- Service adoption rates
+**Key Metrics:** New users, new businesses, revenue, active services (all with % change vs prior period); top categories and regions; service adoption rates.
 
-**Export Options:**
-- Export to CSV
-- Export to PDF report
-- Schedule email reports (daily/weekly/monthly)
+**Export Options:** CSV, PDF report.
 
 ---
 
@@ -984,7 +901,7 @@ Timestamp: Feb 22, 2026 3:45 PM
 ### User Management
 - `GET /api/admin/users` - List all users with filters
 - `POST /api/admin/users/:id/suspend` - Suspend user
-- `DELETE /api/admin/users/:id` - Soft delete user
+- `DELETE /api/admin/users/:id` - Soft delete user (anonymize PII)
 
 ### Service Management
 - `PATCH /api/subscriptions/:id/adjust` - Manually adjust subscription
@@ -1001,16 +918,14 @@ Timestamp: Feb 22, 2026 3:45 PM
 - `GET /api/admin/audit-logs` - View audit logs
 
 ### System Configuration
-- `GET /api/admin/system/config` - Get system configuration
-- `PATCH /api/admin/system/config` - Update system configuration
-- `GET /api/admin/system/admins` - List admin users
-- `POST /api/admin/system/admins` - Add admin user
-- `DELETE /api/admin/system/admins/:id` - Remove admin user
+- `GET /api/admin/system/config` - Get system configuration (Super Admin)
+- `PATCH /api/admin/system/config` - Update system configuration (Super Admin)
+- `GET /api/admin/system/admins` - List admin users (Super Admin)
+- `POST /api/admin/system/admins` - Add admin user (Super Admin)
+- `DELETE /api/admin/system/admins/:id` - Remove admin user (Super Admin)
 
-### Notifications
+### Notifications & Analytics
 - `POST /api/admin/notifications/send` - Send notification
-
-### Analytics
 - `GET /api/admin/analytics` - Get analytics data
 
 **Detailed API specs**: See PRD-03-api.md
@@ -1023,28 +938,40 @@ Timestamp: Feb 22, 2026 3:45 PM
 
 - **Separate admin login**: Different from public user login
 - **Email + password**: Admin users use email/password (no OTP)
-- **2FA recommended**: Optional two-factor authentication (post-MVP)
 - **Session timeout**: 30 minutes of inactivity
+- **2FA**: Optional; recommended post-MVP
 - **IP whitelisting**: Optional restriction to office IP (post-MVP)
 
 ### Audit Trail
 
-**All admin actions logged:**
-- Who performed the action (admin user_id)
-- What action was performed
-- When it was performed
-- What entity was affected
-- Old and new values (for updates)
-- Reason provided (for sensitive actions)
-
-**Retention**: Audit logs retained for 7 years (compliance)
+All admin actions are logged with: actor (admin user_id), action, timestamp, affected entity, old and new values, and reason (required for sensitive actions). Audit logs retained for 7 years.
 
 ### Role-Based Access Control
 
-- **Enforce permissions**: Check role before allowing action
-- **UI restrictions**: Hide actions user cannot perform
-- **API validation**: Verify permissions on every request
-- **Audit failures**: Log unauthorized access attempts
+- Enforce permissions on every API request
+- UI hides actions the current user cannot perform
+- Log unauthorized access attempts
+
+---
+
+## Testing Requirements
+
+### Unit Tests
+- Permission checks for all admin roles
+- Business approval/rejection logic
+- Subscription adjustment calculations
+- Refund processing logic
+
+### Integration Tests
+- Business approval flow (pending → approved → owner notified)
+- User suspension flow (active → suspended → reinstated)
+- Admin refund processing (request → approve → complete)
+- Fee schedule update affecting new payments only
+
+### E2E Tests
+- Admin approves pending business → business becomes visible in public listings
+- Admin suspends user → user cannot log in → admin reinstates → user can log in
+- Admin adjusts subscription → owner receives notification
 
 ---
 
@@ -1056,48 +983,10 @@ Timestamp: Feb 22, 2026 3:45 PM
 - Custom admin roles with granular permissions
 - Admin mobile app
 - Real-time notifications (WebSocket)
-- Advanced reporting (scheduled reports, custom dashboards)
+- Scheduled reports and custom dashboards
 - Marketing agent portal (separate from admin)
 - Business performance insights
 - A/B testing tools
-
----
-
-## Testing Requirements
-
-### Functional Testing
-
-- Business approval/rejection flow
-- Subscription adjustment with audit logging
-- Refund processing end-to-end
-- Notification sending (SMS, email, in-app)
-- Permission enforcement for all roles
-
-### Security Testing
-
-- Role-based access control
-- Audit log integrity
-- Session management
-- SQL injection prevention
-- XSS prevention
-
-### Usability Testing
-
-- Admin workflow efficiency
-- Pending business review speed
-- Search and filter functionality
-- Mobile responsiveness (admin on tablet)
-
----
-
-## Dependencies
-
-- **Backend**: Node.js 22 with Express.js
-- **Database**: PostgreSQL 15+
-- **Frontend**: React 18+ (admin UI)
-- **Authentication**: JWT sessions
-- **Notifications**: VintEx (SMS), Mailgun (Email)
-- **Analytics**: Basic SQL queries (no external analytics service for MVP)
 
 ---
 

@@ -1,17 +1,15 @@
 # PRD-03: API & Integration
 
-**Product Requirements Document**  
-**Version**: 1.0  
-**Last Updated**: Feb 21, 2026  
+**Product Requirements Document**
+**Version**: 1.0
+**Last Updated**: Feb 21, 2026
 **Status**: Draft
 
 ---
 
 ## Overview
 
-This PRD defines the RESTful API, external integrations, and webhooks for Tafuta MVP. Focus is on simplicity, security, and core functionality needed for launch.
-
-**Architecture**: React SPA frontend communicates with Node.js/Express backend via REST API.
+This PRD defines the RESTful API, external integrations, and rate limiting for Tafuta MVP. The React SPA frontend communicates with the Node.js/Express backend exclusively via this REST API.
 
 ---
 
@@ -21,11 +19,12 @@ This PRD defines the RESTful API, external integrations, and webhooks for Tafuta
 
 - **Resource-based URLs**: `/api/businesses/:id` not `/api/getBusinessById`
 - **HTTP methods**: GET (read), POST (create), PATCH (update), DELETE (soft delete)
-- **Status codes**: 200 (success), 201 (created), 400 (bad request), 401 (unauthorized), 403 (forbidden), 404 (not found), 500 (server error)
+- **Status codes**: 200 (success), 201 (created), 400 (bad request), 401 (unauthorized), 403 (forbidden), 404 (not found), 429 (rate limit), 500 (server error)
 - **JSON format**: All requests and responses use JSON
-- **Consistent structure**: All responses follow standard format
 
 ### Response Format
+
+All responses follow a consistent envelope structure:
 
 ```json
 {
@@ -36,7 +35,7 @@ This PRD defines the RESTful API, external integrations, and webhooks for Tafuta
 }
 ```
 
-**Error response:**
+Error response:
 ```json
 {
   "success": false,
@@ -51,7 +50,7 @@ This PRD defines the RESTful API, external integrations, and webhooks for Tafuta
 
 ### Pagination
 
-For list endpoints returning multiple items:
+List endpoints accept `?page=1&limit=20` and return:
 
 ```json
 {
@@ -66,7 +65,10 @@ For list endpoints returning multiple items:
 }
 ```
 
-**Query parameters**: `?page=1&limit=20`
+### API Versioning
+
+- **MVP**: No versioning; all endpoints at `/api/*`
+- **Future**: Version in URL path (`/api/v2/*`) when breaking changes are needed
 
 ---
 
@@ -79,977 +81,126 @@ For list endpoints returning multiple items:
 - **Expiry**: 60 minutes
 - **Secure flag**: true (HTTPS only)
 - **SameSite**: Strict (CSRF protection)
+- **Storage**: PostgreSQL sessions table via connect-pg-simple
 
-### Protected Endpoints
+All endpoints except public search/listings require authentication via the session cookie. Unauthorized requests receive a 401 response. Requests with insufficient role permissions receive a 403 response.
 
-All endpoints except public search/listings require authentication:
+### Permission Model
 
-**Request header:**
-```
-Cookie: tafuta_session=<jwt_token>
-```
-
-**Unauthorized response (401):**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Authentication required"
-  }
-}
-```
-
-### Permission Checks
-
-Endpoints validate user permissions based on:
-- User role (Owner/Admin/Employee)
-- Business relationship (user must be linked to business)
-- Admin role (Super Admin/Admin/Support Staff)
-
-**Forbidden response (403):**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "Insufficient permissions"
-  }
-}
-```
+Endpoint permissions are validated based on:
+- User role for business endpoints (Owner / Admin / Employee — see PRD-01 permissions matrix)
+- Admin role for admin endpoints (Super Admin / Admin / Support Staff — see PRD-05 permissions matrix)
 
 ---
 
-## API Endpoints
-
-### Authentication Endpoints
-
-#### POST /api/auth/register
-Register new user account.
-
-**Request body:**
-```json
-{
-  "full_name": "John Doe",
-  "nickname": "John",
-  "phone": "+254712345678",
-  "email": "john@example.com",
-  "terms_accepted": true,
-  "privacy_accepted": true,
-  "marketing_sms_opt_in": false
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "otp_sent": true,
-    "phone": "+254712345678",
-    "expires_in": 600
-  }
-}
-```
-
-#### POST /api/auth/login/otp
-Request OTP for passwordless login.
-
-**Request body:**
-```json
-{
-  "phone": "+254712345678"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "otp_sent": true,
-    "expires_in": 600
-  }
-}
-```
-
-#### POST /api/auth/login/verify
-Verify OTP and create session.
-
-**Request body:**
-```json
-{
-  "phone": "+254712345678",
-  "otp": "123456"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "user_id": "uuid",
-      "full_name": "John Doe",
-      "nickname": "John",
-      "phone": "+254712345678",
-      "email": "john@example.com"
-    }
-  },
-  "message": "Login successful"
-}
-```
-
-**Sets cookie**: `tafuta_session=<jwt_token>`
-
-#### POST /api/auth/login/password
-Login with phone and password.
-
-**Request body:**
-```json
-{
-  "phone": "+254712345678",
-  "password": "SecurePass123!"
-}
-```
-
-**Response**: Same as OTP verify
-
-#### POST /api/auth/logout
-End current session.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Logged out successfully"
-}
-```
-
-**Clears cookie**: `tafuta_session`
-
-#### POST /api/auth/password/reset
-Request password reset OTP.
-
-**Request body:**
-```json
-{
-  "phone": "+254712345678"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "otp_sent": true,
-    "expires_in": 600
-  }
-}
-```
-
-#### POST /api/auth/password/update
-Set new password after OTP verification.
-
-**Request body:**
-```json
-{
-  "phone": "+254712345678",
-  "otp": "123456",
-  "new_password": "NewSecurePass123!"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Password updated successfully"
-}
-```
-
----
-
-### User Profile Endpoints
-
-#### GET /api/users/me
-Get current user profile.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "user_id": "uuid",
-    "full_name": "John Doe",
-    "nickname": "John",
-    "phone": "+254712345678",
-    "email": "john@example.com",
-    "verification_tier": "basic",
-    "language_preference": "en",
-    "profile_photo_url": "https://...",
-    "status": "active",
-    "created_at": "2026-01-15T10:00:00Z"
-  }
-}
-```
-
-#### PATCH /api/users/me
-Update user profile.
-
-**Request body:**
-```json
-{
-  "full_name": "John Doe Jr.",
-  "nickname": "Johnny",
-  "email": "newemail@example.com",
-  "language_preference": "sw"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": { /* updated user object */ },
-  "message": "Profile updated successfully"
-}
-```
-
-#### POST /api/users/me/photo
-Upload profile photo.
-
-**Request**: multipart/form-data with `photo` field
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "profile_photo_url": "https://tafuta.ke/uploads/users/uuid.jpg"
-  }
-}
-```
-
-#### PATCH /api/users/me/preferences
-Update notification preferences.
-
-**Request body:**
-```json
-{
-  "marketing_sms_opt_in": true,
-  "marketing_email_opt_in": false
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Preferences updated"
-}
-```
-
-#### POST /api/users/me/deactivate
-Deactivate user account (self-service).
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Account deactivated"
-}
-```
-
-#### POST /api/users/me/reactivate
-Reactivate user account.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Account reactivated"
-}
-```
-
----
-
-### Business Profile Endpoints
-
-#### POST /api/businesses
-Create new business profile.
-
-**Request body:**
-```json
-{
-  "business_name": "Doreen Beauty Parlour",
-  "description": "Professional hair and beauty services",
-  "category": "salon",
-  "region": "Machakos",
-  "city": "Machakos Town",
-  "street_address1": "Kenyatta Avenue",
-  "phone": "+254712345678",
-  "email": "doreen@example.com"
-}
-```
-
-**Response (201):**
-```json
-{
-  "success": true,
-  "data": {
-    "business_id": "uuid",
-    "business_name": "Doreen Beauty Parlour",
-    "status": "active",
-    "verification_tier": "basic",
-    "created_at": "2026-02-21T20:00:00Z"
-  },
-  "message": "Business created successfully"
-}
-```
-
-#### GET /api/businesses/:id
-Get business details.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "business_id": "uuid",
-    "business_name": "Doreen Beauty Parlour",
-    "category": "salon",
-    "region": "Machakos",
-    "subdomain": "doreen.machakos",
-    "logo_url": "https://...",
-    "verification_tier": "verified",
-    "status": "active",
-    "content_json": {
-      "profile": {
-        "en": {
-          "business_name": "Doreen Beauty Parlour",
-          "tagline": "Professional hair and beauty services",
-          "description": "We offer professional hair styling..."
-        }
-      },
-      "contact": {
-        "phone": "+254712345678",
-        "email": "doreen@example.com"
-      },
-      "location": {
-        "city": "Machakos Town",
-        "street_address1": "Kenyatta Avenue"
-      }
-    },
-    "content_version": 3,
-    "created_at": "2026-01-15T10:00:00Z",
-    "updated_at": "2026-02-22T20:00:00Z"
-  }
-}
-```
-
-#### PATCH /api/businesses/:id
-Update business profile (updates content_json).
-
-**Request body:**
-```json
-{
-  "content_json": {
-    "profile": {
-      "en": {
-        "description": "Updated description"
-      }
-    },
-    "contact": {
-      "email": "newemail@example.com"
-    }
-  },
-  "change_summary": "Updated description and email"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "business_id": "uuid",
-    "content_json": { /* updated content */ },
-    "content_version": 4
-  },
-  "message": "Business updated successfully"
-}
-```
-
-**Note**: System automatically saves previous version to `business_content_history` before updating.
-
-#### POST /api/businesses/:id/logo
-Upload business logo.
-
-**Request**: multipart/form-data with `logo` field
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "logo_url": "https://tafuta.ke/uploads/businesses/uuid.jpg"
-  }
-}
-```
-
-#### POST /api/businesses/:id/deactivate
-Deactivate business (Owner only).
-
-**Request body:**
-```json
-{
-  "reason": "Going out of business"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Business deactivated"
-}
-```
-
-#### GET /api/businesses/:id/users
-List users linked to business.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "user_id": "uuid",
-      "full_name": "John Doe",
-      "phone": "+254712345678",
-      "role": "owner",
-      "created_at": "2026-01-15T10:00:00Z"
-    }
-  ]
-}
-```
-
-#### POST /api/businesses/:id/users
-Add user to business.
-
-**Request body:**
-```json
-{
-  "phone": "+254712345678",
-  "role": "employee"
-}
-```
-
-**Response (201):**
-```json
-{
-  "success": true,
-  "message": "User added to business"
-}
-```
-
-#### PATCH /api/businesses/:id/users/:user_id
-Update user role.
-
-**Request body:**
-```json
-{
-  "role": "admin"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "User role updated"
-}
-```
-
-#### DELETE /api/businesses/:id/users/:user_id
-Remove user from business.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "User removed from business"
-}
-```
-
-#### GET /api/businesses/:id/content
-Get business content (content_json only).
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "content_json": { /* full content object */ },
-    "content_version": 3,
-    "updated_at": "2026-02-22T20:00:00Z"
-  }
-}
-```
-
-#### GET /api/businesses/:id/content/history
-Get content version history.
-
-**Query params**: `?page=1&limit=20`
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "history_id": "uuid",
-      "content_version": 3,
-      "change_type": "owner_edit",
-      "change_summary": "Added new service: Pedicure",
-      "changed_by": "uuid",
-      "created_at": "2026-02-22T20:00:00Z"
-    },
-    {
-      "history_id": "uuid",
-      "content_version": 2,
-      "change_type": "owner_edit",
-      "change_summary": "Updated business hours",
-      "changed_by": "uuid",
-      "created_at": "2026-02-20T15:00:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 3,
-    "pages": 1
-  }
-}
-```
-
-#### GET /api/businesses/:id/content/history/:version
-Get specific content version.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "history_id": "uuid",
-    "content_json": { /* content at this version */ },
-    "content_version": 2,
-    "change_type": "owner_edit",
-    "change_summary": "Updated business hours",
-    "changed_by": "uuid",
-    "created_at": "2026-02-20T15:00:00Z"
-  }
-}
-```
-
-#### POST /api/businesses/:id/content/rollback
-Rollback to previous content version (Owner or Admin only).
-
-**Request body:**
-```json
-{
-  "target_version": 2,
-  "reason": "Reverting accidental changes"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "content_version": 4,
-    "rolled_back_to": 2
-  },
-  "message": "Content rolled back successfully"
-}
-```
-
-**Note**: Rollback creates a new version (increments version number) with content from target version.
-
----
-
-### Service & Payment Endpoints
-
-#### GET /api/businesses/:id/subscriptions
-List active subscriptions for business.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "subscription_id": "uuid",
-      "service_type": "website_hosting",
-      "months_paid": 6,
-      "expiration_date": "2026-08-21",
-      "status": "active"
-    }
-  ]
-}
-```
-
-#### GET /api/services/pricing
-Get current pricing for all services.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "service_type": "website_hosting",
-      "description": "Single-page website with subdomain",
-      "price_per_month": 200,
-      "currency": "KES"
-    }
-  ]
-}
-```
-
-#### POST /api/payments/initiate
-Initiate payment for services.
-
-**Request body:**
-```json
-{
-  "business_id": "uuid",
-  "items": [
-    {
-      "service_type": "website_hosting",
-      "months": 6
-    },
-    {
-      "service_type": "ads",
-      "months": 3
-    }
-  ]
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "tx_id": "uuid",
-    "amount_kes": 1392.00,
-    "vat_amount": 192.00,
-    "net_amount": 1200.00,
-    "pesapal_redirect_url": "https://pesapal.com/...",
-    "reference_number": "TFT-TX-123456"
-  }
-}
-```
-
-#### POST /api/payments/webhook
-PesaPal IPN webhook (internal use).
-
-**Request body**: PesaPal IPN format
-
-**Response (200):**
-```json
-{
-  "success": true
-}
-```
-
-#### GET /api/payments/:tx_id/status
-Check payment status.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "tx_id": "uuid",
-    "status": "completed",
-    "amount_kes": 1392.00,
-    "completed_at": "2026-02-21T20:05:00Z"
-  }
-}
-```
-
-#### GET /api/businesses/:id/transactions
-List transactions for business.
-
-**Query params**: `?page=1&limit=20`
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "tx_id": "uuid",
-      "transaction_type": "purchase",
-      "amount_kes": 1392.00,
-      "status": "completed",
-      "created_at": "2026-02-21T20:00:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 5,
-    "pages": 1
-  }
-}
-```
-
-#### GET /api/transactions/:tx_id
-Get transaction details.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "tx_id": "uuid",
-    "business_id": "uuid",
-    "transaction_type": "purchase",
-    "amount_kes": 1392.00,
-    "vat_amount": 192.00,
-    "net_amount": 1200.00,
-    "payment_method": "pesapal",
-    "reference_number": "TFT-TX-123456",
-    "status": "completed",
-    "items": [
-      {
-        "service_type": "website_hosting",
-        "months_purchased": 6,
-        "unit_price": 200.00,
-        "subtotal": 1200.00
-      }
-    ],
-    "created_at": "2026-02-21T20:00:00Z",
-    "completed_at": "2026-02-21T20:05:00Z"
-  }
-}
-```
-
----
-
-### Receipt Endpoints
-
-#### GET /api/businesses/:id/receipts
-List all receipts for business.
-
-**Query params**: `?page=1&limit=20`
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "receipt_id": "uuid",
-      "receipt_number": "TFT-2026-00001",
-      "receipt_type": "purchase",
-      "amount_kes": 1392.00,
-      "issued_at": "2026-02-21T20:05:00Z"
-    }
-  ],
-  "pagination": { ... }
-}
-```
-
-#### GET /api/receipts/:id/download
-Generate and download receipt PDF.
-
-**Response**: PDF file (Content-Type: application/pdf)
-
----
-
-### Public Search Endpoints
-
-#### GET /api/search
-Search businesses (public, no auth required).
-
-**Query params**: 
-- `q` - search query (optional)
-- `category` - filter by category (optional)
-- `region` - filter by region (optional)
-- `page` - page number (default: 1)
-- `limit` - items per page (default: 20)
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "business_id": "uuid",
-      "business_name": "Doreen Beauty Parlour",
-      "description": "Professional hair and beauty services",
-      "category": "salon",
-      "region": "Machakos",
-      "city": "Machakos Town",
-      "phone": "+254712345678",
-      "website_url": "https://doreen.machakos.tafuta.ke",
-      "logo_url": "https://...",
-      "verification_tier": "verified",
-      "is_promoted": false
-    }
-  ],
-  "pagination": { ... }
-}
-```
-
-#### GET /api/categories
-List all categories (public).
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "category_id": "salon",
-      "name": "Salons & Beauty",
-      "business_count": 45
-    }
-  ]
-}
-```
-
-#### GET /api/regions
-List all regions (public).
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "region_id": "machakos",
-      "name": "Machakos",
-      "business_count": 156
-    }
-  ]
-}
-```
-
----
-
-### Admin Endpoints
-
-#### GET /api/admin/auth-logs
-View authentication logs (admin only).
-
-**Query params**: 
-- `user_id` - filter by user (optional)
-- `phone` - filter by phone (optional)
-- `event_type` - filter by event type (optional)
-- `start_date` - filter by date range (optional)
-- `end_date` - filter by date range (optional)
-- `page`, `limit` - pagination
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "log_id": "uuid",
-      "user_id": "uuid",
-      "phone": "+254712345678",
-      "event_type": "login_success",
-      "ip_address": "192.168.1.1",
-      "timestamp": "2026-02-21T20:00:00Z"
-    }
-  ],
-  "pagination": { ... }
-}
-```
-
-#### PATCH /api/subscriptions/:id/adjust
-Manually adjust subscription (admin only).
-
-**Request body:**
-```json
-{
-  "months_paid": 8,
-  "expiration_date": "2026-10-21",
-  "reason": "Compensation for 2-day downtime"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": { /* updated subscription */ },
-  "message": "Subscription adjusted successfully"
-}
-```
-
-#### POST /api/refunds/request
-Create refund request (admin only).
-
-**Request body:**
-```json
-{
-  "business_id": "uuid",
-  "items": [
-    {
-      "service_type": "website_hosting",
-      "months_to_refund": 2
-    }
-  ],
-  "notes": "Customer request"
-}
-```
-
-**Response (201):**
-```json
-{
-  "success": true,
-  "data": {
-    "request_id": "uuid",
-    "refund_amount": 400.00,
-    "processing_fee": 20.00,
-    "net_refund": 380.00,
-    "status": "pending"
-  }
-}
-```
-
-#### PATCH /api/refunds/:id/approve
-Approve refund request (admin only).
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Refund approved"
-}
-```
-
-#### PATCH /api/refunds/:id/complete
-Mark refund as completed (admin only).
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Refund completed"
-}
-```
+## Endpoint Reference
+
+### Auth
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/register` | No | Create user account; sends OTP to verify phone |
+| POST | `/api/auth/request-otp` | No | Request OTP for passwordless login |
+| POST | `/api/auth/verify-otp` | No | Verify OTP; create session cookie |
+| POST | `/api/auth/login/password` | No | Login with phone + password |
+| POST | `/api/auth/logout` | Yes | End session; clear cookie |
+| POST | `/api/auth/password/reset` | No | Request password reset OTP |
+| POST | `/api/auth/password/update` | No | Set new password after OTP verification |
+
+### User Profile
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/users/me` | Yes | Get current user profile |
+| PATCH | `/api/users/me` | Yes | Update profile (name, email, language, etc.) |
+| POST | `/api/users/me/photo` | Yes | Upload profile photo (multipart/form-data) |
+| PATCH | `/api/users/me/preferences` | Yes | Update notification preferences |
+| POST | `/api/users/me/deactivate` | Yes | Self-deactivate account |
+| POST | `/api/users/me/reactivate` | Yes | Reactivate deactivated account |
+
+### Business Profile
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/businesses` | Yes | Create business (status = pending) |
+| GET | `/api/businesses/:id` | Yes | Get business details including content_json |
+| PATCH | `/api/businesses/:id` | Yes | Update business (saves version history) |
+| POST | `/api/businesses/:id/logo` | Yes | Upload business logo (multipart/form-data) |
+| POST | `/api/businesses/:id/deactivate` | Yes (Owner) | Deactivate business |
+| GET | `/api/businesses/:id/users` | Yes | List users linked to business |
+| POST | `/api/businesses/:id/users` | Yes | Add user to business by phone + role |
+| PATCH | `/api/businesses/:id/users/:user_id` | Yes | Update user role |
+| DELETE | `/api/businesses/:id/users/:user_id` | Yes | Remove user from business |
+
+### Content History
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/businesses/:id/content` | Yes | Get current content_json only |
+| GET | `/api/businesses/:id/content/history` | Yes | List content versions (paginated) |
+| GET | `/api/businesses/:id/content/history/:version` | Yes | Get content at specific version |
+| POST | `/api/businesses/:id/content/rollback` | Yes (Owner/Admin) | Rollback to previous version (creates new version) |
+
+### Services & Payments
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/services/pricing` | No | Get current pricing for all service types |
+| GET | `/api/businesses/:id/subscriptions` | Yes | List active subscriptions for business |
+| POST | `/api/payments/initiate` | Yes (Owner) | Initiate payment; returns PesaPal redirect URL |
+| POST | `/api/payments/webhook` | No (signed) | PesaPal IPN webhook (validated by signature) |
+| GET | `/api/payments/:tx_id/status` | Yes | Check payment status |
+| GET | `/api/businesses/:id/transactions` | Yes | List transactions for business (paginated) |
+| GET | `/api/transactions/:tx_id` | Yes | Get transaction details with line items |
+| GET | `/api/businesses/:id/discounts` | Yes | List active discounts for business |
+
+### Receipts
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/businesses/:id/receipts` | Yes | List receipts for business (paginated) |
+| GET | `/api/receipts/:id/download` | Yes | Generate and download receipt as PDF |
+
+### Public Search
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/search` | No | Search businesses; params: q, category, region, page, limit |
+| GET | `/api/categories` | No | List all categories with business counts |
+| GET | `/api/regions` | No | List all regions with business counts |
+
+### Admin
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/admin/auth-logs` | Admin | Auth log viewer; filter by user_id, phone, event_type, date |
+| GET | `/api/admin/audit-logs` | Admin | Audit log viewer; filter by actor, action, date |
+| GET | `/api/admin/businesses` | Admin | List all businesses with filters |
+| GET | `/api/admin/businesses/pending` | Admin | List pending businesses |
+| POST | `/api/admin/businesses/:id/approve` | Admin | Approve business |
+| POST | `/api/admin/businesses/:id/reject` | Admin | Reject business with reason |
+| POST | `/api/admin/businesses/:id/suspend` | Admin | Suspend business |
+| DELETE | `/api/admin/businesses/:id` | Admin | Soft delete business |
+| GET | `/api/admin/users` | Admin | List all users with filters |
+| POST | `/api/admin/users/:id/suspend` | Admin | Suspend user |
+| DELETE | `/api/admin/users/:id` | Admin | Soft delete user (anonymize PII) |
+| GET | `/api/admin/services/expiring` | Admin | List subscriptions expiring soon |
+| PATCH | `/api/subscriptions/:id/adjust` | Admin | Manually adjust subscription months/dates |
+| POST | `/api/refunds/request` | Admin | Create refund request |
+| GET | `/api/refunds/:request_id` | Admin | Get refund request details |
+| PATCH | `/api/refunds/:request_id/approve` | Admin | Approve refund |
+| PATCH | `/api/refunds/:request_id/complete` | Admin | Mark refund as completed |
+| GET | `/api/admin/refunds` | Admin | List all refund requests |
+| POST | `/api/discounts` | Admin | Create discount for business |
+| PATCH | `/api/discounts/:id` | Admin | Update discount |
+| DELETE | `/api/discounts/:id` | Admin | Revoke discount |
+| GET | `/api/admin/analytics` | Admin | Get analytics data |
+| POST | `/api/admin/notifications/send` | Admin | Send notification to users |
+| GET | `/api/admin/system/config` | Super Admin | Get system configuration |
+| PATCH | `/api/admin/system/config` | Super Admin | Update system configuration |
+| GET | `/api/admin/system/admins` | Super Admin | List admin users |
+| POST | `/api/admin/system/admins` | Super Admin | Add admin user |
+| DELETE | `/api/admin/system/admins/:id` | Super Admin | Remove admin user |
 
 ---
 
@@ -1057,135 +208,61 @@ Mark refund as completed (admin only).
 
 ### PesaPal Payment Gateway
 
-#### Integration Flow
-
-1. User initiates payment via `POST /api/payments/initiate`
-2. Backend creates transaction record with `status = 'pending'`
+**Flow:**
+1. Owner initiates payment via `POST /api/payments/initiate`
+2. Backend creates a `pending` transaction record
 3. Backend calls PesaPal API to generate payment URL
-4. Backend returns PesaPal redirect URL to frontend
-5. Frontend redirects user to PesaPal payment page
-6. User completes payment on PesaPal
-7. PesaPal sends IPN webhook to `POST /api/payments/webhook`
-8. Backend validates webhook signature
-9. Backend updates transaction `status = 'completed'`
-10. Backend updates service subscriptions
-11. Backend generates receipt
-12. Backend sends confirmation SMS/email
+4. Frontend redirects user to PesaPal
+5. User completes payment
+6. PesaPal sends IPN webhook to `POST /api/payments/webhook`
+7. Backend validates webhook signature and verifies amount
+8. Backend marks transaction `completed`, updates subscriptions, generates receipt, sends notification
 
-#### PesaPal API Endpoints
-
-**Generate Payment URL:**
-- Endpoint: `https://www.pesapal.com/API/PostPesapalDirectOrderV4`
-- Method: POST
-- Auth: OAuth 1.0
-
-**Query Payment Status:**
-- Endpoint: `https://www.pesapal.com/API/QueryPaymentStatus`
-- Method: GET
-- Auth: OAuth 1.0
-
-#### Webhook Security
-
-- Validate PesaPal signature on all IPN webhooks
-- Verify transaction amount matches expected amount
-- Implement idempotency (handle duplicate webhooks)
+**Security requirements:**
+- Validate PesaPal IPN signature on every webhook
+- Verify payment amount matches the expected amount from the pending transaction
+- Handle duplicate webhooks idempotently (check transaction status before processing)
 - Log all webhook events
-
-#### Error Handling
-
-- Payment timeout: 30 minutes
-- Failed payment: Update transaction `status = 'failed'`
-- User can retry payment from transaction history
-
----
+- Payment timeout: 30 minutes; failed payments set status to `failed`
 
 ### VintEx SMS Gateway
 
-#### Integration
+VintEx is the SMS provider for all outbound messages. Authentication uses an API key in the request header. The endpoint and interface are provided by VintEx.
 
-**Send SMS:**
-- Endpoint: Provided by VintEx
-- Method: POST
-- Auth: API key in header
-
-**SMS Types:**
-- OTP codes (6 digits)
+**SMS types sent:**
+- OTP codes
 - Payment confirmations
 - Service expiry warnings
 - Refund notifications
-- Marketing messages (opt-in only)
+- Marketing messages (opt-in users only)
 
-#### SMS Template Variables
+**Template variables supported:** `{nickname}`, `{amount}`, `{service_type}`, `{expiration_date}`, `{receipt_url}`
 
-Templates support placeholders:
-- `{nickname}` - user's preferred name
-- `{amount}` - payment amount
-- `{service_type}` - service name
-- `{expiration_date}` - service expiry date
-- `{receipt_url}` - receipt download link
-
-#### Rate Limiting
-
-- Max 10 SMS per phone number per hour (prevents abuse)
-- Queue SMS for batch sending (reduce costs)
-
----
+**Rate limiting:** max 10 SMS per phone number per hour to prevent abuse.
 
 ### Mailgun Email Service
 
-#### Integration
+Mailgun sends transactional and marketing email. Authentication uses an API key.
 
-**Send Email:**
-- Endpoint: `https://api.mailgun.net/v3/tafuta.ke/messages`
-- Method: POST
-- Auth: API key
-
-**Email Types:**
-- Welcome emails
-- Payment confirmations
-- Receipt attachments
+**Email types sent:**
+- Payment confirmations with receipt
 - Service expiry warnings
-- Marketing emails (opt-in only)
+- Marketing emails (opt-in users only)
 
-#### Email Templates
-
-- HTML templates with Tafuta branding
-- Support multi-language (based on user preference)
-- Include unsubscribe link (marketing emails only)
-
----
+HTML templates support multi-language based on user language preference. Marketing emails include an unsubscribe link.
 
 ### Cloudflare API
 
-#### DNS Management
+Cloudflare manages DNS for tafuta.ke and all business subdomains.
 
-**Create Subdomain:**
-- Endpoint: `https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records`
-- Method: POST
-- Auth: API token
+**Subdomain creation flow:**
+1. Business owner purchases website hosting
+2. Backend calls Cloudflare API to create a DNS A record pointing to VPS IP
+3. Caddy picks up the new subdomain and handles SSL automatically
 
-**Flow:**
-1. User purchases website hosting
-2. Backend calls Cloudflare API to create DNS A record
-3. Subdomain points to VPS IP address
-4. Caddy handles SSL certificate automatically
-
-**Example:**
-```json
-{
-  "type": "A",
-  "name": "doreen.machakos",
-  "content": "192.168.1.1",
-  "ttl": 3600,
-  "proxied": true
-}
-```
-
-#### Error Handling
-
-- Subdomain already exists: Suggest alternatives
-- API failure: Retry with exponential backoff
-- Log all DNS operations
+**Error handling:**
+- Subdomain already taken: return error and suggest alternatives
+- API failure: retry with exponential backoff; log all DNS operations
 
 ---
 
@@ -1194,7 +271,7 @@ Templates support placeholders:
 ### Global Rate Limits
 
 - **Per IP**: 100 requests per minute
-- **Per user**: 60 requests per minute
+- **Per authenticated user**: 60 requests per minute
 - **Public search**: 30 requests per minute per IP
 
 ### Endpoint-Specific Limits
@@ -1220,100 +297,37 @@ Templates support placeholders:
 
 ## Error Codes
 
-### Standard Error Codes
-
-- `INVALID_INPUT` - Validation error
-- `UNAUTHORIZED` - Authentication required
-- `FORBIDDEN` - Insufficient permissions
-- `NOT_FOUND` - Resource not found
-- `CONFLICT` - Resource already exists
-- `RATE_LIMIT_EXCEEDED` - Too many requests
-- `PAYMENT_FAILED` - Payment processing error
-- `EXTERNAL_SERVICE_ERROR` - Third-party service failure
-- `SERVER_ERROR` - Internal server error
-
----
-
-## API Versioning
-
-### MVP Approach
-
-- **No versioning in MVP**: All endpoints at `/api/*`
-- **Future**: Version in URL path (`/api/v2/*`) when breaking changes needed
+| Code | Meaning |
+|------|---------|
+| `INVALID_INPUT` | Validation error (check `field` in response) |
+| `UNAUTHORIZED` | Authentication required |
+| `FORBIDDEN` | Insufficient permissions |
+| `NOT_FOUND` | Resource not found |
+| `CONFLICT` | Resource already exists (e.g., subdomain taken) |
+| `RATE_LIMIT_EXCEEDED` | Too many requests |
+| `PAYMENT_FAILED` | Payment processing error |
+| `EXTERNAL_SERVICE_ERROR` | Third-party service failure |
+| `SERVER_ERROR` | Internal server error |
 
 ---
 
 ## Security Requirements
 
-### HTTPS Only
-
-- All API requests must use HTTPS
-- HTTP requests redirected to HTTPS (handled by Caddy)
-
-### Input Validation
-
-- Validate all input fields (type, length, format)
-- Sanitize user input (prevent XSS, SQL injection)
-- Use parameterized queries (prevent SQL injection)
-
-### CORS Policy
-
-- **Allowed origins**: `https://tafuta.ke`, `https://*.tafuta.ke`
-- **Allowed methods**: GET, POST, PATCH, DELETE
-- **Credentials**: true (allow cookies)
-
-### Request Logging
-
-- Log all API requests (endpoint, method, user_id, IP, timestamp)
-- Log all errors with stack traces
-- Exclude sensitive data from logs (passwords, OTPs, tokens)
-
----
-
-## Testing Requirements
-
-### Unit Tests
-
-- Input validation for all endpoints
-- Permission checks for protected endpoints
-- Error handling for all failure scenarios
-
-### Integration Tests
-
-- Complete authentication flow
-- Payment flow with PesaPal webhook simulation
-- Refund flow
-- Business creation and management
-
-### E2E Tests
-
-- User registers → creates business → purchases service → receives confirmation
-- Admin adjusts subscription → user receives notification
-- Payment fails → user retries → payment succeeds
+- **HTTPS only**: All API requests must use HTTPS; HTTP redirected by Caddy
+- **Input validation**: Validate all input fields (type, length, format); sanitize to prevent XSS; use parameterized queries
+- **CORS**: Allowed origins: `https://tafuta.ke`, `https://*.tafuta.ke`; credentials allowed
+- **Request logging**: Log all API requests (endpoint, method, user_id, IP, timestamp); exclude sensitive data (passwords, OTPs, tokens) from logs
 
 ---
 
 ## MVP Exclusions (Post-Launch)
 
 - GraphQL API
-- WebSocket/real-time updates
-- API rate limit customization per user
+- WebSocket / real-time updates
 - API key management for third-party integrations
 - Batch operations (bulk create/update)
 - Advanced search filters (price range, ratings)
-- API documentation UI (Swagger/OpenAPI viewer)
-
----
-
-## Dependencies
-
-- **Backend**: Node.js 22 with Express.js
-- **Database**: PostgreSQL 15+
-- **Payment Gateway**: PesaPal API
-- **SMS Gateway**: VintEx API
-- **Email Service**: Mailgun API
-- **DNS Management**: Cloudflare API
-- **Reverse Proxy**: Caddy (handles HTTPS, CORS)
+- OpenAPI/Swagger documentation UI
 
 ---
 

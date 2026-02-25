@@ -41,4 +41,11 @@
   .container-safe {
     @apply container mx-auto px-4 sm:px-6 lg:px-8;
   }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

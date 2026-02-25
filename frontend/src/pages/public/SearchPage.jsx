@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Star, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +24,8 @@ export default function SearchPage() {
     region: searchParams.get('region') || '',
   });
 
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
     loadMetadata();
   }, []);
@@ -31,6 +33,22 @@ export default function SearchPage() {
   useEffect(() => {
     loadBusinesses();
   }, [searchParams]);
+
+  // Debounce filter changes → update URL params (triggers loadBusinesses)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (filters.q) params.set('q', filters.q);
+      if (filters.category) params.set('category', filters.category);
+      if (filters.region) params.set('region', filters.region);
+      setSearchParams(params, { replace: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters]);
 
   const loadMetadata = async () => {
     try {
@@ -55,7 +73,6 @@ export default function SearchPage() {
         page: searchParams.get('page') || 1,
         limit: 20,
       };
-
       const response = await searchAPI.search(params);
       setBusinesses(response.data.data);
       setPagination(response.data.pagination);
@@ -64,15 +81,6 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (filters.q) params.set('q', filters.q);
-    if (filters.category) params.set('category', filters.category);
-    if (filters.region) params.set('region', filters.region);
-    setSearchParams(params);
   };
 
   const handlePageChange = (newPage) => {
@@ -94,52 +102,46 @@ export default function SearchPage() {
                   Filters
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSearch} className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Search</label>
-                    <Input
-                      type="text"
-                      placeholder="Keywords..."
-                      value={filters.q}
-                      onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-                    />
-                  </div>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Search</label>
+                  <Input
+                    type="text"
+                    placeholder="Keywords..."
+                    value={filters.q}
+                    onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+                  />
+                </div>
 
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Category</label>
-                    <Select
-                      value={filters.category}
-                      onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                    >
-                      <option value="">All Categories</option>
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Category</label>
+                  <Select
+                    value={filters.category}
+                    onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                  >
+                    <option value="">All Categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
 
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Region</label>
-                    <Select
-                      value={filters.region}
-                      onChange={(e) => setFilters({ ...filters, region: e.target.value })}
-                    >
-                      <option value="">All Regions</option>
-                      {regions.map((region) => (
-                        <option key={region} value={region}>
-                          {region}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <Button type="submit" className="w-full">
-                    Apply Filters
-                  </Button>
-                </form>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Region</label>
+                  <Select
+                    value={filters.region}
+                    onChange={(e) => setFilters({ ...filters, region: e.target.value })}
+                  >
+                    <option value="">All Regions</option>
+                    {regions.map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </CardContent>
             </Card>
           </aside>
@@ -211,7 +213,6 @@ export default function SearchPage() {
                   ))}
                 </div>
 
-                {/* Pagination */}
                 {pagination.totalPages > 1 && (
                   <div className="flex justify-center gap-2 mt-8">
                     <Button

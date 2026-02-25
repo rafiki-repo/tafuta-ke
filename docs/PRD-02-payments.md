@@ -1,8 +1,8 @@
 # PRD-02: Payments & Services
 
-**Product Requirements Document**  
-**Version**: 1.0  
-**Last Updated**: Feb 21, 2026  
+**Product Requirements Document**
+**Version**: 1.0
+**Last Updated**: Feb 21, 2026
 **Status**: Draft
 
 ---
@@ -74,7 +74,7 @@ service_subscriptions:
    - System sets `status = 'expired'`
    - Website/ads/promotions automatically deactivated
 
-**Each service type gets its own row** - a business with website hosting + ads will have 2 rows in `service_subscriptions`.
+**Each service type gets its own row** — a business with website hosting + ads will have 2 rows in `service_subscriptions`.
 
 ---
 
@@ -213,7 +213,7 @@ fees:
 - Historical transactions retain original price (stored in `transaction_items`)
 - Inactive fees are hidden but retained for historical records
 
-### Example Pricing (TBD - to be finalized before launch)
+### Example Pricing (TBD — to be finalized before launch)
 
 - Website hosting: 200 KES/month
 - Ads: TBD
@@ -402,18 +402,6 @@ total_amount = net_amount + vat_amount
 
 ## System Configuration
 
-### System Config Table Schema
-
-```
-system_config:
-  - config_id (UUID, primary key)
-  - key (string, unique)
-  - value (string)
-  - description (text)
-  - updated_at (timestamp)
-  - updated_by (UUID, admin user_id, nullable)
-```
-
 ### Required Config Keys
 
 **Tafuta Legal Identity:**
@@ -499,10 +487,6 @@ system_config:
 ```
 Tafuta: Payment received! KES {amount}. Services: {service_list}. Valid until {expiration_date}. Receipt: {receipt_url}
 ```
-
-**Email:**
-- Subject: Payment Confirmation - Tafuta Services
-- Body: Detailed receipt with service breakdown, VAT, total
 
 ### Service Expiring Soon
 
@@ -590,28 +574,6 @@ audit_logs:
 
 ---
 
-## MVP Exclusions (Post-Launch)
-
-- Automated refund disbursement (M-Pesa, bank transfer)
-- Subscription auto-renewal
-- Payment plans (installments)
-- Discount codes (user-entered promo codes)
-- Gift cards / vouchers
-- Bulk discounts (e.g., 10% off if buying 12 months)
-- Direct M-Pesa integration
-- Credit/debit card storage for recurring payments
-
----
-
-## Dependencies
-
-- **Payment Gateway**: PesaPal API
-- **Database**: PostgreSQL 15+
-- **Notifications**: VintEx (SMS), Mailgun (Email)
-- **PDF Generation**: Library for receipt PDF generation (e.g., PDFKit, Puppeteer)
-
----
-
 ## Testing Requirements
 
 ### Unit Tests
@@ -630,8 +592,21 @@ audit_logs:
 ### E2E Tests
 - User purchases website hosting → website becomes accessible
 - User purchases 6 months → adds 3 more months → expiration date extends correctly
-- Service expires → website becomes inaccessible → user renews → website reactivates
+- Service expires → website inaccessible → user renews → website reactivates
 - User requests refund → admin processes → months deducted correctly
+
+---
+
+## MVP Exclusions (Post-Launch)
+
+- Automated refund disbursement (M-Pesa, bank transfer)
+- Subscription auto-renewal
+- Payment plans (installments)
+- Discount codes (user-entered promo codes)
+- Gift cards / vouchers
+- Bulk discounts (e.g., 10% off if buying 12 months)
+- Direct M-Pesa integration
+- Credit/debit card storage for recurring payments
 
 ---
 
