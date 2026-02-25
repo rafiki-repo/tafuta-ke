@@ -158,28 +158,29 @@ export default function RegisterPage() {
         ))}
       </div>
 
-      {/* Registration Form */}
-      <div className="bg-card border border-border/40 rounded-xl p-6">
-        <h3 className="text-lg font-bold text-foreground mb-1">Create Your Account</h3>
-        <p className="text-xs text-muted-foreground mb-5">
+      {/* Registration Form — orange card */}
+      <div className="bg-primary rounded-xl p-6">
+        <h3 className="text-lg font-bold text-white mb-1">Create Your Account</h3>
+        <p className="text-xs text-white/70 mb-5">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary font-semibold hover:underline">
+          <Link to="/login" className="text-white font-semibold underline hover:text-white/80">
             Sign in
           </Link>
         </p>
 
         {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <div className="bg-white/20 border border-white/30 rounded-lg px-4 py-3 mb-4">
+            <p className="text-sm text-white font-medium">{error}</p>
+          </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="text-sm font-semibold mb-1.5 block">Full Name</label>
+            <label className="text-sm font-semibold text-white mb-1.5 block">Full Name</label>
             <Input
               type="text"
               placeholder="Jane Wambua"
+              className="bg-white border-0 text-foreground placeholder:text-muted-foreground"
               {...register('full_name', {
                 validate: value => {
                   const t = value?.trim() || '';
@@ -190,15 +191,16 @@ export default function RegisterPage() {
               })}
             />
             {errors.full_name && (
-              <p className="text-xs text-destructive mt-1">{errors.full_name.message}</p>
+              <p className="text-xs text-white font-semibold mt-1">⚠ {errors.full_name.message}</p>
             )}
           </div>
 
           <div>
-            <label className="text-sm font-semibold mb-1.5 block">Phone Number</label>
+            <label className="text-sm font-semibold text-white mb-1.5 block">Phone Number</label>
             <Input
               type="tel"
               placeholder="+254 712 345 678"
+              className="bg-white border-0 text-foreground placeholder:text-muted-foreground"
               {...register('phone', {
                 validate: value => {
                   const cleaned = (value?.trim() || '').replace(/[\s\-()]/g, '');
@@ -210,21 +212,22 @@ export default function RegisterPage() {
               })}
             />
             {errors.phone ? (
-              <p className="text-xs text-destructive mt-1">{errors.phone.message}</p>
+              <p className="text-xs text-white font-semibold mt-1">⚠ {errors.phone.message}</p>
             ) : (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-white/60 mt-1">
                 Include country code, e.g. +254 712 345 678
               </p>
             )}
           </div>
 
           <div>
-            <label className="text-sm font-semibold mb-1.5 block">
-              Email <span className="font-normal text-muted-foreground">(optional)</span>
+            <label className="text-sm font-semibold text-white mb-1.5 block">
+              Email <span className="font-normal text-white/60">(optional)</span>
             </label>
             <Input
               type="email"
               placeholder="jane@example.com"
+              className="bg-white border-0 text-foreground placeholder:text-muted-foreground"
               {...register('email', {
                 validate: value => {
                   const t = value?.trim() || '';
@@ -236,15 +239,16 @@ export default function RegisterPage() {
               })}
             />
             {errors.email && (
-              <p className="text-xs text-destructive mt-1">{errors.email.message}</p>
+              <p className="text-xs text-white font-semibold mt-1">⚠ {errors.email.message}</p>
             )}
           </div>
 
           <div>
-            <label className="text-sm font-semibold mb-1.5 block">Password</label>
+            <label className="text-sm font-semibold text-white mb-1.5 block">Password</label>
             <Input
               type="password"
               placeholder="At least 8 characters"
+              className="bg-white border-0 text-foreground placeholder:text-muted-foreground"
               {...register('password', {
                 validate: value => {
                   if (!value) return 'Please create a password';
@@ -254,15 +258,16 @@ export default function RegisterPage() {
               })}
             />
             {errors.password && (
-              <p className="text-xs text-destructive mt-1">{errors.password.message}</p>
+              <p className="text-xs text-white font-semibold mt-1">⚠ {errors.password.message}</p>
             )}
           </div>
 
           <div>
-            <label className="text-sm font-semibold mb-1.5 block">Confirm Password</label>
+            <label className="text-sm font-semibold text-white mb-1.5 block">Confirm Password</label>
             <Input
               type="password"
               placeholder="Repeat your password"
+              className="bg-white border-0 text-foreground placeholder:text-muted-foreground"
               {...register('confirm_password', {
                 validate: value => {
                   if (!value) return 'Please confirm your password';
@@ -272,7 +277,7 @@ export default function RegisterPage() {
               })}
             />
             {errors.confirm_password && (
-              <p className="text-xs text-destructive mt-1">{errors.confirm_password.message}</p>
+              <p className="text-xs text-white font-semibold mt-1">⚠ {errors.confirm_password.message}</p>
             )}
           </div>
 
@@ -280,21 +285,25 @@ export default function RegisterPage() {
             <input
               type="checkbox"
               id="terms"
-              className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              className="mt-0.5 h-4 w-4 rounded border-white/40 accent-white cursor-pointer"
               {...register('terms', { required: 'You must accept the terms to continue' })}
             />
-            <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+            <label htmlFor="terms" className="text-xs text-white/80 leading-relaxed cursor-pointer">
               I agree to the{' '}
-              <a href="#" className="text-primary font-semibold hover:underline">Terms of Service</a>
+              <a href="#" className="text-white font-semibold underline hover:text-white/80">Terms of Service</a>
               {' '}and{' '}
-              <a href="#" className="text-primary font-semibold hover:underline">Privacy Policy</a>
+              <a href="#" className="text-white font-semibold underline hover:text-white/80">Privacy Policy</a>
             </label>
           </div>
           {errors.terms && (
-            <p className="text-xs text-destructive">{errors.terms.message}</p>
+            <p className="text-xs text-white font-semibold">⚠ {errors.terms.message}</p>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full bg-white text-primary font-bold hover:bg-white/90"
+            disabled={loading}
+          >
             {loading && <Spinner size="sm" className="mr-2" />}
             Create Account
           </Button>

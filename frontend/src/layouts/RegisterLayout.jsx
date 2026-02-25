@@ -8,7 +8,7 @@ export default function RegisterLayout() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 bg-background border-b border-border/50">
-        <div className="flex items-center gap-2 px-4 py-3 max-w-lg mx-auto">
+        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
           <Button
             variant="ghost"
             size="icon"
@@ -17,7 +17,14 @@ export default function RegisterLayout() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="font-bold text-sm">List Your Business</h1>
+
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/tafuta-icon.png" alt="Tafuta" className="h-7 w-7" />
+            <span className="font-bold text-lg">Tafuta</span>
+          </Link>
+
+          {/* Spacer to keep logo centred */}
+          <div className="w-10" />
         </div>
       </header>
 
