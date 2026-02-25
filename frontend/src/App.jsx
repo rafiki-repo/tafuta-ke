@@ -4,6 +4,7 @@ import useAuthStore from './store/useAuthStore';
 // Layouts
 import PublicLayout from './layouts/PublicLayout';
 import AuthLayout from './layouts/AuthLayout';
+import RegisterLayout from './layouts/RegisterLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import AdminLayout from './layouts/AdminLayout';
 
@@ -65,6 +66,10 @@ function App() {
       {/* Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
+      </Route>
+
+      {/* Register has its own layout (marketing cards + form, single-column) */}
+      <Route element={<RegisterLayout />}>
         <Route path="/register" element={<RegisterPage />} />
       </Route>
 
