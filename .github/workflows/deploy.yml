@@ -1,0 +1,33 @@
+name: Deploy to Production
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST || 's4.pamoja.ke' }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.PRODUCTION_USER || 'openclaw' }}@${{ secrets.PRODUCTION_HOST || 's4.pamoja.ke' }} \
+            "cd /home/openclaw/projects/tafuta-ke && \
+             git fetch origin && \
+             git checkout main 2>/dev/null || git checkout -b main origin/main && \
+             git stash && \
+             git pull origin main && \
+             git stash pop || true && \
+             ./deploy.sh"
