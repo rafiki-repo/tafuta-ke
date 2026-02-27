@@ -1,5 +1,5 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { requireAuth } from '../middleware/auth.js';
 import { success, error } from '../utils/response.js';
 import { isValidEmail } from '../utils/validation.js';
