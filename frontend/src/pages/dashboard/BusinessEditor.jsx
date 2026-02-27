@@ -1,19 +1,545 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Save, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
+import { Spinner } from '@/components/ui/Spinner';
+import { businessAPI, searchAPI } from '@/lib/api';
+
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAY_LABELS = {
+  monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+  thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday',
+};
+
+const defaultHours = Object.fromEntries(
+  DAYS.map(day => [day, { is_open: day !== 'sunday', open: '08:00', close: '17:00' }])
+);
+
+const statusVariant = {
+  active: 'success',
+  pending: 'warning',
+  deactivated: 'secondary',
+  suspended: 'destructive',
+  out_of_business: 'secondary',
+  deleted: 'destructive',
+};
+
+const TABS = [
+  { id: 'basic', label: 'Basic Info' },
+  { id: 'contact', label: 'Contact' },
+  { id: 'location', label: 'Location' },
+  { id: 'hours', label: 'Hours' },
+];
 
 export default function BusinessEditor() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const isEditMode = !!id;
+
+  const [loading, setLoading] = useState(isEditMode);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState('basic');
+  const [categories, setCategories] = useState([]);
+  const [regions, setRegions] = useState([]);
+  const [currentBusiness, setCurrentBusiness] = useState(null);
+  const [changeSummary, setChangeSummary] = useState('');
+
+  const [formData, setFormData] = useState({
+    businessName: '',
+    category: '',
+    region: '',
+    subdomain: '',
+    tagline: '',
+    description: '',
+    phone: '',
+    email: '',
+    whatsapp: '',
+    city: '',
+    streetAddress: '',
+    postalCode: '',
+    hours: { ...defaultHours },
+  });
+
+  useEffect(() => {
+    loadDropdowns();
+    if (isEditMode) {
+      loadBusiness();
+    }
+  }, [id]);
+
+  const loadDropdowns = async () => {
+    try {
+      const [catRes, regRes] = await Promise.all([
+        searchAPI.getCategories(),
+        searchAPI.getRegions(),
+      ]);
+      setCategories(catRes.data.data.categories || []);
+      setRegions(regRes.data.data.regions || []);
+    } catch {
+      // Non-fatal — dropdowns degrade gracefully
+    }
+  };
+
+  const loadBusiness = async () => {
+    try {
+      const res = await businessAPI.get(id);
+      const business = res.data.data;
+      setCurrentBusiness(business);
+      const c = business.content_json || {};
+      setFormData({
+        businessName: business.business_name || '',
+        category: business.category || '',
+        region: business.region || '',
+        subdomain: business.subdomain || '',
+        tagline: c.profile?.en?.tagline || '',
+        description: c.profile?.en?.description || '',
+        phone: c.contact?.phone || '',
+        email: c.contact?.email || '',
+        whatsapp: c.contact?.whatsapp || '',
+        city: c.location?.city || '',
+        streetAddress: c.location?.street_address || '',
+        postalCode: c.location?.postal_code || '',
+        hours: c.hours || { ...defaultHours },
+      });
+    } catch {
+      setError('Failed to load business. Please go back and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setError(null);
+    setSuccess(false);
+  };
+
+  const handleHoursChange = (day, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      hours: {
+        ...prev.hours,
+        [day]: { ...prev.hours[day], [field]: value },
+      },
+    }));
+  };
+
+  const buildContentJson = () => ({
+    profile: {
+      en: {
+        business_name: formData.businessName,
+        category: formData.category,
+        tagline: formData.tagline,
+        description: formData.description,
+      },
+    },
+    contact: {
+      phone: formData.phone,
+      email: formData.email,
+      whatsapp: formData.whatsapp,
+    },
+    location: {
+      city: formData.city,
+      street_address: formData.streetAddress,
+      postal_code: formData.postalCode,
+      region: formData.region,
+    },
+    hours: formData.hours,
+    metadata: { last_updated: new Date().toISOString() },
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+
+    if (!formData.businessName.trim()) {
+      setError('Business name is required.');
+      setActiveTab('basic');
+      return;
+    }
+    if (!formData.category) {
+      setError('Please select a category.');
+      setActiveTab('basic');
+      return;
+    }
+    if (!formData.region) {
+      setError('Please select a region.');
+      setActiveTab('basic');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const content_json = buildContentJson();
+      if (isEditMode) {
+        await businessAPI.update(id, {
+          content_json,
+          change_summary: changeSummary || 'Business details updated',
+        });
+        setSuccess(true);
+        setChangeSummary('');
+        const res = await businessAPI.get(id);
+        setCurrentBusiness(res.data.data);
+      } else {
+        await businessAPI.create({
+          business_name: formData.businessName,
+          category: formData.category,
+          region: formData.region,
+          subdomain: formData.subdomain || undefined,
+          content_json,
+        });
+        navigate('/dashboard/businesses');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to save. Please try again.';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  const pageTitle = isEditMode
+    ? (currentBusiness?.business_name || 'Edit Business')
+    : 'Add Business';
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Business Editor</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Business editor with JSON content management will be implemented here.
-          </p>
-        </CardContent>
-      </Card>
+    <div className="space-y-6 max-w-2xl">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link to="/dashboard/businesses">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold">{pageTitle}</h1>
+            {isEditMode && currentBusiness && (
+              <Badge variant={statusVariant[currentBusiness.status] || 'secondary'}>
+                {currentBusiness.status}
+              </Badge>
+            )}
+          </div>
+          {isEditMode && currentBusiness && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Version {currentBusiness.content_version}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Pending notice */}
+      {isEditMode && currentBusiness?.status === 'pending' && (
+        <Alert variant="info">
+          <AlertTitle>Awaiting admin approval</AlertTitle>
+          <AlertDescription>
+            Your business is pending review. You can still update the details below while waiting.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert variant="success">
+          <AlertTitle>Saved successfully</AlertTitle>
+          <AlertDescription>Your business details have been updated.</AlertDescription>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        {/* Tabs */}
+        <div className="flex border-b mb-6 overflow-x-auto">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Basic Info */}
+        {activeTab === 'basic' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Basic Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Business Name <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  value={formData.businessName}
+                  onChange={e => handleChange('businessName', e.target.value)}
+                  placeholder="e.g. Mama Wanjiku's Restaurant"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Category <span className="text-destructive">*</span>
+                  </label>
+                  <Select
+                    value={formData.category}
+                    onChange={e => handleChange('category', e.target.value)}
+                  >
+                    <option value="">Select category</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Region <span className="text-destructive">*</span>
+                  </label>
+                  <Select
+                    value={formData.region}
+                    onChange={e => handleChange('region', e.target.value)}
+                  >
+                    <option value="">Select region</option>
+                    {regions.map(reg => (
+                      <option key={reg} value={reg}>{reg}</option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Tagline</label>
+                <Input
+                  value={formData.tagline}
+                  onChange={e => handleChange('tagline', e.target.value)}
+                  placeholder="e.g. Best nyama choma in Machakos"
+                  maxLength={120}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <Textarea
+                  value={formData.description}
+                  onChange={e => handleChange('description', e.target.value)}
+                  placeholder="Tell people about your business..."
+                  rows={4}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Subdomain</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={formData.subdomain}
+                    onChange={e =>
+                      handleChange('subdomain', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
+                    }
+                    placeholder="e.g. mamawanjiku"
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    .{formData.region ? formData.region.toLowerCase() : 'region'}.tafuta.ke
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional. Required for website hosting. Lowercase letters, numbers, and hyphens only.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Contact */}
+        {activeTab === 'contact' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone Number</label>
+                <Input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={e => handleChange('phone', e.target.value)}
+                  placeholder="e.g. +254 712 345 678"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={e => handleChange('email', e.target.value)}
+                  placeholder="e.g. info@mybusiness.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">WhatsApp Number</label>
+                <Input
+                  type="tel"
+                  value={formData.whatsapp}
+                  onChange={e => handleChange('whatsapp', e.target.value)}
+                  placeholder="e.g. +254 712 345 678"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  The number customers can WhatsApp to contact you.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Location */}
+        {activeTab === 'location' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Location</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Street Address</label>
+                <Input
+                  value={formData.streetAddress}
+                  onChange={e => handleChange('streetAddress', e.target.value)}
+                  placeholder="e.g. 12 Market Street"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Town / City</label>
+                <Input
+                  value={formData.city}
+                  onChange={e => handleChange('city', e.target.value)}
+                  placeholder="e.g. Machakos Town"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Postal Code</label>
+                <Input
+                  value={formData.postalCode}
+                  onChange={e => handleChange('postalCode', e.target.value)}
+                  placeholder="e.g. 90100"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Kenya post office postal code (not a zip code).
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Hours */}
+        {activeTab === 'hours' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Business Hours</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {DAYS.map(day => (
+                <div key={day} className="flex items-center gap-3 flex-wrap">
+                  <div className="w-24 text-sm font-medium">{DAY_LABELS[day]}</div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.hours[day]?.is_open ?? true}
+                      onChange={e => handleHoursChange(day, 'is_open', e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm text-muted-foreground">Open</span>
+                  </label>
+                  {formData.hours[day]?.is_open ? (
+                    <>
+                      <Input
+                        type="time"
+                        value={formData.hours[day]?.open || '08:00'}
+                        onChange={e => handleHoursChange(day, 'open', e.target.value)}
+                        className="w-32 h-8 text-sm"
+                      />
+                      <span className="text-sm text-muted-foreground">to</span>
+                      <Input
+                        type="time"
+                        value={formData.hours[day]?.close || '17:00'}
+                        onChange={e => handleHoursChange(day, 'close', e.target.value)}
+                        className="w-32 h-8 text-sm"
+                      />
+                    </>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Closed</span>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Change notes (edit mode only) */}
+        {isEditMode && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-1">Change Notes (optional)</label>
+            <Input
+              value={changeSummary}
+              onChange={e => setChangeSummary(e.target.value)}
+              placeholder="e.g. Updated opening hours for the holiday season"
+            />
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="mt-6 flex gap-3">
+          <Button type="submit" disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size="sm" className="mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                {isEditMode ? 'Save Changes' : 'Submit Business'}
+              </>
+            )}
+          </Button>
+          <Link to="/dashboard/businesses">
+            <Button type="button" variant="outline">Cancel</Button>
+          </Link>
+        </div>
+      </form>
     </div>
   );
 }
