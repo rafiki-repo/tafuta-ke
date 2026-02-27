@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Clock, Users, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, CreditCard, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import useAuthStore from '@/store/useAuthStore';
 
@@ -9,11 +9,9 @@ export default function AdminLayout() {
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { name: 'Pending Approvals', href: '/admin/pending', icon: Clock },
     { name: 'Users', href: '/admin/users', icon: Users },
-    { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-    { name: 'Logs', href: '/admin/logs', icon: Clock },
-    { name: 'System Config', href: '/admin/config', icon: Settings },
+    { name: 'Businesses', href: '/admin/businesses', icon: Building2 },
+    { name: 'Payments', href: '/admin/payments', icon: CreditCard },
   ];
 
   const isActive = (href) => {

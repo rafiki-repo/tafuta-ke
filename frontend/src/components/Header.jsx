@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, Globe } from 'lucide-react';
+import { Menu, X, User, LogOut, Globe, Shield } from 'lucide-react';
 import { Button } from './ui/Button';
 import useAuthStore from '@/store/useAuthStore';
 import { useLanguage, LANGUAGES } from '@/context/LanguageContext';
 
 export function Header() {
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user, logout, isAdmin } = useAuthStore();
   const { lang, setLang } = useLanguage();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -134,6 +134,17 @@ export function Header() {
                       {user?.full_name || 'Dashboard'}
                     </button>
                   </Link>
+
+                  {/* Admin Panel — only visible to Tafuta staff */}
+                  {isAdmin() && (
+                    <Link to="/admin" onClick={close}>
+                      <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        <Shield className="h-4 w-4" />
+                        Admin Panel
+                      </button>
+                    </Link>
+                  )}
+
                   <button
                     onClick={() => { logout(); close(); }}
                     className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-destructive"

@@ -42,5 +42,39 @@ If `BD_OTP` is blank or unset, the feature is disabled.
 
 Note: In `development`, the backend currently accepts any 6-digit OTP as a placeholder. In non-development environments (staging/production), OTP verification requires `BD_OTP` until real OTP verification is implemented.
 
+## Bootstrapping the First Admin
+
+Tafuta admin access is managed through the `admin_users` table. There is no web UI for creating the very first admin — this is intentional. Use the CLI script from the server:
+
+**Step 1 — Register a normal user account** via the app (the person who will become the first admin must already have an account).
+
+**Step 2 — SSH into the server** and run from the `backend/` directory:
+
+```bash
+npm run promote-admin -- +254712345678
+```
+
+This promotes that phone number to `super_admin` (full privileges).
+
+**Optional: specify a different role**
+
+```bash
+npm run promote-admin -- +254712345678 admin
+npm run promote-admin -- +254712345678 support_staff
+```
+
+Available roles:
+| Role | Description |
+|---|---|
+| `super_admin` | Full system access (default) |
+| `admin` | Business and user management |
+| `support_staff` | Customer assistance only |
+
+**Notes:**
+- The user must already be registered before running the script
+- Admin access takes effect on the user's **next login** (a new JWT is issued at login time)
+- The script is idempotent — running it again on the same phone updates the role without creating duplicates
+- To revoke admin access, set `is_active = false` in the `admin_users` table directly (a UI for this will be added in the admin panel)
+
 ## Deployment
 See /DEPLOYMENT.md

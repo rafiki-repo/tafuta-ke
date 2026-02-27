@@ -27,6 +27,8 @@ import Profile from './pages/dashboard/Profile';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminBusinesses from './pages/admin/AdminBusinesses';
+import AdminPayments from './pages/admin/AdminPayments';
 import PendingBusinesses from './pages/admin/PendingBusinesses';
 import Users from './pages/admin/Users';
 import Analytics from './pages/admin/Analytics';
@@ -101,8 +103,10 @@ function App() {
         }
       >
         <Route index element={<AdminDashboard />} />
-        <Route path="pending" element={<PendingBusinesses />} />
         <Route path="users" element={<Users />} />
+        <Route path="businesses" element={<AdminBusinesses />} />
+        <Route path="payments" element={<AdminPayments />} />
+        <Route path="pending" element={<PendingBusinesses />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="logs" element={<Logs />} />
         <Route path="config" element={<SystemConfig />} />
