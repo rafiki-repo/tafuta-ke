@@ -213,7 +213,7 @@ export default function HomePage() {
             <BinocularsIcon className="w-8 h-8 text-white/90" />
           </div>
           <h1 className="text-2xl font-extrabold text-white mb-2 tracking-tight">
-            Find Businesses<br />Near You
+            Find Businesses<br />Near You2
           </h1>
           <p className="text-white/80 text-sm mb-6 font-medium">
             Discover local businesses in Machakos, Kisumu, and beyond

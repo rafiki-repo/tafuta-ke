@@ -53,3 +53,9 @@ Desktop.ini
 
 # Misc
 *.tgz
+
+# Claude Code - personal/local settings (auto-ignored by Claude Code)
+.claude/settings.local.json
+
+# Claude Code - worktrees (runtime/local state)
+.claude/worktrees/
