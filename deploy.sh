@@ -37,6 +37,8 @@ rsync -av --delete \
     --exclude uploads \
     --exclude backups \
     --exclude business-sites \
+    --exclude backup-db.sh \
+    --exclude deploy.log \
     "$WORKSPACE/" "$DEPLOY_DIR/" || fail "rsync failed"
 
 # 3. Database backup
