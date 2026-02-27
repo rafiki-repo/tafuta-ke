@@ -17,6 +17,9 @@ fail() {
     exit 1
 }
 
+# Ensure pm2 is in PATH (installed globally via npm)
+export PATH="$PATH:/home/openclaw/.npm-global/bin"
+
 # 1. Pull latest code
 cd "$WORKSPACE" || fail "Cannot cd to workspace $WORKSPACE"
 echo "Pulling latest changes from main branch..."
