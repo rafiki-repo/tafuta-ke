@@ -163,9 +163,9 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       return res.status(400).json(error('content_json is required and must be a valid JSON object', 'INVALID_JSON'));
     }
 
-    // Check permission (employee or higher)
+    // Check permission (employee or higher); admins can bypass
     const { hasPermission, role } = await checkBusinessPermission(req.user.userId, id, 'employee');
-    if (!hasPermission) {
+    if (!hasPermission && !req.user.isAdmin) {
       return res.status(403).json(error('You do not have permission to edit this business', 'FORBIDDEN'));
     }
 
@@ -201,7 +201,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
           currentBusiness.content_json,
           currentBusiness.content_version,
           req.user.userId,
-          role === 'owner' ? 'owner_edit' : 'admin_edit',
+          req.user.isAdmin || role !== 'owner' ? 'admin_edit' : 'owner_edit',
           change_summary || 'Content update'
         ]
       );

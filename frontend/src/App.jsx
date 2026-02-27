@@ -105,6 +105,7 @@ function App() {
         <Route index element={<AdminDashboard />} />
         <Route path="users" element={<Users />} />
         <Route path="businesses" element={<AdminBusinesses />} />
+        <Route path="businesses/:id/edit" element={<BusinessEditor />} />
         <Route path="payments" element={<AdminPayments />} />
         <Route path="pending" element={<PendingBusinesses />} />
         <Route path="analytics" element={<Analytics />} />

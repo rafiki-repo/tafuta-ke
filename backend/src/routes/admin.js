@@ -173,6 +173,102 @@ router.post('/businesses/:id/reject', async (req, res, next) => {
   }
 });
 
+// GET /api/admin/businesses - Get all businesses (with optional status filter and search)
+router.get('/businesses', async (req, res, next) => {
+  try {
+    const { page = 1, limit = 50, status, q } = req.query;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
+
+    const conditions = ["b.status != 'deleted'"];
+    const conditionParams = [];
+    let paramCount = 1;
+
+    if (status) {
+      conditions.push(`b.status = $${paramCount++}`);
+      conditionParams.push(status);
+    }
+
+    if (q) {
+      conditions.push(`b.business_name ILIKE $${paramCount++}`);
+      conditionParams.push(`%${q}%`);
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const allParams = [...conditionParams, limitNum, offset];
+
+    const result = await pool.query(
+      `SELECT b.business_id, b.business_name, b.category, b.region, b.subdomain,
+              b.status, b.verification_tier, b.content_json, b.created_at,
+              u.full_name as owner_name, u.phone as owner_phone
+       FROM businesses b
+       LEFT JOIN user_business_roles ubr ON b.business_id = ubr.business_id AND ubr.role = 'owner'
+       LEFT JOIN users u ON ubr.user_id = u.user_id
+       ${whereClause}
+       ORDER BY b.created_at DESC
+       LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
+      allParams
+    );
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as total FROM businesses b ${whereClause}`,
+      conditionParams
+    );
+
+    res.json(paginated(result.rows, {
+      page: pageNum,
+      limit: limitNum,
+      total: parseInt(countResult.rows[0].total, 10),
+      totalPages: Math.ceil(parseInt(countResult.rows[0].total, 10) / limitNum),
+    }));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/businesses/:id/verification - Update business verification tier
+router.patch('/businesses/:id/verification', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { verification_tier } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    }
+
+    if (!['basic', 'verified', 'premium'].includes(verification_tier)) {
+      return res.status(400).json(error('Invalid verification tier', 'INVALID_TIER'));
+    }
+
+    const result = await pool.query(
+      `UPDATE businesses
+       SET verification_tier = $1, updated_at = NOW()
+       WHERE business_id = $2 AND status != 'deleted'
+       RETURNING business_id, business_name, verification_tier`,
+      [verification_tier, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+    }
+
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_value)
+       VALUES ($1, 'updated_business_verification', 'business', $2, $3)`,
+      [req.user.userId, id, JSON.stringify({ verification_tier })]
+    );
+
+    logger.info('Business verification updated', { businessId: id, adminId: req.user.userId, tier: verification_tier });
+
+    res.json(success(result.rows[0], 'Business verification tier updated'));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/analytics - Get analytics data
 router.get('/analytics', async (req, res, next) => {
   try {

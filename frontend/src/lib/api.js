@@ -100,6 +100,8 @@ export const adminAPI = {
   updateUserVerification: (id, data) => api.patch(`/admin/users/${id}/verification`, data),
   getSystemConfig: () => api.get('/admin/system/config'),
   updateSystemConfig: (key, data) => api.patch(`/admin/system/config/${key}`, data),
+  getAllBusinesses: (params) => api.get('/admin/businesses', { params }),
+  updateBusinessVerification: (id, data) => api.patch(`/admin/businesses/${id}/verification`, data),
 };
 
 export default api;
