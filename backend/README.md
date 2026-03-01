@@ -120,10 +120,43 @@ The server will start on `http://localhost:3000`.
 
 Business photos are uploaded through the API and stored on the VPS filesystem. Caddy serves them directly — Node.js is not in the read path.
 
-- **Dev path:** `backend/media/` (default when `MEDIA_PATH` is unset)
-- **Production path:** `/var/www/tafuta/media/` (set `MEDIA_PATH=/var/www/tafuta/media` in production `.env`)
-- **Config file:** `backend/media/app-config.jfx` — defines image types, sizes, and upload limits. Copy to the production media path on first server setup.
-- Image processing uses **sharp** (WebP output). Transform specs are stored as `.jfx` files alongside the generated WebP outputs.
+| | Dev | Production |
+|---|---|---|
+| **Path** | `backend/media/` (default when `MEDIA_PATH` is unset) | `/var/www/tafuta/media/` |
+| **Set via** | _(omit `MEDIA_PATH`)_ | `MEDIA_PATH=/var/www/tafuta/media` in `.env` |
+| **Served by** | Vite dev proxy or direct file access | Caddy `handle /media/* { file_server }` |
+
+### Production setup checklist (one-time)
+
+1. **Create the directory** — `mkdir -p /var/www/tafuta/media`
+2. **Copy the config** — `cp backend/media/app-config.jfx /var/www/tafuta/media/app-config.jfx`
+3. **Set `MEDIA_PATH`** in `/var/www/tafuta/backend/.env`
+4. **Add the Caddy route** (see `DEPLOYMENT.md §6`) — `/media/*` must be served directly by Caddy, before the API proxy block
+
+> ⚠️ **`app-config.jfx` is required at runtime.** If it is missing, every photo upload will fail. The `deploy.sh` script intentionally excludes the `media/` directory from rsync to protect uploaded photos — so when `app-config.jfx` is updated in the repository, copy it to the production media path manually and restart the backend.
+
+### Media folder structure
+
+```
+/var/www/tafuta/media/
+├── app-config.jfx                  ← image type config (staff-managed)
+└── {business_tag}_{business_id}/   ← one folder per business
+    ├── {slug}.{ext}                 ← original source file
+    ├── logo/
+    │   ├── {slug}.jfx              ← transform spec
+    │   ├── {slug}_icon.webp        ← 64×64
+    │   ├── {slug}_small.webp       ← 128×128
+    │   └── {slug}_medium.webp      ← 256×256
+    ├── banner/
+    │   ├── {slug}.jfx
+    │   ├── {slug}_300x100.webp
+    │   ├── {slug}_600x200.webp
+    │   └── {slug}_1200x400.webp
+    ├── profile/
+    └── gallery/
+```
+
+Image processing uses **sharp** (WebP output at quality 85). Transform specs (`.jfx`) are plain JSON stored alongside the WebP outputs and are re-read when updating transforms.
 
 ## Project Structure
 

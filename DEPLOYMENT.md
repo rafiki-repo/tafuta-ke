@@ -52,29 +52,46 @@ GRANT ALL PRIVILEGES ON DATABASE tafuta TO tafuta_user;
 sudo mkdir -p /var/www/tafuta
 sudo chown -R $USER:$USER /var/www/tafuta
 
-# Clone repository
-cd /var/www/tafuta
-git clone https://github.com/yourusername/tafuta.git .
+# Clone repository into the operator's workspace (deploy.sh syncs from here)
+mkdir -p /home/openclaw/projects
+cd /home/openclaw/projects
+git clone https://github.com/rafiki-repo/tafuta-ke.git tafuta-ke
 
 # Backend setup
-cd backend
+cd /home/openclaw/projects/tafuta-ke/backend
 npm install --production
 
-# Copy and configure environment
-cp .env.example .env
-nano .env
-# Update all environment variables with production values
+# Copy and configure environment (on the DEPLOY target, not the workspace)
+mkdir -p /var/www/tafuta/backend
+cp .env.example /var/www/tafuta/backend/.env
+nano /var/www/tafuta/backend/.env
+# Update all environment variables with production values — see Section 4
 
 # Run database migrations
 npm run migrate
 
 # Create logs directory
-mkdir -p logs
+mkdir -p /var/www/tafuta/backend/logs
 
 # Create uploads directory
 mkdir -p /var/www/tafuta/uploads
 chmod 755 /var/www/tafuta/uploads
 ```
+
+### ⚠️ Media directory — one-time setup (do not skip)
+
+Business photos are served by Caddy directly from `/var/www/tafuta/media/`. This directory must be created **once** on first setup and is **never touched by `deploy.sh`** (it is excluded from rsync to protect uploaded photos).
+
+```bash
+# Create the media directory (persists across all future deploys)
+mkdir -p /var/www/tafuta/media
+chmod 755 /var/www/tafuta/media
+
+# Copy the image-type configuration from the repo (one-time, or when updated by staff)
+cp /home/openclaw/projects/tafuta-ke/backend/media/app-config.jfx /var/www/tafuta/media/app-config.jfx
+```
+
+> **If `app-config.jfx` is missing**, the photo upload API will fail with a config-not-found error on every request. Always copy it on first setup and whenever it is updated in the repository.
 
 ## 4. Environment Configuration
 
@@ -85,6 +102,9 @@ Edit `/var/www/tafuta/backend/.env`:
 NODE_ENV=production
 PORT=3000
 APP_URL=https://tafuta.ke
+
+# Auth (back-door OTP for testing — leave empty in production for real SMS only)
+BD_OTP=
 
 # Database
 DATABASE_URL=postgresql://tafuta_user:your_secure_password@localhost:5432/tafuta
@@ -119,6 +139,12 @@ CLOUDFLARE_ZONE_ID=your-cloudflare-zone-id
 UPLOAD_PATH=/var/www/tafuta/uploads
 MAX_FILE_SIZE=2097152
 
+# Media — business photos (PRD-07)
+# ⚠️ Required: must match the directory created in Section 3.
+# Node.js writes uploads here; Caddy serves /media/* directly from this path.
+# Also copy backend/media/app-config.jfx to this directory on first setup.
+MEDIA_PATH=/var/www/tafuta/media
+
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
@@ -150,7 +176,7 @@ pm2 monit
 ## 6. Caddy Setup
 
 ```bash
-# Copy Caddyfile
+# Copy Caddyfile from repo to Caddy's config location
 sudo cp /var/www/tafuta/Caddyfile /etc/caddy/Caddyfile
 
 # Create log directory
@@ -171,6 +197,45 @@ sudo systemctl enable caddy
 # Check Caddy status
 sudo systemctl status caddy
 ```
+
+### ⚠️ Required: add the `/media/` route to your Caddyfile
+
+Business photos are served by Caddy directly from disk — Node.js is **not** in the read path. The Caddyfile (managed on the server, not in the repo) must include a `handle` block for `/media/*` **before** the catch-all API proxy. Without this, photo URLs will return 404 or be proxied to Node unnecessarily.
+
+Add this block inside your `tafuta.ke` site block:
+
+```
+handle /media/* {
+    root * /var/www/tafuta/media
+    file_server
+}
+```
+
+Example minimal Caddyfile structure:
+
+```
+tafuta.ke {
+    # 1. Serve uploaded business photos directly (no Node.js involvement)
+    handle /media/* {
+        root * /var/www/tafuta/media
+        file_server
+    }
+
+    # 2. Proxy API requests to Node.js backend
+    handle /api/* {
+        reverse_proxy localhost:3000
+    }
+
+    # 3. Serve the React SPA for all other paths
+    handle {
+        root * /var/www/tafuta/frontend/dist
+        try_files {path} /index.html
+        file_server
+    }
+}
+```
+
+> The order matters: `/media/*` must come before the catch-all `handle` block.
 
 ## 7. Firewall Configuration
 
@@ -303,23 +368,40 @@ free -h
 
 ## 13. Updating the Application
 
+Use `deploy.sh` — it handles everything in the correct order and is idempotent:
+
 ```bash
-# Pull latest code
-cd /var/www/tafuta
-git pull origin main
+cd /home/openclaw/projects/tafuta-ke
+./deploy.sh
+```
 
-# Update backend
-cd backend
-npm install --production
+The script:
+1. Pulls the latest code from `main`
+2. Syncs files to `/var/www/tafuta/` via rsync (excludes `.env`, `media/`, `node_modules/`, `frontend/dist`)
+3. **Preserves `/var/www/tafuta/media/`** — uploaded business photos are never deleted
+4. Backs up the database (`backup-db.sh` if present)
+5. Installs backend production dependencies (`npm ci --production`)
+6. Runs any pending database migrations
+7. Installs frontend dependencies and builds the React app
+8. Restarts the `tafuta-backend` PM2 process
 
-# Run new migrations
-npm run migrate
-
-# Restart application
-pm2 restart tafuta-backend
-
-# Check logs
+```bash
+# Check logs after deploy
 pm2 logs tafuta-backend --lines 50
+```
+
+### ⚠️ If `app-config.jfx` was updated in the repo
+
+`deploy.sh` excludes the `media/` directory from rsync to protect uploaded photos. If a developer updates `backend/media/app-config.jfx` in the repository, you must copy it manually after deploying:
+
+```bash
+cp /home/openclaw/projects/tafuta-ke/backend/media/app-config.jfx /var/www/tafuta/media/app-config.jfx
+```
+
+Then restart the backend so the config cache is cleared:
+
+```bash
+pm2 restart tafuta-backend
 ```
 
 ## 14. Troubleshooting
