@@ -68,7 +68,12 @@ else
     echo "Warning: backup-db.sh not found, skipping backup." | tee -a "$LOG_FILE"
 fi
 
-# 4. Backend dependencies
+# 4. Stop backend BEFORE touching node_modules to prevent PM2 auto-restart
+#    thrashing against a half-built node_modules (which corrupts the cluster TCP state).
+echo "Stopping backend for dependency install..."
+pm2 stop tafuta-backend 2>&1 | tee -a "$LOG_FILE" || true
+
+# 5. Backend dependencies
 cd "$DEPLOY_DIR/backend"
 if [ -f "package.json" ]; then
     echo "Installing backend dependencies..."
@@ -78,14 +83,14 @@ if [ -f "package.json" ]; then
     fi
 fi
 
-# 5. Database migrations
+# 6. Database migrations
 echo "Running database migrations..."
 npm run migrate 2>&1 | tee -a "$LOG_FILE"
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
     fail "Database migration failed"
 fi
 
-# 6. Frontend build
+# 7. Frontend build (backend is stopped during this — acceptable downtime)
 cd "$DEPLOY_DIR/frontend"
 if [ -f "package.json" ]; then
     echo "Installing frontend dependencies..."
@@ -100,16 +105,20 @@ if [ -f "package.json" ]; then
     fi
 fi
 
-# 7. Restart PM2 processes
-echo "Restarting PM2 process 'tafuta-backend'..."
-pm2 restart tafuta-backend --silent 2>&1 | tee -a "$LOG_FILE"
+# 8. Start backend fresh from ecosystem config (not restart — fully recreates cluster state)
+echo "Starting backend..."
+cd "$DEPLOY_DIR/backend"
+pm2 start ecosystem.config.cjs --update-env 2>&1 | tee -a "$LOG_FILE"
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    fail "PM2 restart failed"
+    fail "PM2 start failed"
 fi
+pm2 save 2>&1 | tee -a "$LOG_FILE"
 
-# 8. Verify deployment
+# 9. Verify deployment
 echo "Checking deployment health..."
 sleep 5
 pm2 status tafuta-backend | tee -a "$LOG_FILE"
+echo "Verifying backend is responding..."
+curl -sf http://localhost:3000/api/health > /dev/null || fail "Backend health check failed — check: pm2 logs tafuta-backend"
 
 echo "$(date) - Deployment complete!" | tee -a "$LOG_FILE"
