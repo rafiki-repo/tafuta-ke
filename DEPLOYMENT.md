@@ -88,10 +88,11 @@ mkdir -p /var/www/tafuta/media
 chmod 755 /var/www/tafuta/media
 
 # Copy the image-type configuration from the repo (one-time, or when updated by staff)
+# deploy.sh will automatically copy if missing or outdated; manual copy only needed for force updates.
 cp /home/openclaw/projects/tafuta-ke/backend/media/app-config.jfx /var/www/tafuta/media/app-config.jfx
 ```
 
-> **If `app-config.jfx` is missing**, the photo upload API will fail with a config-not-found error on every request. Always copy it on first setup and whenever it is updated in the repository.
+> **If `app-config.jfx` is missing**, the photo upload API will fail with a config-not-found error on every request. The deployment script (`deploy.sh`) automatically copies the file when missing or outdated, but you can manually copy it if needed.
 
 ## 4. Environment Configuration
 
@@ -392,15 +393,12 @@ pm2 logs tafuta-backend --lines 50
 
 ### ⚠️ If `app-config.jfx` was updated in the repo
 
-`deploy.sh` excludes the `media/` directory from rsync to protect uploaded photos. If a developer updates `backend/media/app-config.jfx` in the repository, you must copy it manually after deploying:
+`deploy.sh` excludes the `media/` directory from rsync to protect uploaded photos. The script now automatically copies `backend/media/app-config.jfx` from the repository if the file is missing or newer than the deployed version. No manual copy is required unless you need to force a specific version.
+
+If you need to manually update the config (e.g., to roll back), copy it and restart the backend:
 
 ```bash
 cp /home/openclaw/projects/tafuta-ke/backend/media/app-config.jfx /var/www/tafuta/media/app-config.jfx
-```
-
-Then restart the backend so the config cache is cleared:
-
-```bash
 pm2 restart tafuta-backend
 ```
 

@@ -2,6 +2,12 @@
 # Main domain and API
 
 tafuta.ke {
+    # Media uploads
+    handle /media/* {
+        root * /var/www/tafuta/media
+        file_server
+    }
+
     # API backend
     handle /api/* {
         reverse_proxy localhost:3000

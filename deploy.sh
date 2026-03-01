@@ -48,6 +48,14 @@ rsync -av --delete \
 # Ensure media directory exists (created once; never deleted by rsync)
 mkdir -p "$DEPLOY_DIR/media"
 
+# Copy app-config.jfx if missing or outdated (required for photo uploads)
+if [ -f "$WORKSPACE/backend/media/app-config.jfx" ]; then
+    if [ ! -f "$DEPLOY_DIR/media/app-config.jfx" ] || [ "$WORKSPACE/backend/media/app-config.jfx" -nt "$DEPLOY_DIR/media/app-config.jfx" ]; then
+        cp "$WORKSPACE/backend/media/app-config.jfx" "$DEPLOY_DIR/media/"
+        echo "Copied app-config.jfx to media directory (updated or missing)"
+    fi
+fi
+
 # 3. Database backup
 echo "Backing up database..."
 cd "$DEPLOY_DIR"
