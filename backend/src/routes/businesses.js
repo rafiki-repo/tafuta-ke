@@ -1,11 +1,13 @@
 import express from 'express';
 import { randomUUID } from 'crypto';
+import { promises as fs } from 'fs';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { success, error } from '../utils/response.js';
 import { validateRequired, isValidUUID } from '../utils/validation.js';
 import { checkBusinessPermission, isBusinessOwner } from '../utils/permissions.js';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
+import { getBusinessFolder } from '../services/media.js';
 
 const router = express.Router();
 
@@ -260,7 +262,8 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       }
 
       // Check business_tag uniqueness if it is being changed
-      if (business_tag !== undefined && business_tag !== currentBusiness.business_tag) {
+      const tagChanging = business_tag !== undefined && business_tag !== currentBusiness.business_tag;
+      if (tagChanging) {
         const tagCheck = await client.query(
           'SELECT 1 FROM businesses WHERE business_tag = $1 AND business_id != $2',
           [business_tag, id]
@@ -268,6 +271,25 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
         if (tagCheck.rows.length > 0) {
           await client.query('ROLLBACK');
           return res.status(409).json(error('Business tag already taken', 'TAG_EXISTS'));
+        }
+      }
+
+      // Rename media folder on disk if the tag is changing (do this before DB update
+      // so a rename failure aborts the request without mutating the database).
+      if (tagChanging) {
+        const oldFolder = getBusinessFolder(currentBusiness.business_tag, id);
+        const newFolder = getBusinessFolder(business_tag, id);
+        try {
+          await fs.access(oldFolder); // only rename if the folder actually exists
+          await fs.rename(oldFolder, newFolder);
+          logger.info('Media folder renamed', { businessId: id, from: oldFolder, to: newFolder });
+        } catch (renameErr) {
+          // If the folder doesn't exist yet, that's fine — nothing to rename.
+          if (renameErr.code !== 'ENOENT') {
+            await client.query('ROLLBACK');
+            logger.error('Media folder rename failed', { businessId: id, error: renameErr.message });
+            return res.status(500).json(error('Failed to rename media folder', 'RENAME_FAILED'));
+          }
         }
       }
 

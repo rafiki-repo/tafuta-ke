@@ -17,6 +17,7 @@ import businessRoutes from './routes/businesses.js';
 import paymentRoutes from './routes/payments.js';
 import searchRoutes from './routes/search.js';
 import adminRoutes from './routes/admin.js';
+import photoRoutes from './routes/photos.js';
 
 const app = express();
 const PgStore = pgSession(session);
@@ -90,6 +91,9 @@ app.use('/api/businesses', businessRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/admin', adminRoutes);
+// Photos: mounted at /api so it can serve both /api/photos/config and
+// /api/businesses/:id/photos* (falls through from businessRoutes when no route matches)
+app.use('/api', photoRoutes);
 
 // 404 handler
 app.use((req, res) => {

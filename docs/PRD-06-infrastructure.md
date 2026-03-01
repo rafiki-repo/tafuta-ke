@@ -25,7 +25,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 - **Database**: PostgreSQL 15+
 - **Session management**: express-session with connect-pg-simple (PostgreSQL session storage)
 - **Authentication**: jsonwebtoken (JWT), bcryptjs (cost factor 10), crypto module for OTP
-- **Image processing**: JIMP (server-side transform and WebP output)
+- **Image processing**: sharp (server-side transform and WebP output)
 - **File uploads**: multer (multipart/form-data handling)
 - **Config files**: flex-json (read/write `.jfx` transform specs and `app-config.jfx`)
 - **Logging**: Winston
@@ -50,7 +50,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 - **SMS gateway**: VintEx SMS API
 - **Email service**: Mailgun (HTML email templates)
 - **DNS / CDN**: Cloudflare (DNS management, CDN, DDoS protection)
-- **File storage**: VPS filesystem (MVP); user uploads: `/var/www/tafuta/uploads/`; business media: `/var/www/media/`
+- **File storage**: VPS filesystem (MVP); user uploads: `/var/www/tafuta/uploads/`; business media: `/var/www/tafuta/media/`
 
 ---
 
@@ -85,7 +85,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
     ├── error.log
     └── app.log
 
-/var/www/media/              # Business media (separate from app files)
+/var/www/tafuta/media/              # Business media (separate from app files)
 ├── app-config.jfx           # Image type/size configuration (managed by Tafuta staff)
 └── {business_tag}_{uuid}/   # One folder per business (e.g. daniels-salon_550e8400-...)
     ├── {source-file}.jpg/png/gif/webp   # Original uploaded files
@@ -95,7 +95,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
     └── gallery/         # Generated gallery WebP outputs + .jfx specs
 ```
 
-Business media is kept in a separate directory tree (`/var/www/media/`) so it can be backed up, served, and managed independently of the application code.
+Business media is kept in `/var/www/tafuta/media/`, outside the application code directories, so it persists across deployments and can be backed up and served independently of the application.
 
 ---
 
@@ -114,7 +114,7 @@ Caddy is the reverse proxy and handles automatic HTTPS via Let's Encrypt. It pro
 **Media serving block** (added to Caddyfile):
 ```
 handle /media/* {
-    root * /var/www/media
+    root * /var/www/tafuta/media
     file_server
     header Cache-Control "public, max-age=86400"
 }
@@ -187,7 +187,7 @@ Daily automated backups via cron job (2 AM). Each backup is a compressed Postgre
 Two separate backup jobs:
 
 1. **User uploads** (`/var/www/tafuta/uploads/`) — daily at 3 AM. Compressed tar archive. 30-day retention with off-site sync.
-2. **Business media** (`/var/www/media/`) — daily at 3:30 AM. Compressed tar archive. 30-day retention with off-site sync.
+2. **Business media** (`/var/www/tafuta/media/`) — daily at 3:30 AM. Compressed tar archive. 30-day retention with off-site sync.
 
 Business media backups include both source files and generated WebP outputs. Source files are the authoritative originals; WebP files can always be regenerated from source + `.jfx` specs if needed.
 

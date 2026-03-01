@@ -42,7 +42,11 @@ rsync -av --delete \
     --exclude business-sites \
     --exclude backup-db.sh \
     --exclude deploy.log \
+    --exclude media \
     "$WORKSPACE/" "$DEPLOY_DIR/" || fail "rsync failed"
+
+# Ensure media directory exists (created once; never deleted by rsync)
+mkdir -p "$DEPLOY_DIR/media"
 
 # 3. Database backup
 echo "Backing up database..."

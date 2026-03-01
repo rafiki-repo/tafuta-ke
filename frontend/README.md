@@ -1,240 +1,142 @@
 # Tafuta Frontend
 
-React PWA for Tafuta - Kenyan Business Directory
+React PWA for Tafuta — Kenyan Business Directory.
 
 ## Tech Stack
 
-- **React 18** - UI library
-- **Vite** - Build tool and dev server
-- **React Router** - Client-side routing
-- **TailwindCSS** - Utility-first CSS framework
-- **Zustand** - State management
-- **Axios** - HTTP client
-- **React Hook Form** - Form handling
-- **Lucide React** - Icons
-- **Vite PWA** - Progressive Web App features
-
-## Project Structure
-
-```
-frontend/
-├── src/
-│   ├── components/
-│   │   ├── ui/              # Reusable UI components
-│   │   └── ...              # Feature-specific components
-│   ├── layouts/             # Layout components
-│   │   ├── PublicLayout.jsx
-│   │   ├── AuthLayout.jsx
-│   │   ├── DashboardLayout.jsx
-│   │   └── AdminLayout.jsx
-│   ├── pages/
-│   │   ├── public/          # Public pages
-│   │   ├── auth/            # Authentication pages
-│   │   ├── dashboard/       # Business owner dashboard
-│   │   └── admin/           # Admin dashboard
-│   ├── store/               # Zustand stores
-│   ├── lib/
-│   │   ├── api.js           # API client
-│   │   └── utils.js         # Utility functions
-│   ├── App.jsx              # Main app component
-│   ├── main.jsx             # Entry point
-│   └── index.css            # Global styles
-├── public/                  # Static assets
-├── index.html
-├── vite.config.js
-├── tailwind.config.js
-└── package.json
-```
+- **React 18** — UI library
+- **Vite** — Build tool and dev server
+- **React Router** — Client-side routing
+- **TailwindCSS** — Utility-first CSS
+- **Zustand** — State management
+- **Axios** — HTTP client
+- **Lucide React** — Icons
+- **Vite PWA** — Progressive Web App features
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 22+
-- npm or yarn
+- Backend API running on port 3000
 
 ### Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+npm run dev        # Dev server at http://localhost:5173
+npm run build      # Production build → dist/
+npm run preview    # Preview production build locally
 ```
-
-## Development
 
 ### Environment Variables
 
-Create a `.env` file in the frontend directory:
+The dev server proxies `/api/*` to `http://localhost:3000`. No `.env` file is required for local development unless you want to override the API URL:
 
 ```env
+# frontend/.env  (optional — only needed if backend is not on port 3000)
 VITE_API_URL=http://localhost:3000/api
 ```
 
-### Running with Backend
+## Project Structure
 
-The Vite dev server is configured to proxy API requests to `http://localhost:3000`.
-
-Make sure the backend is running on port 3000, then start the frontend:
-
-```bash
-npm run dev
 ```
-
-Visit `http://localhost:5173`
-
-## Features
-
-### Public Features
-- Business search and discovery
-- Category and region filtering
-- Business detail pages
-- Featured businesses
-- Mobile-first responsive design
-
-### User Features
-- Registration and login (password + OTP)
-- Profile management
-- Business creation and management
-- Content editing with version history
-- Payment for services
-- Receipt download
-
-### Admin Features
-- Business approval queue
-- User management
-- Analytics dashboard
-- Audit logs
-- System configuration
-
-### PWA Features
-- Installable on mobile devices
-- Offline support with service worker
-- Network-first caching strategy
-- App-like experience
+frontend/
+├── public/                  # Static assets (favicon, icons, manifests)
+├── src/
+│   ├── components/          # Reusable UI components
+│   │   ├── Alert.jsx
+│   │   ├── Badge.jsx
+│   │   ├── Button.jsx
+│   │   ├── Card.jsx
+│   │   ├── Footer.jsx
+│   │   ├── Header.jsx
+│   │   ├── Input.jsx
+│   │   ├── Select.jsx
+│   │   ├── Spinner.jsx
+│   │   └── Textarea.jsx
+│   ├── layouts/             # Page layout wrappers
+│   │   ├── AdminLayout.jsx
+│   │   ├── AuthLayout.jsx
+│   │   ├── DashboardLayout.jsx
+│   │   └── PublicLayout.jsx
+│   ├── pages/
+│   │   ├── admin/           # Admin dashboard pages
+│   │   ├── auth/            # Login, register
+│   │   ├── dashboard/       # Business owner pages (BusinessEditor, etc.)
+│   │   └── public/          # Home, search, business detail
+│   ├── store/               # Zustand stores (auth, etc.)
+│   ├── lib/
+│   │   ├── api.js           # Axios API client (all endpoints)
+│   │   └── utils.js         # Utility functions
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css
+├── index.html
+├── vite.config.js
+├── tailwind.config.js
+└── package.json
+```
 
 ## API Integration
 
-All API calls are handled through the `src/lib/api.js` module:
+All API calls go through `src/lib/api.js`:
 
 ```javascript
-import { authAPI, businessAPI, searchAPI } from '@/lib/api';
+import { authAPI, businessAPI, searchAPI, paymentAPI, adminAPI } from '@/lib/api';
 
-// Example: Login
-const response = await authAPI.login({ phone, password });
+// Auth
+await authAPI.login({ phone, password });
+await authAPI.requestOTP({ phone });
 
-// Example: Search businesses
-const results = await searchAPI.search({ category: 'salon', region: 'Machakos' });
+// Businesses
+await businessAPI.create({ business_name, category, region, content_json });
+await businessAPI.update(id, { content_json, business_tag });
+
+// Photos
+await businessAPI.uploadPhoto(id, formData);   // multipart/form-data
+await businessAPI.listPhotos(id);
+await businessAPI.updatePhotoTransform(id, slug, { image_type, transform });
+await businessAPI.deletePhoto(id, slug, imageType);
+await businessAPI.getPhotoConfig();
+
+// Search
+await searchAPI.search({ category, region, q });
 ```
 
-## State Management
+## Features
 
-Using Zustand for global state:
+### Implemented
+- Business search and discovery with category/region filters
+- Business detail pages
+- Featured businesses
+- User registration and login (password + OTP)
+- Profile management
+- Business creation and editing (Basic, Contact, Location, Hours tabs)
+- Business tag (`business_tag`) with auto-generation from business name
+- Content version history and rollback
+- Payment flow (PesaPal)
+- Receipt download
+- Admin: business approval queue, user management, analytics, audit logs, system config
+- PWA: installable, service worker, offline support, cache-first images
 
-```javascript
-import useAuthStore from '@/store/useAuthStore';
+### In Progress (Phase 3)
+- Photos tab in BusinessEditor (image upload, transform preview, management)
+- ImageManager component with Canvas 2D live preview
+- Business logo thumbnails in search results
+- Banner/gallery display on business detail pages
 
-function Component() {
-  const { user, isAuthenticated, setAuth, logout } = useAuthStore();
-  
-  // Use state...
-}
-```
+## PWA Configuration
 
-## Routing
+Configured in `vite.config.js`:
 
-Protected routes require authentication:
-
-```javascript
-// Public route
-<Route path="/" element={<HomePage />} />
-
-// Protected route
-<Route path="/dashboard" element={
-  <ProtectedRoute>
-    <DashboardLayout />
-  </ProtectedRoute>
-} />
-
-// Admin route
-<Route path="/admin" element={
-  <AdminRoute>
-    <AdminLayout />
-  </AdminRoute>
-} />
-```
+- **Cache strategy:** Network-first for API calls, cache-first for images (30-day retention)
+- **Offline:** Core pages work offline via service worker
+- **Installable:** Full manifest with Tafuta icons and theme colour
 
 ## Building for Production
 
 ```bash
-# Build
 npm run build
-
-# Output will be in dist/
-# Deploy the dist/ folder to your web server
+# Output in dist/ — deploy this folder; Caddy serves it as the SPA root
 ```
-
-## PWA Configuration
-
-PWA settings are in `vite.config.js`:
-
-- **Manifest**: App name, icons, theme color
-- **Service Worker**: Automatic updates, caching strategies
-- **Offline Support**: Network-first for API, cache-first for images
-
-## TODO
-
-### Remaining Implementation
-
-1. **Complete UI Components**
-   - Card, Badge, Alert, Dialog, Select, Textarea
-   - Loading states, error states
-   - Toast notifications
-
-2. **Build All Pages**
-   - Public: Home, Search, Business Detail
-   - Auth: Login, Register
-   - Dashboard: All business owner pages
-   - Admin: All admin pages
-
-3. **Implement Features**
-   - Form validation with React Hook Form + Zod
-   - Image upload handling
-   - Multi-language support
-   - Search filters and pagination
-   - Content editor (JSON-based)
-   - Version history UI
-   - Payment flow
-   - Receipt download
-
-4. **Testing**
-   - Unit tests
-   - Integration tests
-   - E2E tests with Playwright
-
-5. **Optimization**
-   - Code splitting
-   - Lazy loading
-   - Image optimization
-   - Performance monitoring
-
-## Next Steps
-
-1. Install dependencies: `npm install`
-2. Create remaining UI components
-3. Build layout components
-4. Implement all pages
-5. Test with backend API
-6. Deploy to production
-
-## Support
-
-For issues or questions, check the backend API documentation in `backend/README.md`

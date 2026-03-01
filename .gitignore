@@ -54,6 +54,11 @@ Desktop.ini
 # Misc
 *.tgz
 
+# Media uploads (user-generated content — not tracked in git)
+# app-config.jfx is tracked because it is staff-managed configuration.
+/backend/media/*
+!/backend/media/app-config.jfx
+
 # Claude Code - personal/local settings (auto-ignored by Claude Code)
 .claude/settings.local.json
 

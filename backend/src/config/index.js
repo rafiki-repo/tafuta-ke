@@ -52,6 +52,12 @@ const config = {
     path: process.env.UPLOAD_PATH || './uploads',
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE, 10) || 2097152, // 2MB
   },
+
+  media: {
+    // Root directory for business media (see PRD-07).
+    // Production: /var/www/media   Dev: ./media (relative to cwd when server starts)
+    path: process.env.MEDIA_PATH || './media',
+  },
   
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 900000, // 15 minutes

@@ -1,0 +1,55 @@
+/* Tafuta Media Configuration
+   Managed by Tafuta staff only — not editable by business owners.
+   Changes take effect on the next upload or re-transform; no server restart required. */
+{
+  // Maximum size of an uploaded source image in megabytes
+  max_upload_size_mb: 10,
+
+  // Accepted upload formats (checked via magic bytes on the server)
+  accepted_formats: [jpg, jpeg, png, gif, webp],
+
+  /* image_types: each key becomes a subfolder per business.
+     sizes: each key is the size-tag used in the output filename.
+     Dimensions in pixels (width x height). */
+  image_types: {
+
+    logo: {
+      label: "Business Logo",
+      max_images: 1,
+      sizes: {
+        icon:   { width: 64,   height: 64  },
+        small:  { width: 128,  height: 128 },
+        medium: { width: 256,  height: 256 }
+      }
+    },
+
+    banner: {
+      label: "Banner Image",
+      max_images: 3,
+      sizes: {
+        "300x100":  { width: 300,  height: 100 },
+        "600x200":  { width: 600,  height: 200 },
+        "1200x400": { width: 1200, height: 400 }
+      }
+    },
+
+    profile: {
+      label: "Profile / Hero Image",
+      max_images: 5,
+      sizes: {
+        thumb: { width: 150, height: 150 },
+        small: { width: 300, height: 300 },
+        large: { width: 800, height: 600 }
+      }
+    },
+
+    gallery: {
+      label: "Product / Service Gallery",
+      max_images: 50,
+      sizes: {
+        thumb:  { width: 150, height: 150 },
+        medium: { width: 600, height: 450 }
+      }
+    }
+  }
+}

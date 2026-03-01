@@ -85,7 +85,7 @@ Files use the `.jfx` extension. The `flex-json` npm package (`npm install flex-j
 ### File Location
 
 ```
-/var/www/media/app-config.jfx
+/var/www/tafuta/media/app-config.jfx
 ```
 
 Managed by Tafuta staff only — not editable by business owners. Changes take effect on the next upload or re-transform; no server restart required.
@@ -155,7 +155,7 @@ Size-tag keys (e.g., `icon`, `300x100`, `thumb`) appear in output filenames and 
 ## 3. Directory Structure
 
 ```
-/var/www/media/
+/var/www/tafuta/media/
 ├── app-config.jfx
 └── {business_tag}_{uuid}/                  e.g. daniels-salon_550e8400-...
     │
@@ -288,7 +288,7 @@ For each uploaded image the backend writes a `.jfx` file in the image-type subfo
 
 ## 8. Frontend Transform Preview (Canvas API)
 
-The upload UI provides a live crop/transform preview before the image is submitted. This uses the **browser's native Canvas 2D API** — not JIMP. The Canvas API is built into every modern browser, adds zero bytes to the JavaScript bundle, and handles all required transforms natively. JIMP in the browser would add ~1 MB to the bundle, which is unacceptable for a 3G-optimised PWA.
+The upload UI provides a live crop/transform preview before the image is submitted. This uses the **browser's native Canvas 2D API** — no client-side image library. The Canvas API is built into every modern browser, adds zero bytes to the JavaScript bundle, and handles all required transforms natively. A client-side image library would add ~1 MB to the bundle, which is unacceptable for a 3G-optimised PWA.
 
 ### Preview Canvas
 
@@ -330,11 +330,13 @@ A **Reset** button restores all parameters to their defaults.
 
 ---
 
-## 9. Backend Processing (JIMP)
+## 9. Backend Processing (sharp)
 
-The backend uses **JIMP** to produce WebP output files from the source image and transform parameters.
+The backend uses **sharp** to produce WebP output files from the source image and transform parameters.
 
-**Dependency:** `jimp` (npm).
+> **Implementation note:** The PRD originally specified JIMP for backend processing. During implementation it was discovered that JIMP v1 has no WebP output support (`@jimp/js-webp` does not exist on npm). **sharp** was substituted — it has native WebP support, prebuilt binaries for Linux and Windows, and processes images faster than JIMP.
+
+**Dependency:** `sharp` (npm).
 
 ### Processing Steps
 
@@ -346,23 +348,22 @@ The backend uses **JIMP** to produce WebP output files from the source image and
 6. Save source file to `/{business_folder}/{slug}.{ext}` (original format, no conversion).
 7. Write transform spec to `/{business_folder}/{image_type}/{slug}.jfx`.
 8. For each size defined in `app-config.jfx` for this `image_type`:
-   - Load source with JIMP.
+   - Load source with sharp.
    - Apply transform parameters in the order below.
    - Resize/crop to target `{ width, height }`.
    - Save as `/{business_folder}/{image_type}/{slug}_{size-tag}.webp`.
 
-### JIMP Transform Order
+### sharp Transform Order
 
 ```
-1. jimp.rotate(rotation)
-2. jimp.flip(flip_horizontal, flip_vertical)
-3. Zoom + offset crop:
-   - Resize source up by zoom factor
-   - Crop to target dimensions with (offset_x, offset_y) as the top-left origin
-4. jimp.brightness(brightness)          // JIMP accepts −1 to +1
-5. jimp.contrast(contrast)              // JIMP accepts −1 to +1
-6. jimp.color([{ apply: 'saturate', params: [Math.round(saturation * 100)] }])
-7. Output as WebP
+1. modulate({ brightness: 1 + brightness, saturation: 1 + saturation })
+2. linear(1 + contrast, 128 * (1 - (1 + contrast)))   // contrast with fixed midpoint
+3. rotate(rotation)
+4. flop() if flip_horizontal; flip() if flip_vertical
+5. Zoom + offset crop:
+   - resize(targetW * zoom, targetH * zoom, { fit: 'cover' })
+   - extract({ left: centreX + offset_x, top: centreY + offset_y, width, height })
+6. webp({ quality: 85 }).toBuffer()
 ```
 
 ---
@@ -374,7 +375,7 @@ The backend uses **JIMP** to produce WebP output files from the source image and
 1. User adjusts parameters in the preview and submits.
 2. Backend deletes all existing `.webp` output files for that image + type.
 3. Rewrites the `.jfx` with the new parameters (preserving `name`, `source`, `uploaded_by`, `uploaded_at`).
-4. Re-runs JIMP to regenerate all size outputs.
+4. Re-runs sharp to regenerate all size outputs.
 
 The source file is not touched.
 
@@ -394,7 +395,7 @@ Images are served directly by Caddy — the Node.js backend is not in the read p
 **Caddy block:**
 ```
 handle /media/* {
-    root * /var/www/media
+    root * /var/www/tafuta/media
     file_server
 }
 ```
@@ -486,7 +487,7 @@ business_tag  VARCHAR(64)  UNIQUE  NOT NULL
 
 | Package | Purpose |
 |---------|---------|
-| `jimp` | Server-side image transformation and WebP output |
+| `sharp` | Server-side image transformation and WebP output (replaces JIMP — see §9) |
 | `flex-json` | Read/write `.jfx` transform spec and config files |
 | `multer` | Multipart/form-data file upload handling |
 
