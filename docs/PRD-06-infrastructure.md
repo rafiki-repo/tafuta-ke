@@ -24,7 +24,10 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 - **Language**: JavaScript (ES6+)
 - **Database**: PostgreSQL 15+
 - **Session management**: express-session with connect-pg-simple (PostgreSQL session storage)
-- **Authentication**: jsonwebtoken (JWT), bcrypt (cost factor 10), crypto module for OTP
+- **Authentication**: jsonwebtoken (JWT), bcryptjs (cost factor 10), crypto module for OTP
+- **Image processing**: JIMP (server-side transform and WebP output)
+- **File uploads**: multer (multipart/form-data handling)
+- **Config files**: flex-json (read/write `.jfx` transform specs and `app-config.jfx`)
 - **Logging**: Winston
 - **Connection pooling**: pg-pool (max 20 connections for MVP)
 
@@ -47,7 +50,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 - **SMS gateway**: VintEx SMS API
 - **Email service**: Mailgun (HTML email templates)
 - **DNS / CDN**: Cloudflare (DNS management, CDN, DDoS protection)
-- **File storage**: VPS filesystem (MVP); path: `/var/www/tafuta/uploads/`
+- **File storage**: VPS filesystem (MVP); user uploads: `/var/www/tafuta/uploads/`; business media: `/var/www/media/`
 
 ---
 
@@ -75,14 +78,24 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 │   └── .env
 ├── frontend/          # React frontend build
 │   └── dist/          # Production build
-├── uploads/           # User-uploaded files
-│   ├── businesses/    # Business logos
-│   └── users/         # User profile photos
+├── uploads/           # User profile photos
+│   └── users/         # User profile photos (max 2 MB each)
 └── logs/              # Application logs
     ├── access.log
     ├── error.log
     └── app.log
+
+/var/www/media/              # Business media (separate from app files)
+├── app-config.jfx           # Image type/size configuration (managed by Tafuta staff)
+└── {business_tag}_{uuid}/   # One folder per business (e.g. daniels-salon_550e8400-...)
+    ├── {source-file}.jpg/png/gif/webp   # Original uploaded files
+    ├── logo/            # Generated logo WebP outputs + .jfx specs
+    ├── banner/          # Generated banner WebP outputs + .jfx specs
+    ├── profile/         # Generated profile WebP outputs + .jfx specs
+    └── gallery/         # Generated gallery WebP outputs + .jfx specs
 ```
+
+Business media is kept in a separate directory tree (`/var/www/media/`) so it can be backed up, served, and managed independently of the application code.
 
 ---
 
@@ -95,7 +108,17 @@ Caddy is the reverse proxy and handles automatic HTTPS via Let's Encrypt. It pro
 - Gzip compression
 - SPA routing (all routes served by index.html)
 - API proxying to Node.js backend on port 3000
+- Direct static file serving for business media (Node.js is NOT in the media read path)
 - HTTP/2 and HSTS
+
+**Media serving block** (added to Caddyfile):
+```
+handle /media/* {
+    root * /var/www/media
+    file_server
+    header Cache-Control "public, max-age=86400"
+}
+```
 
 **Why Caddy**: Automatic HTTPS with zero certificate management overhead; simple configuration; built-in reverse proxy.
 
@@ -146,7 +169,7 @@ All secrets and configuration are stored in a `.env` file:
 - `VINTEX_API_KEY`, `VINTEX_SENDER_ID`
 - `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`
 - `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`
-- `UPLOAD_PATH`, `MAX_FILE_SIZE`
+- `UPLOAD_PATH` (user profile photos), `MEDIA_PATH` (business media root), `MAX_FILE_SIZE`
 - `RATE_LIMIT_WINDOW`, `RATE_LIMIT_MAX_REQUESTS`
 
 The `.env` file must never be committed to version control. File permissions: `chmod 600 .env`. Use `.env.example` as a template.
@@ -161,7 +184,12 @@ Daily automated backups via cron job (2 AM). Each backup is a compressed Postgre
 
 ### File Backups
 
-Daily automated backups of `/var/www/tafuta/uploads/` via cron job (3 AM). Compressed tar archive. Same 30-day retention and off-site sync policy.
+Two separate backup jobs:
+
+1. **User uploads** (`/var/www/tafuta/uploads/`) — daily at 3 AM. Compressed tar archive. 30-day retention with off-site sync.
+2. **Business media** (`/var/www/media/`) — daily at 3:30 AM. Compressed tar archive. 30-day retention with off-site sync.
+
+Business media backups include both source files and generated WebP outputs. Source files are the authoritative originals; WebP files can always be regenerated from source + `.jfx` specs if needed.
 
 ### Off-Site Backups
 
@@ -483,7 +511,8 @@ When vertical scaling is insufficient, move to a multi-server architecture:
 - Query optimization and materialized views for analytics
 - Redis cache for frequently accessed data (category lists, region lists)
 - Elasticsearch for advanced business search
-- Automated image optimization and WebP conversion
+- S3-compatible object storage for business media (replacing VPS disk for media at scale)
+- Async image processing queue (for large uploads / batch regeneration)
 
 ### Security
 

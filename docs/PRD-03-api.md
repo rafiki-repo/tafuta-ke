@@ -125,7 +125,11 @@ Endpoint permissions are validated based on:
 | POST | `/api/businesses` | Yes | Create business (status = pending) |
 | GET | `/api/businesses/:id` | Yes | Get business details including content_json |
 | PATCH | `/api/businesses/:id` | Yes | Update business (saves version history) |
-| POST | `/api/businesses/:id/logo` | Yes | Upload business logo (multipart/form-data) |
+| POST | `/api/businesses/:id/photos` | Yes (Employee+) | Upload image: multipart with `file`, `image_type`, `image_name`, `transform` |
+| GET | `/api/businesses/:id/photos` | Yes | List all images for a business (grouped by type) |
+| PATCH | `/api/businesses/:id/photos/:slug` | Yes (Employee+) | Update transform params and regenerate WebP outputs |
+| DELETE | `/api/businesses/:id/photos/:slug` | Yes (Owner/Admin) | Delete image: removes source, .jfx, and all WebP outputs |
+| GET | `/api/photos/config` | No | Return parsed `app-config.jfx` (image types, sizes, limits) |
 | POST | `/api/businesses/:id/deactivate` | Yes (Owner) | Deactivate business |
 | GET | `/api/businesses/:id/users` | Yes | List users linked to business |
 | POST | `/api/businesses/:id/users` | Yes | Add user to business by phone + role |
@@ -278,7 +282,7 @@ Cloudflare manages DNS for tafuta.ke and all business subdomains.
 
 - **OTP requests**: 10 per phone number per minute
 - **Login attempts**: 25 per phone number per 15 minutes
-- **File uploads**: 5 per user per minute
+- **File uploads**: 5 per user per minute (applies to photo uploads)
 
 ### Rate Limit Response (429)
 

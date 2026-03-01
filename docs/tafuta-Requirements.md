@@ -191,10 +191,12 @@ See PRD-01 and PRD-02 for detailed schema.
 - **Subdomain uniqueness**: first person to claim a subdomain wins; app recommends alternatives if taken; user can customize as long as it doesn't already exist
 - **DNS management**: automated via Cloudflare API calls from backend (details in PRD-06)
 - **SSL certificates**: handled by Caddy (details in PRD-06)
-- **Images**: uploaded through config panel; stored on VPS disk; served directly from VPS; formats: JPEG, PNG, WebP; no videos in MVP; no image optimization/compression in MVP
+- **Images**: uploaded through config panel; stored at `/var/www/media/`; served directly by Caddy (Node.js is not in the read path); accepted formats: JPEG, PNG, GIF, WebP; no videos in MVP
+- **Image transformation**: each upload is processed by the backend (JIMP) and saved as WebP in multiple sizes per image type; transform parameters are stored in per-image `.jfx` files; full spec in PRD-07
+- **Business tag (`business_tag`)**: each business has a human-readable slug (e.g., `daniels-salon`) used as the media folder name in combination with the business UUID; separate from `subdomain`; see PRD-07
 - **Contact forms**: not included in MVP
-- **Basic template**: does not include product/image gallery
-- **Image gallery service**: businesses paying for image gallery service can include up to 50 product/service images
+- **Basic template**: does not include product/image gallery in the free tier
+- **Image gallery service**: businesses with the image gallery service can include up to 50 gallery images in their business profile
 - **Payment lapse behavior**: when business reaches end of paid services period, website and promotions are automatically deactivated
 - **Storage/bandwidth limits**: not enforced in MVP
 - **Concurrent edits**: last write wins (no conflict resolution in MVP)
@@ -354,7 +356,9 @@ See PRD-01 and PRD-02 for detailed schema.
 - **Internationalization**: i18next / react-i18next
 - **Reverse proxy & SSL**: Caddy
 - **DNS management**: Cloudflare API
-- **Authentication**: jsonwebtoken (JWT), bcrypt
+- **Authentication**: jsonwebtoken (JWT), bcryptjs
+- **Image processing**: JIMP (server-side transform → WebP), multer (file uploads)
+- **Config files**: flex-json (`.jfx` format for `app-config.jfx` and per-image transform specs)
 - **Logging**: Winston
 - **Process manager**: PM2
 
@@ -421,5 +425,6 @@ The following items are launch gates — the application must not go live until 
 ├── PRD-03-api.md            ← API & Integration Reference
 ├── PRD-04-ui-ux.md          ← User Interface & Experience
 ├── PRD-05-admin.md          ← Admin Dashboard & Configuration
-└── PRD-06-infrastructure.md ← Infrastructure, Testing & DevOps
+├── PRD-06-infrastructure.md ← Infrastructure, Testing & DevOps
+└── PRD-07-photos.md         ← Business Photos & Image Management
 ```

@@ -450,9 +450,10 @@ Layout similar to search results, pre-filtered by region. Shows page title "Busi
 │  ...                                │
 │  Sunday:    [Closed]                │
 │                                     │
-│  Gallery (Image Gallery Service)    │
+│  Images                             │
+│  [Logo] [Banner] [Profile] [Gallery]│
 │  ┌───┐ ┌───┐ ┌───┐                  │
-│  │ 1 │ │ 2 │ │ 3 │ [+ Add Image]   │
+│  │ 1 │ │ 2 │ │ 3 │ [+ Upload]      │
 │  └───┘ └───┘ └───┘                  │
 │                                     │
 │  [Save Changes]  [Cancel]           │
@@ -462,11 +463,80 @@ Layout similar to search results, pre-filtered by region. Shows page title "Busi
 **Key Elements:**
 - **Preview button**: Opens website in new tab
 - **Language tabs**: Multi-language content entry
-- **Content sections**: About, services, hours, gallery
-- **Image gallery**: Upload up to 50 images (only shown if image gallery service purchased)
+- **Content sections**: About, services, hours
+- **Image section**: Image type tabs (Logo, Banner, Profile, Gallery); thumbnail grid; upload button
 - **Version indicator**: Shows current content version
 
 **MVP Note**: Website editor is only accessible if business has purchased website hosting service.
+
+### Image Upload & Transform
+
+**URL**: `https://tafuta.ke/config/business/:id/photos`
+
+The photo manager is accessible from the business config panel. It handles all image types defined in `app-config.jfx`.
+
+**Image list layout:**
+
+```
+┌─────────────────────────────────────┐
+│ Photos — Doreen Beauty Parlour      │
+├─────────────────────────────────────┤
+│  [Logo] [Banner] [Profile] [Gallery]│
+│                  ← type tabs        │
+│                                     │
+│  Banner Images  (2 of 3 max)        │
+│  ┌───────────┐ ┌───────────┐        │
+│  │ cover-    │ │ summer-   │        │
+│  │ banner    │ │ promo     │        │
+│  │ [Edit]    │ │ [Edit]    │        │
+│  │ [Delete]  │ │ [Delete]  │        │
+│  └───────────┘ └───────────┘        │
+│                                     │
+│  [+ Upload Banner Image]            │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Upload flow:**
+
+```
+┌─────────────────────────────────────┐
+│ Upload Banner Image                 │
+├─────────────────────────────────────┤
+│  Image Name *                       │
+│  ┌───────────────────────────────┐  │
+│  │ Cover Banner                  │  │
+│  └───────────────────────────────┘  │
+│                                     │
+│  [Choose File]  cover.jpg           │
+│                                     │
+│  Preview  ┌─────────────────────┐   │
+│  (3:1)    │                     │   │
+│           │   [image preview]   │   │
+│           │                     │   │
+│           └─────────────────────┘   │
+│                                     │
+│  Zoom      ────●────── 1.2x         │
+│  Brightness ───●────── 0.0          │
+│  Contrast   ───●────── 0.0          │
+│  Saturation ───●────── 0.0          │
+│  Rotation   ───●────── 0°           │
+│  [Flip H]  [Flip V]  [Reset]        │
+│                                     │
+│  [Cancel]  [Upload]                 │
+└─────────────────────────────────────┘
+```
+
+**Key Elements:**
+- **Image name field**: User-provided display name; system generates a file-friendly slug automatically; warns if name was modified due to a conflict.
+- **File picker**: Accepts jpg, png, gif, webp; shows selected filename; validates size client-side.
+- **Preview canvas**: Same aspect ratio as the target size for the selected image type; updates in real time as transform controls change. Uses browser Canvas API (no extra library).
+- **Transform controls**: Sliders for zoom, brightness, contrast, saturation, and rotation; toggle buttons for flip horizontal and flip vertical; Reset button.
+- **Max images warning**: If the type is at its limit, the Upload button is disabled and a message is shown.
+
+**Edit existing image transform:**
+- Clicking **Edit** on a thumbnail opens the same upload UI pre-populated with the existing transform values.
+- User adjusts controls and clicks **Save**. The original source file is reused; only the WebP outputs are regenerated.
 
 **Future Enhancement**: AI-assisted content updates
 ```
@@ -787,7 +857,6 @@ Shown after user visits site 2-3 times:
 ## MVP Exclusions (Post-Launch)
 
 - User reviews and ratings
-- Business photo galleries (except paid image gallery service)
 - Interactive maps (use address text in MVP)
 - Favorite businesses
 - Social sharing
