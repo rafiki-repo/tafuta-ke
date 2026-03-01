@@ -8,7 +8,6 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import sharp from 'sharp';
 import flexJson from 'flex-json';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
@@ -146,6 +145,15 @@ export async function getExistingSlugs(businessFolder, imageType) {
  * @returns {Promise<Buffer>} WebP-encoded buffer
  */
 export async function processImage(sourceBuffer, transform, targetSize) {
+  // Dynamic import so a sharp load failure doesn't crash the server on startup.
+  // Only photo upload/transform endpoints will be affected if sharp is unavailable.
+  let sharp;
+  try {
+    sharp = (await import('sharp')).default;
+  } catch (err) {
+    throw new Error(`Image processing unavailable: sharp failed to load (${err.message})`);
+  }
+
   const {
     zoom = 1.0,
     offset_x = 0,

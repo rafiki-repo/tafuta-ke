@@ -81,12 +81,13 @@ if [ -f "package.json" ]; then
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         fail "Backend npm install failed"
     fi
-    # Reinstall sharp for the server's linux-x64 platform. package-lock.json is generated
-    # on Windows so npm ci picks up the wrong platform's prebuilt binaries.
-    echo "Installing sharp for linux-x64..."
-    npm install --include=optional sharp 2>&1 | tee -a "$LOG_FILE"
+    # Build sharp from source for the server's CPU. Prebuilt binaries require x86-64-v2
+    # microarchitecture; building from source works on any CPU. Requires build-essential
+    # and python3 (see DEPLOYMENT.md §1).
+    echo "Building sharp from source..."
+    npm install --build-from-source sharp 2>&1 | tee -a "$LOG_FILE"
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
-        fail "Sharp install failed"
+        fail "Sharp build failed — ensure build-essential and python3 are installed"
     fi
 fi
 
