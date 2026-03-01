@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import { businessAPI, searchAPI } from '@/lib/api';
+import ImageManager from '@/components/ImageManager';
+import useAuthStore from '@/store/useAuthStore';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = {
@@ -30,7 +32,7 @@ const statusVariant = {
   deleted: 'destructive',
 };
 
-const TABS = [
+const BASE_TABS = [
   { id: 'basic', label: 'Basic Info' },
   { id: 'contact', label: 'Contact' },
   { id: 'location', label: 'Location' },
@@ -41,6 +43,12 @@ export default function BusinessEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = !!id;
+  const { isAdmin } = useAuthStore();
+
+  // Photos tab is only available in edit mode
+  const TABS = isEditMode
+    ? [...BASE_TABS, { id: 'photos', label: 'Photos' }]
+    : BASE_TABS;
 
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
@@ -543,35 +551,56 @@ export default function BusinessEditor() {
           </Card>
         )}
 
-        {/* Change notes (edit mode only) */}
-        {isEditMode && (
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-1">Change Notes (optional)</label>
-            <Input
-              value={changeSummary}
-              onChange={e => setChangeSummary(e.target.value)}
-              placeholder="e.g. Updated opening hours for the holiday season"
-            />
-          </div>
+        {/* Photos */}
+        {activeTab === 'photos' && isEditMode && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Photos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ImageManager
+                businessId={id}
+                canDelete={
+                  isAdmin() ||
+                  ['owner', 'admin'].includes(currentBusiness?.user_role)
+                }
+              />
+            </CardContent>
+          </Card>
         )}
 
-        {/* Actions */}
-        <div className="mt-6 flex gap-3">
-          <Button type="submit" disabled={saving}>
-            {saving ? (
-              <>
-                <Spinner size="sm" className="mr-2" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                {isEditMode ? 'Save Changes' : 'Submit Business'}
-              </>
+        {/* Change notes and save — hidden on Photos tab (ImageManager manages itself) */}
+        {activeTab !== 'photos' && (
+          <>
+            {isEditMode && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium mb-1">Change Notes (optional)</label>
+                <Input
+                  value={changeSummary}
+                  onChange={e => setChangeSummary(e.target.value)}
+                  placeholder="e.g. Updated opening hours for the holiday season"
+                />
+              </div>
             )}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-        </div>
+
+            <div className="mt-6 flex gap-3">
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Spinner size="sm" className="mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {isEditMode ? 'Save Changes' : 'Submit Business'}
+                  </>
+                )}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+            </div>
+          </>
+        )}
       </form>
     </div>
   );

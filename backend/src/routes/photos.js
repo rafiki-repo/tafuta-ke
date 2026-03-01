@@ -203,6 +203,33 @@ router.post('/businesses/:id/photos', requireAuth, upload.single('file'), async 
       sizes[sizeTag] = `/media/${business_tag}_${id}/${image_type}/${slug}_${sizeTag}.webp`;
     }
 
+    // Update content_json.media reference so public pages can display the image
+    {
+      const bizContent = await pool.query(
+        'SELECT content_json FROM businesses WHERE business_id = $1',
+        [id]
+      );
+      if (bizContent.rows.length > 0) {
+        const content = bizContent.rows[0].content_json || {};
+        const media = content.media || {};
+        if (typeConfig.max_images === 1) {
+          // Single-image types (e.g. logo): store as a slug string
+          media[image_type] = slug;
+        } else {
+          // Multi-image types (e.g. banner, gallery): store as an array
+          const existing = Array.isArray(media[image_type]) ? media[image_type] : [];
+          media[image_type] = [...existing, slug];
+        }
+        content.media = media;
+        await pool.query(
+          `UPDATE businesses
+           SET content_json = $1, content_version = content_version + 1, updated_at = NOW()
+           WHERE business_id = $2`,
+          [JSON.stringify(content), id]
+        );
+      }
+    }
+
     logger.info('Photo uploaded', { businessId: id, imageType: image_type, slug });
 
     res.status(201).json(success({

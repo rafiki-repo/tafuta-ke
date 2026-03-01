@@ -63,6 +63,21 @@ export default function BusinessDetailPage() {
   const contact = content.contact || {};
   const location = content.location || {};
 
+  // PRD-07 media helpers
+  const mediaBase = business.business_tag && business.business_id
+    ? `/media/${business.business_tag}_${business.business_id}`
+    : null;
+  const media = content.media || {};
+  const bannerSlug = Array.isArray(media.banner) ? media.banner[0] : null;
+  const bannerUrl = mediaBase && bannerSlug
+    ? `${mediaBase}/banner/${bannerSlug}_600x200.webp`
+    : null;
+  const logoSlug = typeof media.logo === 'string' ? media.logo : null;
+  const logoUrl = mediaBase && logoSlug
+    ? `${mediaBase}/logo/${logoSlug}_medium.webp`
+    : business.logo_url || null;
+  const gallerySlugs = Array.isArray(media.gallery) ? media.gallery : [];
+
   return (
     <div className="py-8">
       <div className="container-safe">
@@ -72,6 +87,18 @@ export default function BusinessDetailPage() {
             Back to Search
           </Button>
         </Link>
+
+        {/* Banner */}
+        {bannerUrl && (
+          <div className="mb-6 rounded-xl overflow-hidden h-40 sm:h-56">
+            <img
+              src={bannerUrl}
+              alt={`${business.business_name} banner`}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
@@ -96,11 +123,12 @@ export default function BusinessDetailPage() {
                       </Badge>
                     </div>
                   </div>
-                  {business.logo_url && (
+                  {logoUrl && (
                     <img
-                      src={business.logo_url}
+                      src={logoUrl}
                       alt={business.business_name}
-                      className="h-20 w-20 rounded-lg object-cover"
+                      className="h-20 w-20 rounded-lg object-cover shrink-0"
+                      loading="lazy"
                     />
                   )}
                 </div>
@@ -153,6 +181,29 @@ export default function BusinessDetailPage() {
                         Visit Website
                       </Button>
                     </a>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Gallery */}
+            {gallerySlugs.length > 0 && mediaBase && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gallery</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {gallerySlugs.map((slug) => (
+                      <div key={slug} className="aspect-square rounded overflow-hidden bg-muted">
+                        <img
+                          src={`${mediaBase}/gallery/${slug}_thumb.webp`}
+                          alt="Gallery"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

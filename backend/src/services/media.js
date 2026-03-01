@@ -292,6 +292,7 @@ export async function listImagesForType(businessFolder, imageType, appConfig, bu
           name: spec.name,
           source: spec.source,
           uploaded_at: spec.uploaded_at,
+          transform: spec.transform,
           sizes,
         });
       } catch {

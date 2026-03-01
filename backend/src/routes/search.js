@@ -109,9 +109,10 @@ router.get('/', optionalAuth, async (req, res, next) => {
     params.push(offset);
 
     const query = `
-      SELECT 
+      SELECT
         b.business_id,
         b.business_name,
+        b.business_tag,
         b.category,
         b.region,
         b.subdomain,
@@ -141,12 +142,14 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const businesses = result.rows.map(b => ({
       business_id: b.business_id,
       business_name: b.business_name,
+      business_tag: b.business_tag,
       category: b.category,
       region: b.region,
       subdomain: b.subdomain,
       logo_url: b.logo_url,
       verification_tier: b.verification_tier,
       has_active_ads: b.has_active_ads,
+      media: b.content_json?.media || null,
       description: b.content_json?.profile?.en?.description || '',
       phone: b.content_json?.contact?.phone || '',
       created_at: b.created_at,

@@ -172,12 +172,29 @@ export default function SearchPage() {
             ) : (
               <>
                 <div className="space-y-4">
-                  {businesses.map((business) => (
+                  {businesses.map((business) => {
+                    const logoSlug = business.media?.logo;
+                    const logoUrl = logoSlug && business.business_tag
+                      ? `/media/${business.business_tag}_${business.business_id}/logo/${logoSlug}_icon.webp`
+                      : null;
+                    return (
                     <Link key={business.business_id} to={`/business/${business.business_id}`}>
                       <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                         <CardContent className="p-6">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
+                          <div className="flex items-start gap-4 mb-3">
+                            {logoUrl ? (
+                              <img
+                                src={logoUrl}
+                                alt={business.business_name}
+                                className="h-12 w-12 rounded-lg object-cover shrink-0"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0 text-lg font-bold text-muted-foreground">
+                                {business.business_name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
                               <h3 className="text-xl font-semibold mb-2">
                                 {business.business_name}
                               </h3>
@@ -210,7 +227,8 @@ export default function SearchPage() {
                         </CardContent>
                       </Card>
                     </Link>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {pagination.totalPages > 1 && (
