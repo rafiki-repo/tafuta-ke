@@ -85,7 +85,7 @@ if [ -f "package.json" ]; then
     # microarchitecture; building from source works on any CPU. Requires build-essential
     # and python3 (see DEPLOYMENT.md §1).
     echo "Building sharp from source..."
-    npm install --build-from-source sharp 2>&1 | tee -a "$LOG_FILE"
+    npm rebuild sharp --build-from-source 2>&1 | tee -a "$LOG_FILE"
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         fail "Sharp build failed — ensure build-essential and python3 are installed"
     fi
