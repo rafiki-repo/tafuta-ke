@@ -84,7 +84,10 @@ if [ -f "package.json" ]; then
     # Build sharp from source for the server's CPU. Prebuilt binaries require x86-64-v2
     # microarchitecture; building from source works on any CPU. Requires build-essential
     # and python3 (see DEPLOYMENT.md §1).
+    # node-addon-api is required to compile sharp's C++ addon but is not a runtime
+    # dependency. Install it transiently (--no-save) then rebuild.
     echo "Building sharp from source..."
+    npm install --no-save node-addon-api 2>&1 | tee -a "$LOG_FILE"
     npm rebuild sharp --build-from-source 2>&1 | tee -a "$LOG_FILE"
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         fail "Sharp build failed — ensure build-essential and python3 are installed"
