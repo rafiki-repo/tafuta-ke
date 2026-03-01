@@ -68,6 +68,14 @@ export const businessAPI = {
   getUsers: (id) => api.get(`/businesses/${id}/users`),
   addUser: (id, data) => api.post(`/businesses/${id}/users`, data),
   removeUser: (id, userId) => api.delete(`/businesses/${id}/users/${userId}`),
+  // Photo management (PRD-07)
+  uploadPhoto: (id, formData) => api.post(`/businesses/${id}/photos`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  listPhotos: (id) => api.get(`/businesses/${id}/photos`),
+  updatePhotoTransform: (id, slug, data) => api.patch(`/businesses/${id}/photos/${slug}`, data),
+  deletePhoto: (id, slug, imageType) => api.delete(`/businesses/${id}/photos/${slug}`, { data: { image_type: imageType } }),
+  getPhotoConfig: () => api.get('/photos/config'),
 };
 
 // Search API

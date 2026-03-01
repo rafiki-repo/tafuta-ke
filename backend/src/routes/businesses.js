@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { success, error } from '../utils/response.js';
 import { validateRequired, isValidUUID } from '../utils/validation.js';
@@ -8,10 +9,38 @@ import logger from '../utils/logger.js';
 
 const router = express.Router();
 
+// Slugify a string into a valid business_tag (lowercase, letters/numbers/hyphens)
+function slugify(str) {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50);
+}
+
+// Generate a unique business_tag; falls back to UUID-based tag if all candidates are taken
+async function generateUniqueTag(client, businessName, businessId) {
+  const base = slugify(businessName) || 'business';
+  const shortId = businessId.replace(/-/g, '').slice(0, 6);
+
+  // Try base slug alone first
+  let candidate = base;
+  let check = await client.query('SELECT 1 FROM businesses WHERE business_tag = $1', [candidate]);
+  if (check.rows.length === 0) return candidate;
+
+  // Try base + short UUID suffix
+  candidate = `${base.slice(0, 57)}-${shortId}`;
+  check = await client.query('SELECT 1 FROM businesses WHERE business_tag = $1', [candidate]);
+  if (check.rows.length === 0) return candidate;
+
+  // Last resort: just the short UUID (guaranteed unique)
+  return shortId;
+}
+
 // POST /api/businesses - Create new business
 router.post('/', requireAuth, async (req, res, next) => {
   try {
-    const { business_name, category, region, subdomain, content_json } = req.body;
+    const { business_name, category, region, subdomain, content_json, business_tag } = req.body;
 
     const missing = validateRequired(['business_name', 'category', 'region', 'content_json'], req.body);
     if (missing.length > 0) {
@@ -21,6 +50,20 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (typeof content_json !== 'object') {
       return res.status(400).json(error('content_json must be a valid JSON object', 'INVALID_JSON'));
     }
+
+    // Validate business_tag format if provided
+    if (business_tag && !/^[a-z0-9-]+$/.test(business_tag)) {
+      return res.status(400).json(error(
+        'Business tag must contain only lowercase letters, numbers, and hyphens',
+        'INVALID_TAG'
+      ));
+    }
+    if (business_tag && business_tag.length > 64) {
+      return res.status(400).json(error('Business tag must be 64 characters or fewer', 'INVALID_TAG'));
+    }
+
+    // Pre-generate the business UUID so we can use it for the tag
+    const newBusinessId = randomUUID();
 
     const client = await pool.connect();
     try {
@@ -38,12 +81,25 @@ router.post('/', requireAuth, async (req, res, next) => {
         }
       }
 
+      // Determine final business_tag (provided or auto-generated)
+      let finalTag;
+      if (business_tag) {
+        const tagCheck = await client.query('SELECT 1 FROM businesses WHERE business_tag = $1', [business_tag]);
+        if (tagCheck.rows.length > 0) {
+          await client.query('ROLLBACK');
+          return res.status(409).json(error('Business tag already taken', 'TAG_EXISTS'));
+        }
+        finalTag = business_tag;
+      } else {
+        finalTag = await generateUniqueTag(client, business_name, newBusinessId);
+      }
+
       // Create business with pending status
       const businessResult = await client.query(
-        `INSERT INTO businesses (business_name, category, region, subdomain, content_json, status)
-         VALUES ($1, $2, $3, $4, $5, 'pending')
-         RETURNING business_id, business_name, category, region, subdomain, status, content_version, created_at`,
-        [business_name, category, region, subdomain, JSON.stringify(content_json)]
+        `INSERT INTO businesses (business_id, business_name, category, region, subdomain, content_json, status, business_tag)
+         VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
+         RETURNING business_id, business_name, category, region, subdomain, business_tag, status, content_version, created_at`,
+        [newBusinessId, business_name, category, region, subdomain, JSON.stringify(content_json), finalTag]
       );
 
       const business = businessResult.rows[0];
@@ -69,6 +125,7 @@ router.post('/', requireAuth, async (req, res, next) => {
       res.status(201).json(success({
         business_id: business.business_id,
         business_name: business.business_name,
+        business_tag: business.business_tag,
         category: business.category,
         region: business.region,
         subdomain: business.subdomain,
@@ -100,9 +157,9 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     }
 
     const result = await pool.query(
-      `SELECT business_id, business_name, category, region, subdomain, logo_url, 
+      `SELECT business_id, business_name, business_tag, category, region, subdomain, logo_url,
               verification_tier, status, content_json, content_version, created_at, updated_at
-       FROM businesses 
+       FROM businesses
        WHERE business_id = $1`,
       [id]
     );
@@ -153,7 +210,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 router.patch('/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { content_json, change_summary } = req.body;
+    const { content_json, change_summary, business_tag } = req.body;
 
     if (!isValidUUID(id)) {
       return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
@@ -161,6 +218,16 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
 
     if (!content_json || typeof content_json !== 'object') {
       return res.status(400).json(error('content_json is required and must be a valid JSON object', 'INVALID_JSON'));
+    }
+
+    // Validate business_tag format if provided
+    if (business_tag !== undefined) {
+      if (!/^[a-z0-9-]+$/.test(business_tag) || business_tag.length > 64) {
+        return res.status(400).json(error(
+          'Business tag must contain only lowercase letters, numbers, and hyphens (max 64 chars)',
+          'INVALID_TAG'
+        ));
+      }
     }
 
     // Check permission (employee or higher); admins can bypass
@@ -175,7 +242,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
 
       // Get current business data
       const currentResult = await client.query(
-        `SELECT business_id, content_json, content_version, business_name, category, region, status
+        `SELECT business_id, content_json, content_version, business_name, business_tag, category, region, status
          FROM businesses WHERE business_id = $1`,
         [id]
       );
@@ -190,6 +257,18 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       if (currentBusiness.status === 'deleted') {
         await client.query('ROLLBACK');
         return res.status(403).json(error('Cannot edit deleted business', 'BUSINESS_DELETED'));
+      }
+
+      // Check business_tag uniqueness if it is being changed
+      if (business_tag !== undefined && business_tag !== currentBusiness.business_tag) {
+        const tagCheck = await client.query(
+          'SELECT 1 FROM businesses WHERE business_tag = $1 AND business_id != $2',
+          [business_tag, id]
+        );
+        if (tagCheck.rows.length > 0) {
+          await client.query('ROLLBACK');
+          return res.status(409).json(error('Business tag already taken', 'TAG_EXISTS'));
+        }
       }
 
       // Save current version to history
@@ -211,18 +290,26 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       const category = content_json.profile?.en?.category || currentBusiness.category;
       const region = content_json.location?.region || currentBusiness.region;
 
-      // Update business with new content
+      // Build UPDATE query; conditionally include business_tag
+      const params = [JSON.stringify(content_json), businessName, category, region];
+      let tagClause = '';
+      if (business_tag !== undefined && business_tag !== currentBusiness.business_tag) {
+        params.push(business_tag);
+        tagClause = `, business_tag = $${params.length}`;
+      }
+      params.push(id);
+
       const updateResult = await client.query(
-        `UPDATE businesses 
-         SET content_json = $1, 
+        `UPDATE businesses
+         SET content_json = $1,
              content_version = content_version + 1,
              business_name = $2,
              category = $3,
-             region = $4,
+             region = $4${tagClause},
              updated_at = NOW()
-         WHERE business_id = $5
-         RETURNING business_id, business_name, category, region, content_version, updated_at`,
-        [JSON.stringify(content_json), businessName, category, region, id]
+         WHERE business_id = $${params.length}
+         RETURNING business_id, business_name, business_tag, category, region, content_version, updated_at`,
+        params
       );
 
       await client.query('COMMIT');
@@ -238,6 +325,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       res.json(success({
         business_id: updatedBusiness.business_id,
         business_name: updatedBusiness.business_name,
+        business_tag: updatedBusiness.business_tag,
         content_version: updatedBusiness.content_version,
         updated_at: updatedBusiness.updated_at,
       }, 'Business updated successfully'));
