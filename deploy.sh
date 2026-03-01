@@ -77,9 +77,16 @@ pm2 stop tafuta-backend 2>&1 | tee -a "$LOG_FILE" || true
 cd "$DEPLOY_DIR/backend"
 if [ -f "package.json" ]; then
     echo "Installing backend dependencies..."
-    npm ci --production 2>&1 | tee -a "$LOG_FILE"
+    npm ci --omit=dev 2>&1 | tee -a "$LOG_FILE"
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         fail "Backend npm install failed"
+    fi
+    # Reinstall sharp for the server's linux-x64 platform. package-lock.json is generated
+    # on Windows so npm ci picks up the wrong platform's prebuilt binaries.
+    echo "Installing sharp for linux-x64..."
+    npm install --include=optional sharp 2>&1 | tee -a "$LOG_FILE"
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        fail "Sharp install failed"
     fi
 fi
 
