@@ -158,7 +158,7 @@ router.post('/businesses/:id/photos', requireAuth, upload.single('file'), async 
       ));
     }
 
-    const businessFolder = getBusinessFolder(business_tag, id);
+    const businessFolder = getBusinessFolder(business_tag);
     const typeConfig = appConfig.image_types[image_type];
 
     // Check max_images limit
@@ -200,7 +200,7 @@ router.post('/businesses/:id/photos', requireAuth, upload.single('file'), async 
       const webpBuffer = await processImage(req.file.buffer, transform, sizeConfig);
       const webpPath = path.join(businessFolder, image_type, `${slug}_${sizeTag}.webp`);
       await fs.writeFile(webpPath, webpBuffer);
-      sizes[sizeTag] = `/media/${business_tag}_${id}/${image_type}/${slug}_${sizeTag}.webp`;
+      sizes[sizeTag] = `/media/${business_tag}/${image_type}/${slug}_${sizeTag}.webp`;
     }
 
     // Update content_json.media reference so public pages can display the image
@@ -272,12 +272,12 @@ router.get('/businesses/:id/photos', requireAuth, async (req, res, next) => {
     const { business_tag } = bizResult.rows[0];
 
     const appConfig = await readAppConfig();
-    const businessFolder = getBusinessFolder(business_tag, id);
+    const businessFolder = getBusinessFolder(business_tag);
 
     const result = {};
     for (const imageType of Object.keys(appConfig.image_types)) {
       result[imageType] = await listImagesForType(
-        businessFolder, imageType, appConfig, business_tag, id
+        businessFolder, imageType, appConfig, business_tag
       );
     }
 
@@ -325,7 +325,7 @@ router.patch('/businesses/:id/photos/:slug', requireAuth, async (req, res, next)
       return res.status(400).json(error(`Unknown image type: ${image_type}`, 'INVALID_IMAGE_TYPE'));
     }
 
-    const businessFolder = getBusinessFolder(business_tag, id);
+    const businessFolder = getBusinessFolder(business_tag);
 
     // Load existing spec (confirms the image exists)
     let existingSpec;
@@ -357,7 +357,7 @@ router.patch('/businesses/:id/photos/:slug', requireAuth, async (req, res, next)
     for (const [sizeTag, sizeConfig] of Object.entries(typeConfig.sizes)) {
       const webpBuffer = await processImage(sourceBuffer, transform, sizeConfig);
       await fs.writeFile(path.join(typeFolder, `${slug}_${sizeTag}.webp`), webpBuffer);
-      sizes[sizeTag] = `/media/${business_tag}_${id}/${image_type}/${slug}_${sizeTag}.webp`;
+      sizes[sizeTag] = `/media/${business_tag}/${image_type}/${slug}_${sizeTag}.webp`;
     }
 
     logger.info('Photo transform updated', { businessId: id, imageType: image_type, slug });
@@ -405,7 +405,7 @@ router.delete('/businesses/:id/photos/:slug', requireAuth, async (req, res, next
     }
     const { business_tag, content_json } = bizResult.rows[0];
 
-    const businessFolder = getBusinessFolder(business_tag, id);
+    const businessFolder = getBusinessFolder(business_tag);
 
     // Read spec to confirm existence and get source filename
     let spec;

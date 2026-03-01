@@ -64,8 +64,8 @@ export default function BusinessDetailPage() {
   const location = content.location || {};
 
   // PRD-07 media helpers
-  const mediaBase = business.business_tag && business.business_id
-    ? `/media/${business.business_tag}_${business.business_id}`
+  const mediaBase = business.business_tag
+    ? `/media/${business.business_tag}`
     : null;
   const media = content.media || {};
   const bannerSlug = Array.isArray(media.banner) ? media.banner[0] : null;

@@ -36,20 +36,20 @@ The `business_tag` is a short, human-readable slug that identifies a business in
 
 ### Folder Naming
 
-The business media folder is named by combining `business_tag` and `business_id` (UUID):
+The business media folder is named after the `business_tag` only (which is unique across all businesses):
 
 ```
-{business_tag}_{uuid}
+{business_tag}
 ```
 
-Example: `daniels-salon_550e8400-e29b-41d4-a716-446655440000`
+Example: `daniels-salon`
 
 ### Renaming
 
 If the `business_tag` is updated, the media folder on disk must be renamed:
 
 ```
-old-tag_{uuid}  →  new-tag_{uuid}
+old-tag  →  new-tag
 ```
 
 The system renames the folder atomically and refuses if a rename is already in progress. `content_json` image references are unaffected (they store only image name-tags, not the folder path). However, any external URLs pointing to the old folder path will break — the owner is warned before confirming a rename.
@@ -157,7 +157,7 @@ Size-tag keys (e.g., `icon`, `300x100`, `thumb`) appear in output filenames and 
 ```
 /var/www/tafuta/media/
 ├── app-config.jfx
-└── {business_tag}_{uuid}/                  e.g. daniels-salon_550e8400-...
+└── {business_tag}/                         e.g. daniels-salon
     │
     ├── city-view.jpg                       ← uploaded source files (original format)
     ├── cover-banner.gif
@@ -402,7 +402,7 @@ handle /media/* {
 
 **URL format:**
 ```
-https://tafuta.ke/media/{business_tag}_{uuid}/{type}/{slug}_{size-tag}.webp
+https://tafuta.ke/media/{business_tag}/{type}/{slug}_{size-tag}.webp
 ```
 
 **Examples:**
@@ -417,7 +417,7 @@ https://tafuta.ke/media/daniels-salon_550e8400-.../gallery/product-1_thumb.webp
 
 ## 12. Referencing Images in `content_json`
 
-`content_json` stores only the **image name-tag** (slug), not the full URL or path. The system constructs the full URL at render time from: business `business_tag`, `business_id`, the render context (image type), and the required size for that context.
+`content_json` stores only the **image name-tag** (slug), not the full URL or path. The system constructs the full URL at render time from: business `business_tag`, the render context (image type), and the required size for that context.
 
 **In `content_json`:**
 ```json
@@ -434,7 +434,7 @@ https://tafuta.ke/media/daniels-salon_550e8400-.../gallery/product-1_thumb.webp
 **URL resolution at render time:**
 ```
 "city-view"  +  type "profile"  +  size "large"
-  →  /media/daniels-salon_{uuid}/profile/city-view_large.webp
+  →  /media/daniels-salon/profile/city-view_large.webp
 ```
 
 Because `content_json` stores only name-tags, renaming a `business_tag` (and its folder) does not require updating `content_json`.

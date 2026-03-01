@@ -277,8 +277,8 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       // Rename media folder on disk if the tag is changing (do this before DB update
       // so a rename failure aborts the request without mutating the database).
       if (tagChanging) {
-        const oldFolder = getBusinessFolder(currentBusiness.business_tag, id);
-        const newFolder = getBusinessFolder(business_tag, id);
+        const oldFolder = getBusinessFolder(currentBusiness.business_tag);
+        const newFolder = getBusinessFolder(business_tag);
         try {
           await fs.access(oldFolder); // only rename if the folder actually exists
           await fs.rename(oldFolder, newFolder);

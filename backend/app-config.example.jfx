@@ -15,7 +15,7 @@
 
     logo: {
       label: "Business Logo",
-      max_images: 3, /* can have 3 on the server but user selects 1 */
+      max_images: 1,
       sizes: {
         icon:   { width: 64,   height: 64  },
         small:  { width: 128,  height: 128 },

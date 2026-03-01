@@ -193,7 +193,7 @@ See PRD-01 and PRD-02 for detailed schema.
 - **SSL certificates**: handled by Caddy (details in PRD-06)
 - **Images**: uploaded through config panel; stored at `/var/www/tafuta/media/`; served directly by Caddy (Node.js is not in the read path); accepted formats: JPEG, PNG, GIF, WebP; no videos in MVP
 - **Image transformation**: each upload is processed by the backend (sharp) and saved as WebP in multiple sizes per image type; transform parameters are stored in per-image `.jfx` files; full spec in PRD-07
-- **Business tag (`business_tag`)**: each business has a human-readable slug (e.g., `daniels-salon`) used as the media folder name in combination with the business UUID; separate from `subdomain`; see PRD-07
+- **Business tag (`business_tag`)**: each business has a human-readable slug (e.g., `daniels-salon`) used as the media folder name (tag is unique, no UUID suffix needed); separate from `subdomain`; see PRD-07
 - **Contact forms**: not included in MVP
 - **Basic template**: does not include product/image gallery in the free tier
 - **Image gallery service**: businesses with the image gallery service can include up to 50 gallery images in their business profile

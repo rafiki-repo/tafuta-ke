@@ -87,7 +87,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 
 /var/www/tafuta/media/              # Business media (separate from app files)
 ├── app-config.jfx           # Image type/size configuration (managed by Tafuta staff)
-└── {business_tag}_{uuid}/   # One folder per business (e.g. daniels-salon_550e8400-...)
+└── {business_tag}/          # One folder per business (e.g. daniels-salon)
     ├── {source-file}.jpg/png/gif/webp   # Original uploaded files
     ├── logo/            # Generated logo WebP outputs + .jfx specs
     ├── banner/          # Generated banner WebP outputs + .jfx specs

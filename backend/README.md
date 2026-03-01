@@ -140,7 +140,7 @@ Business photos are uploaded through the API and stored on the VPS filesystem. C
 ```
 /var/www/tafuta/media/
 ├── app-config.jfx                  ← image type config (staff-managed)
-└── {business_tag}_{business_id}/   ← one folder per business
+└── {business_tag}/                 ← one folder per business (tag is unique)
     ├── {slug}.{ext}                 ← original source file
     ├── logo/
     │   ├── {slug}.jfx              ← transform spec

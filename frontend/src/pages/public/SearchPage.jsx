@@ -175,7 +175,7 @@ export default function SearchPage() {
                   {businesses.map((business) => {
                     const logoSlug = business.media?.logo;
                     const logoUrl = logoSlug && business.business_tag
-                      ? `/media/${business.business_tag}_${business.business_id}/logo/${logoSlug}_icon.webp`
+                      ? `/media/${business.business_tag}/logo/${logoSlug}_icon.webp`
                       : null;
                     return (
                     <Link key={business.business_id} to={`/business/${business.business_id}`}>

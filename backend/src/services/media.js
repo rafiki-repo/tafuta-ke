@@ -83,10 +83,10 @@ export function invalidateAppConfigCache() {
 
 /**
  * Returns the absolute path to a business's media folder.
- * e.g. /var/www/media/daniels-salon_550e8400-e29b-41d4-a716-446655440000
+ * e.g. /var/www/media/daniels-salon
  */
-export function getBusinessFolder(businessTag, businessId) {
-  return path.join(config.media.path, `${businessTag}_${businessId}`);
+export function getBusinessFolder(businessTag) {
+  return path.join(config.media.path, businessTag);
 }
 
 // ---------------------------------------------------------------------------
@@ -270,7 +270,7 @@ export async function countImages(businessFolder, imageType) {
  * List all images for a given type. Returns an array of:
  *   { slug, name, source, uploaded_at, sizes: { sizeTag: '/media/...' } }
  */
-export async function listImagesForType(businessFolder, imageType, appConfig, businessTag, businessId) {
+export async function listImagesForType(businessFolder, imageType, appConfig, businessTag) {
   const typeFolder = path.join(businessFolder, imageType);
   const imageSizes = appConfig.image_types[imageType]?.sizes ?? {};
 
@@ -285,7 +285,7 @@ export async function listImagesForType(businessFolder, imageType, appConfig, bu
         const spec = await readTransformSpec(businessFolder, imageType, slug);
         const sizes = {};
         for (const sizeTag of Object.keys(imageSizes)) {
-          sizes[sizeTag] = `/media/${businessTag}_${businessId}/${imageType}/${slug}_${sizeTag}.webp`;
+          sizes[sizeTag] = `/media/${businessTag}/${imageType}/${slug}_${sizeTag}.webp`;
         }
         results.push({
           slug,
