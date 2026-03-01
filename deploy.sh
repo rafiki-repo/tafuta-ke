@@ -105,10 +105,13 @@ if [ -f "package.json" ]; then
     fi
 fi
 
-# 8. Start backend fresh from ecosystem config (not restart — fully recreates cluster state)
+# 8. Delete old PM2 entries and start fresh — pm2 start reuses existing entries if they
+#    exist (just restarts them), which preserves corrupted cluster TCP state. Delete first
+#    to force PM2 to create brand-new process entries with a clean cluster socket.
 echo "Starting backend..."
 cd "$DEPLOY_DIR/backend"
-pm2 start ecosystem.config.cjs --update-env 2>&1 | tee -a "$LOG_FILE"
+pm2 delete tafuta-backend 2>&1 | tee -a "$LOG_FILE" || true
+pm2 start ecosystem.config.cjs 2>&1 | tee -a "$LOG_FILE"
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
     fail "PM2 start failed"
 fi
