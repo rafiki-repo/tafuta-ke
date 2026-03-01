@@ -74,14 +74,9 @@ app.use(session({
 // Rate limiting
 app.use('/api', generalLimiter);
 
-// Health check endpoint
+// Health check endpoint — no auth required
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: config.env,
-  });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // API routes
