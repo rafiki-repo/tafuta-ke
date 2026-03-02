@@ -130,7 +130,7 @@ function Modal({ title, onClose, children }) {
 // ImageManager
 // ---------------------------------------------------------------------------
 
-export default function ImageManager({ businessId, canDelete = true }) {
+export default function ImageManager({ businessId, businessTag, canDelete = true }) {
   const [config, setConfig] = useState(null);
   const [images, setImages] = useState({});
   const [activeType, setActiveType] = useState('logo');
@@ -252,7 +252,7 @@ export default function ImageManager({ businessId, canDelete = true }) {
     setEditImage({
       slug: image.slug,
       imageType: activeType,
-      imageUrl: thumbUrl(image),
+      imageUrl: businessTag ? `/media/${businessTag}/${image.source}` : thumbUrl(image),
       name: image.name,
     });
     setEditTransform({ ...DEFAULT_TRANSFORM, ...(image.transform || {}) });

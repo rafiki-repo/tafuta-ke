@@ -560,6 +560,7 @@ export default function BusinessEditor() {
             <CardContent>
               <ImageManager
                 businessId={id}
+                businessTag={formData.businessTag}
                 canDelete={
                   isAdmin() ||
                   ['owner', 'admin'].includes(currentBusiness?.user_role)
