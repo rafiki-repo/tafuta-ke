@@ -18,12 +18,6 @@ sudo apt update && sudo apt upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# Install build tools — required to compile sharp from source.
-# sharp's prebuilt binaries require x86-64-v2 microarchitecture (AVX2); older server
-# CPUs (common on budget VPS) do not meet this requirement, so deploy.sh builds sharp
-# from source on every deploy. Without these tools the backend will fail to start.
-sudo apt install -y build-essential python3
-
 # Install PostgreSQL 15
 sudo apt install -y postgresql postgresql-contrib
 
