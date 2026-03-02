@@ -74,9 +74,9 @@ function TransformSliders({ transform, onChange }) {
         </button>
       </div>
 
-      <SliderRow label="Zoom" min={1} max={5} step={0.1} value={transform.zoom} onChange={(v) => update('zoom', v)} />
-      <SliderRow label="Offset X" min={-200} max={200} step={1} value={transform.offset_x} onChange={(v) => update('offset_x', v)} />
-      <SliderRow label="Offset Y" min={-200} max={200} step={1} value={transform.offset_y} onChange={(v) => update('offset_y', v)} />
+      <SliderRow label="Zoom" min={0.25} max={4} step={0.05} value={transform.zoom} onChange={(v) => update('zoom', v)} />
+      <SliderRow label="Offset X" min={-50} max={50} step={1} value={transform.offset_x} onChange={(v) => update('offset_x', v)} />
+      <SliderRow label="Offset Y" min={-50} max={50} step={1} value={transform.offset_y} onChange={(v) => update('offset_y', v)} />
       <SliderRow label="Rotation" min={-180} max={180} step={1} value={transform.rotation} onChange={(v) => update('rotation', v)} />
       <SliderRow label="Brightness" min={-1} max={1} step={0.05} value={transform.brightness} onChange={(v) => update('brightness', v)} />
       <SliderRow label="Contrast" min={-1} max={1} step={0.05} value={transform.contrast} onChange={(v) => update('contrast', v)} />

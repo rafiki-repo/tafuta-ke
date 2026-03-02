@@ -74,15 +74,15 @@ export default function ImageTransformPreview({
     if (flip_horizontal) ctx.scale(-1, 1);
     if (flip_vertical) ctx.scale(1, -1);
 
-    // Scale image to cover the canvas, then apply zoom
-    const scaleToFit = Math.max(w / img.naturalWidth, h / img.naturalHeight);
-    const effectiveScale = scaleToFit * Math.max(1, zoom);
+    // Base zoom makes image width === canvas width; slider is a multiplier on top of that
+    const baseZoom = w / img.naturalWidth;
+    const effectiveScale = baseZoom * zoom;
     const drawW = img.naturalWidth * effectiveScale;
     const drawH = img.naturalHeight * effectiveScale;
 
-    // offset_x/y are in target-image pixels; translate proportionally in canvas space
-    const oX = (offset_x / targetWidth) * w;
-    const oY = (offset_y / targetHeight) * h;
+    // offset_x/y are percentages (-50..+50) of canvas dimensions
+    const oX = (offset_x / 100) * w;
+    const oY = (offset_y / 100) * h;
     ctx.translate(oX, oY);
 
     ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);

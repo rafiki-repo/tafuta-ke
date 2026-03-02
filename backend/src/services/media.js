@@ -193,15 +193,18 @@ export async function processImage(sourceBuffer, transform, targetSize) {
   if (flip_horizontal) img = img.flop(); // mirror left–right
   if (flip_vertical) img = img.flip();   // mirror top–bottom
 
-  // 5. Zoom: resize so the zoomed image fully covers the target dimensions.
-  const safeZoom = Math.max(1.0, zoom);
-  const zoomedW = Math.round(targetW * safeZoom);
-  const zoomedH = Math.round(targetH * safeZoom);
-  img = img.resize(zoomedW, zoomedH, { fit: 'cover', position: 'centre' });
+  // 5. Zoom: base scale makes source width === targetW; slider value is a multiplier.
+  const meta = await sharp(sourceBuffer).metadata();
+  const baseZoom = targetW / meta.width;
+  const effectiveZoom = baseZoom * Math.max(0.25, zoom);
+  const zoomedW = Math.round(meta.width * effectiveZoom);
+  const zoomedH = Math.round(meta.height * effectiveZoom);
+  img = img.resize(zoomedW, zoomedH);
 
   // 6. Extract the target region, centred on the zoomed image + offset.
-  let cropLeft = Math.round((zoomedW - targetW) / 2 + offset_x);
-  let cropTop = Math.round((zoomedH - targetH) / 2 + offset_y);
+  // offset_x/y are percentages (-50..+50) of target dimensions.
+  let cropLeft = Math.round((zoomedW - targetW) / 2 + (offset_x / 100) * targetW);
+  let cropTop = Math.round((zoomedH - targetH) / 2 + (offset_y / 100) * targetH);
   cropLeft = Math.max(0, Math.min(cropLeft, zoomedW - targetW));
   cropTop = Math.max(0, Math.min(cropTop, zoomedH - targetH));
   img = img.extract({ left: cropLeft, top: cropTop, width: targetW, height: targetH });
