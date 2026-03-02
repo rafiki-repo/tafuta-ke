@@ -203,8 +203,8 @@ export async function processImage(sourceBuffer, transform, targetSize) {
 
   // 6. Extract the target region, centred on the zoomed image + offset.
   // offset_x/y are percentages (-50..+50) of target dimensions.
-  let cropLeft = Math.round((zoomedW - targetW) / 2 + (offset_x / 100) * targetW);
-  let cropTop = Math.round((zoomedH - targetH) / 2 + (offset_y / 100) * targetH);
+  let cropLeft = Math.round((zoomedW - targetW) / 2 - (offset_x / 100) * targetW);
+  let cropTop = Math.round((zoomedH - targetH) / 2 - (offset_y / 100) * targetH);
   cropLeft = Math.max(0, Math.min(cropLeft, zoomedW - targetW));
   cropTop = Math.max(0, Math.min(cropTop, zoomedH - targetH));
   img = img.extract({ left: cropLeft, top: cropTop, width: targetW, height: targetH });
