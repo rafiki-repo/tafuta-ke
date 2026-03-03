@@ -320,6 +320,12 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
         ]
       );
 
+      // Preserve media block — photo endpoints manage this separately and it must
+      // not be wiped when the business form is saved without a media field.
+      if (!content_json.media && currentBusiness.content_json?.media) {
+        content_json.media = currentBusiness.content_json.media;
+      }
+
       // Extract indexed fields from content_json
       const businessName = content_json.profile?.en?.business_name || currentBusiness.business_name;
       const category = content_json.profile?.en?.category || currentBusiness.category;

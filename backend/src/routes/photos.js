@@ -383,8 +383,9 @@ router.patch('/businesses/:id/photos/:imageType/primary', requireAuth, async (re
     if (!isValidUUID(id)) {
       return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
     }
-    if (!slug) {
-      return res.status(400).json(error('slug is required', 'VALIDATION_ERROR'));
+    // slug may be null to clear the primary; undefined means caller forgot the field entirely
+    if (slug === undefined) {
+      return res.status(400).json(error('slug is required (pass null to clear)', 'VALIDATION_ERROR'));
     }
 
     const { hasPermission } = await checkBusinessPermission(req.user.userId, id, 'employee');
@@ -406,17 +407,19 @@ router.patch('/businesses/:id/photos/:imageType/primary', requireAuth, async (re
     }
     const { business_tag, content_json } = bizResult.rows[0];
 
-    // Confirm the slug actually exists on disk
+    // Confirm the slug exists on disk (skip when clearing)
     const businessFolder = getBusinessFolder(business_tag);
-    try {
-      await readTransformSpec(businessFolder, imageType, slug);
-    } catch {
-      return res.status(404).json(error('Image not found', 'NOT_FOUND'));
+    if (slug) {
+      try {
+        await readTransformSpec(businessFolder, imageType, slug);
+      } catch {
+        return res.status(404).json(error('Image not found', 'NOT_FOUND'));
+      }
     }
 
     const content = content_json || {};
     content.media = content.media || {};
-    content.media[imageType] = slug;
+    content.media[imageType] = slug || null;
 
     await pool.query(
       `UPDATE businesses

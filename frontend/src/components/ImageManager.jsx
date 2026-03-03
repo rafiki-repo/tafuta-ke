@@ -288,11 +288,13 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
   // ---------------------------------------------------------------------------
 
   const handleSetPrimary = async (slug) => {
+    const isCurrentPrimary = primarySlugs[activeType] === slug;
+    const newSlug = isCurrentPrimary ? null : slug;
     try {
-      await businessAPI.setPrimaryPhoto(businessId, activeType, slug);
-      setPrimarySlugs(prev => ({ ...prev, [activeType]: slug }));
+      await businessAPI.setPrimaryPhoto(businessId, activeType, newSlug);
+      setPrimarySlugs(prev => ({ ...prev, [activeType]: newSlug }));
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to set primary image.');
+      setError(err.response?.data?.message || 'Failed to update primary image.');
     }
   };
 
@@ -436,7 +438,7 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
                       type="button"
                       variant="ghost"
                       size="sm"
-                      title={primarySlugs[activeType] === image.slug ? 'Primary image' : 'Set as primary'}
+                      title={primarySlugs[activeType] === image.slug ? 'Primary — click to unset' : 'Set as primary'}
                       onClick={() => handleSetPrimary(image.slug)}
                       className={primarySlugs[activeType] === image.slug ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground hover:text-foreground'}
                     >
