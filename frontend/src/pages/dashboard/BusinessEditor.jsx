@@ -68,6 +68,8 @@ export default function BusinessEditor() {
     category: '',
     region: '',
     subdomain: '',
+    websiteType: 'none',
+    websiteUrl: '',
     tagline: '',
     description: '',
     phone: '',
@@ -123,6 +125,12 @@ export default function BusinessEditor() {
         category: business.category || '',
         region: business.region || '',
         subdomain: business.subdomain || '',
+        websiteType: business.subdomain
+          ? 'tafuta'
+          : c.contact?.website
+            ? 'external'
+            : 'none',
+        websiteUrl: c.contact?.website || '',
         tagline: c.profile?.en?.tagline || '',
         description: c.profile?.en?.description || '',
         phone: c.contact?.phone || '',
@@ -169,6 +177,9 @@ export default function BusinessEditor() {
       phone: formData.phone,
       email: formData.email,
       whatsapp: formData.whatsapp,
+      ...(formData.websiteType === 'external' && formData.websiteUrl
+        ? { website: formData.websiteUrl }
+        : {}),
     },
     location: {
       city: formData.city,
@@ -209,6 +220,7 @@ export default function BusinessEditor() {
           content_json,
           change_summary: changeSummary || 'Business details updated',
           business_tag: formData.businessTag || undefined,
+          subdomain: formData.websiteType === 'tafuta' ? (formData.subdomain || undefined) : '',
         });
         setSuccess(true);
         setChangeSummary('');
@@ -387,26 +399,6 @@ export default function BusinessEditor() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Subdomain</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={formData.subdomain}
-                    onChange={e =>
-                      handleChange('subdomain', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
-                    }
-                    placeholder="e.g. mamawanjiku"
-                    className="flex-1"
-                  />
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    .{formData.region ? formData.region.toLowerCase() : 'region'}.tafuta.ke
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Optional. Required for website hosting. Lowercase letters, numbers, and hyphens only.
-                </p>
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium mb-1">Business Tag</label>
                 <Input
                   value={formData.businessTag}
@@ -464,6 +456,88 @@ export default function BusinessEditor() {
                 <p className="text-xs text-muted-foreground mt-1">
                   The number customers can WhatsApp to contact you.
                 </p>
+              </div>
+
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium mb-3">Website</label>
+                <div className="space-y-4">
+                  {/* Option 1: None */}
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="websiteType"
+                      value="none"
+                      checked={formData.websiteType === 'none'}
+                      onChange={() => handleChange('websiteType', 'none')}
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <div>
+                      <div className="text-sm font-medium">No website link</div>
+                      <div className="text-xs text-muted-foreground">Directory listing shows contact details only</div>
+                    </div>
+                  </label>
+
+                  {/* Option 2: Tafuta-hosted */}
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="websiteType"
+                      value="tafuta"
+                      checked={formData.websiteType === 'tafuta'}
+                      onChange={() => handleChange('websiteType', 'tafuta')}
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">
+                        Tafuta-hosted page
+                        <span className="ml-2 text-xs font-normal text-amber-600">Paid feature</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-2">
+                        We host a one-page website for you at a tafuta.ke address
+                      </div>
+                      {formData.websiteType === 'tafuta' && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={formData.subdomain}
+                            onChange={e =>
+                              handleChange('subdomain', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
+                            }
+                            placeholder="e.g. mamawanjiku"
+                            className="flex-1 h-8 text-sm"
+                          />
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">.tafuta.ke</span>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* Option 3: External URL */}
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="websiteType"
+                      value="external"
+                      checked={formData.websiteType === 'external'}
+                      onChange={() => handleChange('websiteType', 'external')}
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">External website</div>
+                      <div className="text-xs text-muted-foreground mb-2">
+                        Link to your own website
+                      </div>
+                      {formData.websiteType === 'external' && (
+                        <Input
+                          type="url"
+                          value={formData.websiteUrl}
+                          onChange={e => handleChange('websiteUrl', e.target.value)}
+                          placeholder="https://www.mywebsite.com"
+                          className="h-8 text-sm"
+                        />
+                      )}
+                    </div>
+                  </label>
+                </div>
               </div>
             </CardContent>
           </Card>

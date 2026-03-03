@@ -212,7 +212,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 router.patch('/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { content_json, change_summary, business_tag } = req.body;
+    const { content_json, change_summary, business_tag, subdomain } = req.body;
 
     if (!isValidUUID(id)) {
       return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
@@ -244,7 +244,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
 
       // Get current business data
       const currentResult = await client.query(
-        `SELECT business_id, content_json, content_version, business_name, business_tag, category, region, status
+        `SELECT business_id, content_json, content_version, business_name, business_tag, category, region, status, subdomain
          FROM businesses WHERE business_id = $1`,
         [id]
       );
@@ -293,6 +293,19 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
         }
       }
 
+      // Check subdomain uniqueness if it is being set or changed
+      const subdomainChanging = subdomain !== undefined && subdomain !== currentBusiness.subdomain;
+      if (subdomainChanging && subdomain !== '') {
+        const subdomainCheck = await client.query(
+          'SELECT 1 FROM businesses WHERE subdomain = $1 AND business_id != $2',
+          [subdomain, id]
+        );
+        if (subdomainCheck.rows.length > 0) {
+          await client.query('ROLLBACK');
+          return res.status(409).json(error('Subdomain already taken', 'SUBDOMAIN_EXISTS'));
+        }
+      }
+
       // Save current version to history
       await client.query(
         `INSERT INTO business_content_history (business_id, content_json, content_version, changed_by, change_type, change_summary)
@@ -312,12 +325,16 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       const category = content_json.profile?.en?.category || currentBusiness.category;
       const region = content_json.location?.region || currentBusiness.region;
 
-      // Build UPDATE query; conditionally include business_tag
+      // Build UPDATE query; conditionally include business_tag and subdomain
       const params = [JSON.stringify(content_json), businessName, category, region];
-      let tagClause = '';
+      let extraClauses = '';
       if (business_tag !== undefined && business_tag !== currentBusiness.business_tag) {
         params.push(business_tag);
-        tagClause = `, business_tag = $${params.length}`;
+        extraClauses += `, business_tag = $${params.length}`;
+      }
+      if (subdomain !== undefined) {
+        params.push(subdomain || null);
+        extraClauses += `, subdomain = $${params.length}`;
       }
       params.push(id);
 
@@ -327,10 +344,10 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
              content_version = content_version + 1,
              business_name = $2,
              category = $3,
-             region = $4${tagClause},
+             region = $4${extraClauses},
              updated_at = NOW()
          WHERE business_id = $${params.length}
-         RETURNING business_id, business_name, business_tag, category, region, content_version, updated_at`,
+         RETURNING business_id, business_name, business_tag, category, region, subdomain, content_version, updated_at`,
         params
       );
 
