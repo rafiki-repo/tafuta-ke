@@ -75,6 +75,7 @@ export const businessAPI = {
   listPhotos: (id) => api.get(`/businesses/${id}/photos`),
   updatePhotoTransform: (id, slug, data) => api.patch(`/businesses/${id}/photos/${slug}`, data),
   deletePhoto: (id, slug, imageType) => api.delete(`/businesses/${id}/photos/${slug}`, { data: { image_type: imageType } }),
+  setPrimaryPhoto: (id, imageType, slug) => api.patch(`/businesses/${id}/photos/${imageType}/primary`, { slug }),
   getPhotoConfig: () => api.get('/photos/config'),
 };
 

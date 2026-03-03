@@ -212,13 +212,9 @@ router.post('/businesses/:id/photos', requireAuth, upload.single('file'), async 
       if (bizContent.rows.length > 0) {
         const content = bizContent.rows[0].content_json || {};
         const media = content.media || {};
-        if (typeConfig.max_images === 1) {
-          // Single-image types (e.g. logo): store as a slug string
+        // Only set primary if not already chosen; user can change via "Set as Primary"
+        if (!media[image_type]) {
           media[image_type] = slug;
-        } else {
-          // Multi-image types (e.g. banner, gallery): store as an array
-          const existing = Array.isArray(media[image_type]) ? media[image_type] : [];
-          media[image_type] = [...existing, slug];
         }
         content.media = media;
         await pool.query(
@@ -263,13 +259,13 @@ router.get('/businesses/:id/photos', requireAuth, async (req, res, next) => {
     }
 
     const bizResult = await pool.query(
-      'SELECT business_tag FROM businesses WHERE business_id = $1',
+      'SELECT business_tag, content_json FROM businesses WHERE business_id = $1',
       [id]
     );
     if (bizResult.rows.length === 0) {
       return res.status(404).json(error('Business not found', 'NOT_FOUND'));
     }
-    const { business_tag } = bizResult.rows[0];
+    const { business_tag, content_json } = bizResult.rows[0];
 
     const appConfig = await readAppConfig();
     const businessFolder = getBusinessFolder(business_tag);
@@ -280,6 +276,7 @@ router.get('/businesses/:id/photos', requireAuth, async (req, res, next) => {
         businessFolder, imageType, appConfig, business_tag
       );
     }
+    result._primary = content_json?.media || {};
 
     res.json(success(result));
 
@@ -368,6 +365,68 @@ router.patch('/businesses/:id/photos/:slug', requireAuth, async (req, res, next)
       name: updatedSpec.name,
       sizes,
     }, 'Photo transform updated successfully'));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/businesses/:id/photos/:imageType/primary — Set primary image
+// ---------------------------------------------------------------------------
+
+router.patch('/businesses/:id/photos/:imageType/primary', requireAuth, async (req, res, next) => {
+  try {
+    const { id, imageType } = req.params;
+    const { slug } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    }
+    if (!slug) {
+      return res.status(400).json(error('slug is required', 'VALIDATION_ERROR'));
+    }
+
+    const { hasPermission } = await checkBusinessPermission(req.user.userId, id, 'employee');
+    if (!hasPermission && !req.user.isAdmin) {
+      return res.status(403).json(error('You do not have permission to manage photos', 'FORBIDDEN'));
+    }
+
+    const appConfig = await readAppConfig();
+    if (!appConfig.image_types[imageType]) {
+      return res.status(400).json(error(`Unknown image type: ${imageType}`, 'INVALID_IMAGE_TYPE'));
+    }
+
+    const bizResult = await pool.query(
+      'SELECT business_tag, content_json FROM businesses WHERE business_id = $1',
+      [id]
+    );
+    if (bizResult.rows.length === 0) {
+      return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+    }
+    const { business_tag, content_json } = bizResult.rows[0];
+
+    // Confirm the slug actually exists on disk
+    const businessFolder = getBusinessFolder(business_tag);
+    try {
+      await readTransformSpec(businessFolder, imageType, slug);
+    } catch {
+      return res.status(404).json(error('Image not found', 'NOT_FOUND'));
+    }
+
+    const content = content_json || {};
+    content.media = content.media || {};
+    content.media[imageType] = slug;
+
+    await pool.query(
+      `UPDATE businesses
+       SET content_json = $1, content_version = content_version + 1, updated_at = NOW()
+       WHERE business_id = $2`,
+      [JSON.stringify(content), id]
+    );
+
+    logger.info('Primary photo set', { businessId: id, imageType, slug });
+    res.json(success({ imageType, slug }, 'Primary image updated'));
 
   } catch (err) {
     next(err);

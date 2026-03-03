@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Trash2, Edit2, X, RotateCcw, Lock, ImageOff } from 'lucide-react';
+import { Upload, Trash2, Edit2, X, RotateCcw, Lock, ImageOff, Star } from 'lucide-react';
 import { businessAPI } from '@/lib/api';
 import ImageTransformPreview from './ImageTransformPreview';
 import { Button } from '@/components/ui/Button';
@@ -153,6 +153,9 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState(null);
 
+  // Primary slug per image type (from content_json.media)
+  const [primarySlugs, setPrimarySlugs] = useState({});
+
   // Delete state: slug being confirmed or deleted
   const [deleteConfirm, setDeleteConfirm] = useState(null); // slug
   const [deleting, setDeleting] = useState(false);
@@ -169,7 +172,9 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
         businessAPI.listPhotos(businessId),
       ]);
       setConfig(configRes.data.data);
-      setImages(photosRes.data.data);
+      const photosData = photosRes.data.data;
+      setPrimarySlugs(photosData._primary || {});
+      setImages(photosData);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load photos.');
     } finally {
@@ -275,6 +280,19 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
       setEditError(err.response?.data?.message || 'Failed to save changes.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Set primary handlers
+  // ---------------------------------------------------------------------------
+
+  const handleSetPrimary = async (slug) => {
+    try {
+      await businessAPI.setPrimaryPhoto(businessId, activeType, slug);
+      setPrimarySlugs(prev => ({ ...prev, [activeType]: slug }));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to set primary image.');
     }
   };
 
@@ -414,6 +432,16 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
                   </div>
                 ) : (
                   <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      title={primarySlugs[activeType] === image.slug ? 'Primary image' : 'Set as primary'}
+                      onClick={() => handleSetPrimary(image.slug)}
+                      className={primarySlugs[activeType] === image.slug ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground hover:text-foreground'}
+                    >
+                      <Star className="h-3 w-3" fill={primarySlugs[activeType] === image.slug ? 'currentColor' : 'none'} />
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
