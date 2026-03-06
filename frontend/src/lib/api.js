@@ -53,12 +53,18 @@ export const authAPI = {
 
 // User API
 export const userAPI = {
-  getProfile: () => api.get('/users/me'),
-  updateProfile: (data) => api.patch('/users/me', data),
-  getBusinesses: () => api.get('/users/me/businesses'),
-  deactivate: (data) => api.post('/users/me/deactivate', data),
-  reactivate: () => api.post('/users/me/reactivate'),
-  updateConsent: (data) => api.patch('/users/me/consent', data),
+  getProfile:          ()                       => api.get('/users/me'),
+  updateProfile:       (data)                   => api.patch('/users/me', data),
+  getBusinesses:       ()                       => api.get('/users/me/businesses'),
+  deactivate:          (data)                   => api.post('/users/me/deactivate', data),
+  reactivate:          ()                       => api.post('/users/me/reactivate'),
+  updateConsent:       (data)                   => api.patch('/users/me/consent', data),
+  // Contact / password change (OTP-verified)
+  requestPhoneChange:  (phone)                  => api.post('/users/me/request-phone-change', { phone }),
+  confirmPhoneChange:  (phone, otp)             => api.post('/users/me/confirm-phone-change', { phone, otp }),
+  requestEmailChange:  (email)                  => api.post('/users/me/request-email-change', { email }),
+  confirmEmailChange:  (email, otp)             => api.post('/users/me/confirm-email-change', { email, otp }),
+  changePassword:      (currentPassword, newPassword) => api.patch('/users/me/password', { currentPassword, newPassword }),
 };
 
 // Business API
