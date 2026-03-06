@@ -209,6 +209,64 @@ function PasswordChangeForm({ hasPassword, onCancel, onSuccess }) {
 }
 
 // ---------------------------------------------------------------------------
+// NamesForm — inline edit for full_name and nickname
+// ---------------------------------------------------------------------------
+function NamesForm({ profile, onCancel, onSuccess }) {
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: { full_name: profile.full_name || '', nickname: profile.nickname || '' },
+  });
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  const onSubmit = async (data) => {
+    setErr('');
+    setLoading(true);
+    try {
+      await userAPI.updateProfile({ full_name: data.full_name, nickname: data.nickname });
+      onSuccess({ full_name: data.full_name, nickname: data.nickname });
+    } catch (e) {
+      setErr(e.response?.data?.error?.message || 'Failed to save. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-3 space-y-3 pl-4 border-l-2 border-muted">
+      {err && (
+        <Alert variant="destructive">
+          <AlertDescription>{err}</AlertDescription>
+        </Alert>
+      )}
+      <div>
+        <label className="text-sm font-medium mb-1 block">Full Name</label>
+        <Input
+          type="text"
+          autoFocus
+          {...register('full_name', { required: 'Full name is required' })}
+        />
+        {errors.full_name && (
+          <p className="text-xs text-destructive mt-1">{errors.full_name.message}</p>
+        )}
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Nickname <span className="text-muted-foreground font-normal">(optional)</span></label>
+        <Input type="text" {...register('nickname')} />
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={loading}>
+          {loading && <Spinner size="sm" className="mr-2" />}
+          Save
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={loading}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Profile page
 // ---------------------------------------------------------------------------
 export default function Profile() {
@@ -234,6 +292,15 @@ export default function Profile() {
     } catch {
       // Non-critical — profile was already updated successfully
     }
+  };
+
+  const handleNamesSuccess = async (updated) => {
+    setActiveEdit(null);
+    setProfile((prev) => ({ ...prev, ...updated }));
+    setSuccessMsg('Name updated successfully.');
+    const token = localStorage.getItem('token');
+    setAuth({ ...profile, ...updated }, token);
+    setTimeout(() => setSuccessMsg(''), 5000);
   };
 
   const handleContactSuccess = async (field) => {
@@ -284,6 +351,37 @@ export default function Profile() {
           <AlertDescription>{successMsg}</AlertDescription>
         </Alert>
       )}
+
+      {/* Name */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Name</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Full Name</p>
+              <p className="mt-0.5">{profile.full_name || <span className="text-sm text-muted-foreground italic">Not set</span>}</p>
+              {profile.nickname && (
+                <>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mt-2">Nickname</p>
+                  <p className="mt-0.5">{profile.nickname}</p>
+                </>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={() => toggleEdit('names')}>
+              {activeEdit === 'names' ? 'Cancel' : 'Edit'}
+            </Button>
+          </div>
+          {activeEdit === 'names' && (
+            <NamesForm
+              profile={profile}
+              onCancel={() => setActiveEdit(null)}
+              onSuccess={handleNamesSuccess}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Contact Details */}
       <Card>
