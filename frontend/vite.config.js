@@ -39,6 +39,10 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Don't intercept navigation requests to /api/* — let them reach the server.
+        // Without this, the SW serves index.html for /api/auth/google (OAuth redirect),
+        // React Router gets it, no route matches, catch-all sends user to /.
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/tafuta\.ke\/api\/.*/i,

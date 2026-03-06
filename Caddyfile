@@ -1,13 +1,9 @@
-# Tafuta Caddyfile
-# Main domain and API
-
 tafuta.ke {
     # Media uploads
     handle /media/* {
         root * /var/www/tafuta
         file_server
     }
-
     # API backend
     handle /api/* {
         reverse_proxy localhost:3000
@@ -26,7 +22,6 @@ tafuta.ke {
         X-Frame-Options "DENY"
         X-XSS-Protection "1; mode=block"
         Referrer-Policy "strict-origin-when-cross-origin"
-        Permissions-Policy "geolocation=(), microphone=(), camera=()"
     }
 
     # Logging
@@ -37,23 +32,18 @@ tafuta.ke {
 
     # Enable compression
     encode gzip
-
-    # HTTPS automatic
-    tls {
-        protocols tls1.2 tls1.3
-    }
 }
 
-# Wildcard subdomain for business websites
+# Wildcard subdomain for business websites (optional)
 *.tafuta.ke {
     # Serve business websites
     root * /var/www/tafuta/business-sites
-    
+
     # Route to subdomain-specific folder
     @subdomain {
         path /*
     }
-    
+
     handle @subdomain {
         # Extract subdomain and serve from corresponding folder
         # This will be handled by a custom handler or file structure
@@ -77,11 +67,6 @@ tafuta.ke {
 
     # Enable compression
     encode gzip
-
-    # HTTPS automatic
-    tls {
-        protocols tls1.2 tls1.3
-    }
 }
 
 # Redirect www to non-www
