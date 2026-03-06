@@ -24,6 +24,7 @@ export default function LoginPage() {
   const identifier = watch('identifier');
 
   const finishLogin = async (token) => {
+    localStorage.setItem('token', token); // must be set before getProfile() so the request interceptor can attach it
     const userResponse = await userAPI.getProfile();
     setAuth(userResponse.data.data, token);
     navigate('/dashboard');
