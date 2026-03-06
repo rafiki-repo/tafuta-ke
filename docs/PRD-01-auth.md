@@ -1,8 +1,8 @@
 # PRD-01: Authentication & User Management
 
 **Product Requirements Document**
-**Version**: 1.0
-**Last Updated**: Feb 21, 2026
+**Version**: 1.1
+**Last Updated**: Mar 5, 2026
 **Status**: Draft
 
 ---
@@ -22,8 +22,9 @@ users:
   - user_id (UUID, primary key)
   - full_name (string, required)
   - nickname (string, optional) - preferred name for friendly communications
-  - phone (string, required, unique)
+  - phone (string, nullable, unique) — required for SMS OTP login; nullable for Google OAuth users who have not provided a phone
   - email (string, optional, unique if provided)
+  - google_id (string, nullable, unique) — Google OAuth subject identifier; set on first Google login
   - password_hash (string, nullable - null for passwordless users; uses bcrypt with embedded salt)
   - verification_tier (enum: unverified, basic, verified, premium)
   - language_preference (string, default: 'en')
@@ -242,29 +243,55 @@ user_business_roles:
 
 ## Authentication Methods
 
-### 1. Passwordless Login (Primary - MVP)
+### Identifier Field
+
+All login methods accept a single **identifier** field that is either a phone number or an email address. The system detects the type by the presence of `@`:
+
+- **Phone** (`+254…`) → OTP delivered via VintEx SMS; password lookup by phone column
+- **Email** (`user@example.com`) → OTP delivered via Mailgun; password lookup by email column
+
+### 1. OTP Login (Primary)
 
 **Flow:**
-1. User enters phone number
-2. System sends SMS OTP (6 digits, expires in 10 minutes)
-3. User enters OTP
-4. System validates OTP
-5. System creates session (JWT token, 60-minute expiry)
-6. System updates `last_active_at`
+1. User enters phone number or email address
+2. System looks up user by phone or email
+3. System generates 6-digit OTP, stores hashed copy in `otp_sessions` table (10-min expiry)
+4. System delivers OTP:
+   - Phone → VintEx SMS
+   - Email → Mailgun transactional email ("Your Tafuta login code is: XXXXXX")
+5. User enters OTP
+6. System validates against stored hash; increments attempt counter; marks session used
+7. System creates JWT session (60-minute expiry)
+8. System updates `last_login_at`
 
 ### 2. Password-Based Login (Optional)
 
 **Flow:**
 1. User sets password (min 8 chars, 1 uppercase, 1 number, 1 special char)
-2. User logs in with phone + password
-3. System validates credentials
+2. User logs in with identifier (phone or email) + password
+3. System looks up user by phone or email, validates bcrypt hash
 4. System creates session
 
-**MVP Note**: Password is optional; users can remain passwordless.
+**Note**: Password is optional; users can remain passwordless.
 
-### 3. Google OAuth (Future)
+### 3. Google OAuth
 
-**MVP**: Not implemented. Defer to post-launch.
+**Flow:**
+1. User clicks "Continue with Google"
+2. Browser redirects to `GET /api/auth/google` (Passport.js initiates consent)
+3. Google returns authorization code to `GET /api/auth/google/callback`
+4. Backend exchanges code, receives Google profile (email, name, google_id)
+5. Account lookup order: by `google_id` → by `email` → create new account
+6. If found by email and `google_id` not yet stored, `google_id` is saved
+7. If creating new account: `phone = null`, `verification_tier = 'basic'`
+8. Backend creates JWT, redirects to `{appUrl}/auth/google?token={JWT}&new={0|1}`
+9. Frontend reads token from URL, stores in auth state
+10. If `new=1` and account has no phone: show optional phone capture dialog
+
+**Phone capture after Google login:**
+- Dialog: "Would you like to add your phone number for SMS login? (optional)"
+- If user provides phone: `PATCH /api/auth/google/phone` — validates format, checks uniqueness, saves to `users.phone`
+- Skippable — phone is not required for Google-authenticated users
 
 ---
 
@@ -322,13 +349,11 @@ sessions:
 ## Password Recovery
 
 **Flow:**
-1. User requests password reset
-2. System sends SMS OTP to registered phone
+1. User requests password reset (enters phone or email identifier)
+2. System sends OTP via SMS (phone) or Mailgun email
 3. User enters OTP
 4. User sets new password
 5. System invalidates all existing sessions
-
-**MVP Note**: Email recovery not implemented (email is optional).
 
 ---
 
@@ -501,13 +526,16 @@ notification_preferences:
 ## API Endpoints (Summary)
 
 ### Authentication
-- `POST /api/auth/register` - User registration (creates account, sends OTP)
-- `POST /api/auth/request-otp` - Request OTP for passwordless login
-- `POST /api/auth/verify-otp` - Verify OTP and create session
-- `POST /api/auth/login/password` - Password login
+- `POST /api/auth/register` - User registration (creates account, sends OTP to phone)
+- `POST /api/auth/request-otp` - Request OTP; body: `{ identifier }` (phone or email)
+- `POST /api/auth/verify-otp` - Verify OTP; body: `{ identifier, otp }`
+- `POST /api/auth/login` - Password login; body: `{ identifier, password }`
 - `POST /api/auth/logout` - End session
-- `POST /api/auth/password/reset` - Request password reset OTP
+- `POST /api/auth/password/reset` - Request password reset OTP; body: `{ identifier }`
 - `POST /api/auth/password/update` - Set new password
+- `GET /api/auth/google` - Initiate Google OAuth (browser redirect)
+- `GET /api/auth/google/callback` - Google OAuth callback (handled server-side)
+- `PATCH /api/auth/google/phone` - Save phone number after Google login (optional; requires auth)
 
 ### User Profile
 - `GET /api/users/me` - Get current user profile
@@ -540,6 +568,26 @@ notification_preferences:
 
 ---
 
+## OTP Sessions Table
+
+```
+otp_sessions:
+  - id (bigserial, primary key)
+  - identifier (string) — phone or email that requested the OTP
+  - otp_hash (string) — SHA-256 of the 6-digit code
+  - expires_at (timestamptz) — 10 minutes from creation
+  - attempts (integer, default: 0) — number of failed verification attempts
+  - used (boolean, default: false) — true after successful verification
+  - created_at (timestamptz)
+```
+
+**Rules:**
+- A new session is created on each OTP request; old unexpired sessions for the same identifier are still valid but superseded
+- After `attempts >= 5`, the session is invalid (user must request a new OTP)
+- Sessions expire automatically; a cleanup job or query filter handles stale rows
+
+---
+
 ## Security Requirements
 
 ### Password Requirements
@@ -553,7 +601,9 @@ notification_preferences:
 - 6 digits
 - 10-minute expiry
 - Max 5 attempts before new OTP required
-- Rate limit: 3 OTP per phone number per minute
+- Rate limit: 3 OTP per identifier (phone or email) per minute
+- Storage: hashed in `otp_sessions` table (see above)
+- Delivery: VintEx SMS for phone identifiers; Mailgun for email identifiers
 
 ### Session Security
 - JWT tokens in HTTP-only cookies
@@ -561,8 +611,8 @@ notification_preferences:
 - CSRF protection via SameSite cookie attribute
 
 ### Rate Limiting
-- Login attempts: 25 per phone number per 15 minutes
-- OTP requests: 10 per phone number per minute
+- Login attempts: 25 per identifier per 15 minutes
+- OTP requests: 10 per identifier per minute
 - Registration: no rate limit
 
 ### Safety Limits
@@ -636,14 +686,12 @@ auth_logs:
 
 ---
 
-## MVP Exclusions (Post-Launch)
+## Post-Launch (Not in current scope)
 
-- Google OAuth
 - Biometric authentication
 - Refresh tokens
 - "Remember me" functionality
 - Automated data export
-- Email-based password recovery
 - Multiple phone numbers per user
 - User-initiated account deletion (must visit office)
 

@@ -39,11 +39,16 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  register: (data) => api.post('/auth/register', data),
-  login: (data) => api.post('/auth/login', data),
-  requestOTP: (data) => api.post('/auth/request-otp', data),
-  verifyOTP: (data) => api.post('/auth/verify-otp', data),
-  logout: () => api.post('/auth/logout'),
+  register:        (data)           => api.post('/auth/register', data),
+  // identifier = phone number or email address
+  login:           (data)           => api.post('/auth/login', data),
+  requestOTP:      (data)           => api.post('/auth/request-otp', data),
+  verifyOTP:       (data)           => api.post('/auth/verify-otp', data),
+  logout:          ()               => api.post('/auth/logout'),
+  // Google OAuth — triggers a full browser redirect (not an axios call)
+  googleLogin:     ()               => { window.location.href = '/api/auth/google'; },
+  // Save phone number after Google login (optional, requires auth)
+  saveGooglePhone: (phone)          => api.patch('/auth/google/phone', { phone }),
 };
 
 // User API

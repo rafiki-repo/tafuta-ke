@@ -37,6 +37,12 @@ const config = {
     apiKey: process.env.VINTEX_API_KEY,
     senderId: process.env.VINTEX_SENDER_ID || 'TAFUTA',
   },
+
+  google: {
+    clientId:     process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackUrl:  process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/api/auth/google/callback',
+  },
   
   mailgun: {
     apiKey: process.env.MAILGUN_API_KEY,

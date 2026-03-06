@@ -4,6 +4,8 @@ import cors from 'cors';
 import compression from 'compression';
 import session from 'express-session';
 import pgSession from 'connect-pg-simple';
+import passport from 'passport';
+import './config/passport.js'; // registers the Google OAuth strategy
 import config from './config/index.js';
 import pool from './config/database.js';
 import logger from './utils/logger.js';
@@ -70,6 +72,9 @@ app.use(session({
     sameSite: 'lax',
   },
 }));
+
+// Passport (stateless — session: false in each OAuth route)
+app.use(passport.initialize());
 
 // Rate limiting
 app.use('/api', generalLimiter);

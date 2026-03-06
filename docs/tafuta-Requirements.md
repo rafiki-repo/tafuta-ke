@@ -133,13 +133,15 @@ Tafuta is a super simple low-cost business directory with single-page website ho
 
 #### Authentication
 
-- Password-based login with strong password requirements
-- Passwordless login via SMS OTP or email OTP
-- Session management: follow industry best practices for user convenience and security (implementation details in PRD-01)
-- Password recovery via SMS OTP
+- **Identifier field**: login accepts a phone number (+254…) or email address; system detects type by presence of `@`
+- Password-based login using phone or email identifier + password
+- Passwordless OTP login: OTP delivered via VintEx SMS (phone) or Mailgun email; stored in `otp_sessions` table with 10-min expiry and attempt tracking
+- **Google OAuth**: users can sign in with Google; phone number is optionally captured after first Google login
+- Session management: JWT tokens, 60-minute expiry (implementation details in PRD-01)
+- Password recovery via OTP (SMS for phone, email for email identifier)
 - Security-critical communications (OTP, login alerts, account security notices) are always delivered regardless of notification preferences. These cannot be opted out of.
 - Marketing SMS and email: opt-in only; user-controlled at any time
-- Future: Google OAuth, biometric authentication on compatible devices
+- Future: biometric authentication on compatible devices
 
 #### Profile Management
 

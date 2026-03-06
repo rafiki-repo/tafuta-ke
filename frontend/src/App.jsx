@@ -16,6 +16,7 @@ import BusinessDetailPage from './pages/public/BusinessDetailPage';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import GoogleCallbackPage from './pages/auth/GoogleCallbackPage';
 
 // Dashboard Pages
 import DashboardHome from './pages/dashboard/DashboardHome';
@@ -69,6 +70,9 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
       </Route>
+
+      {/* Google OAuth callback — no layout wrapper (full-page loading/phone prompt) */}
+      <Route path="/auth/google" element={<GoogleCallbackPage />} />
 
       {/* Register has its own layout (marketing cards + form, single-column) */}
       <Route element={<RegisterLayout />}>
