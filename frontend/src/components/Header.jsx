@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, Globe, Shield } from 'lucide-react';
+import { Menu, X, User, LogOut, Globe } from 'lucide-react';
 import { Button } from './ui/Button';
 import useAuthStore from '@/store/useAuthStore';
 import { useLanguage, LANGUAGES } from '@/context/LanguageContext';
@@ -135,16 +135,6 @@ export function Header() {
                     </button>
                   </Link>
 
-                  {/* Admin Panel — only visible to Tafuta staff */}
-                  {isAdmin() && (
-                    <Link to="/admin" onClick={close}>
-                      <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                        <Shield className="h-4 w-4" />
-                        Admin Panel
-                      </button>
-                    </Link>
-                  )}
-
                   <button
                     onClick={() => { logout(); close(); }}
                     className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-destructive"
@@ -173,10 +163,17 @@ export function Header() {
         </div>
 
         {/* Drawer footer */}
-        <div className="px-5 py-4 border-t text-center">
+        <div className="px-5 py-4 border-t flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             eBiashara Rahisi Ltd &copy; {new Date().getFullYear()}
           </p>
+          <Link
+            to="/admin-menu"
+            onClick={close}
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            admin
+          </Link>
         </div>
       </div>
     </>

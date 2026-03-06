@@ -1,11 +1,11 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, Building2, CreditCard, User, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Home, Building2, CreditCard, User } from 'lucide-react';
+import { Header } from '@/components/Header';
 import useAuthStore from '@/store/useAuthStore';
 
 export default function DashboardLayout() {
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   const navigation = [
     { name: 'Overview', href: '/dashboard', icon: Home },
@@ -23,22 +23,7 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container-safe flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <span className="font-bold text-xl">Tafuta</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden md:inline">
-              {user?.full_name}
-            </span>
-            <Button variant="ghost" size="sm" onClick={logout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <div className="container-safe py-6">
         <div className="flex flex-col md:flex-row gap-6">

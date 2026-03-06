@@ -18,6 +18,9 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import GoogleCallbackPage from './pages/auth/GoogleCallbackPage';
 
+// Utility Pages
+import AppMenuPage from './pages/AppMenuPage';
+
 // Dashboard Pages
 import DashboardHome from './pages/dashboard/DashboardHome';
 import MyBusinesses from './pages/dashboard/MyBusinesses';
@@ -64,6 +67,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/business/:id" element={<BusinessDetailPage />} />
+        <Route path="/admin-menu" element={<AppMenuPage />} />
       </Route>
 
       {/* Auth Routes */}
