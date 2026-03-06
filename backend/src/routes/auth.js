@@ -475,10 +475,12 @@ router.post('/login', authLimiter, async (req, res, next) => {
 // GET /api/auth/google  — initiate Google OAuth
 // ---------------------------------------------------------------------------
 
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
-);
+router.get('/google', (req, res, next) => {
+  if (!config.google.clientId || !config.google.clientSecret) {
+    return res.status(503).json(error('Google OAuth is not configured on this server', 'OAUTH_NOT_CONFIGURED'));
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+});
 
 // ---------------------------------------------------------------------------
 // GET /api/auth/google/callback  — handle Google OAuth callback
