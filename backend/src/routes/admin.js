@@ -517,41 +517,50 @@ router.patch('/subscriptions/:id/adjust', requireRole('admin'), async (req, res,
   }
 });
 
-// GET /api/admin/users - Get all users
+// GET /api/admin/users - Get all users (with optional text search)
 router.get('/users', async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, status, verification_tier } = req.query;
+    const { page = 1, limit = 50, status, verification_tier, q } = req.query;
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const limitNum = parseInt(limit, 10);
 
-    let whereClause = `WHERE status != 'deleted'`;
+    let whereClause = `WHERE u.status != 'deleted'`;
     const params = [];
     let paramCount = 1;
 
     if (status) {
-      whereClause += ` AND status = $${paramCount++}`;
+      whereClause += ` AND u.status = $${paramCount++}`;
       params.push(status);
     }
 
     if (verification_tier) {
-      whereClause += ` AND verification_tier = $${paramCount++}`;
+      whereClause += ` AND u.verification_tier = $${paramCount++}`;
       params.push(verification_tier);
+    }
+
+    if (q) {
+      const pNum = paramCount++;
+      whereClause += ` AND (u.full_name ILIKE $${pNum} OR u.nickname ILIKE $${pNum} OR u.email ILIKE $${pNum} OR u.phone ILIKE $${pNum})`;
+      params.push(`%${q}%`);
     }
 
     params.push(limitNum);
     params.push(offset);
 
     const result = await pool.query(
-      `SELECT user_id, full_name, phone, email, verification_tier, status, created_at, last_login_at
-       FROM users
+      `SELECT u.user_id, u.full_name, u.nickname, u.phone, u.email,
+              u.verification_tier, u.status, u.created_at, u.last_login_at,
+              a.role as admin_role
+       FROM users u
+       LEFT JOIN admin_users a ON u.user_id = a.user_id AND a.is_active = TRUE
        ${whereClause}
-       ORDER BY created_at DESC
+       ORDER BY u.created_at DESC
        LIMIT $${paramCount++} OFFSET $${paramCount++}`,
       params
     );
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) as total FROM users ${whereClause}`,
+      `SELECT COUNT(*) as total FROM users u ${whereClause}`,
       params.slice(0, paramCount - 3)
     );
 
@@ -561,6 +570,157 @@ router.get('/users', async (req, res, next) => {
       total: parseInt(countResult.rows[0].total, 10),
       totalPages: Math.ceil(parseInt(countResult.rows[0].total, 10) / limitNum),
     }));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/users/:id - Get single user with admin info
+router.get('/users/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid user ID', 'INVALID_ID'));
+    }
+
+    const result = await pool.query(
+      `SELECT u.user_id, u.full_name, u.nickname, u.phone, u.email,
+              u.verification_tier, u.status, u.phone_verified, u.email_verified,
+              u.last_login_at, u.created_at,
+              a.role as admin_role, a.is_active as admin_is_active
+       FROM users u
+       LEFT JOIN admin_users a ON u.user_id = a.user_id
+       WHERE u.user_id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json(error('User not found', 'NOT_FOUND'));
+    }
+
+    res.json(success(result.rows[0]));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/users/:id - Update user profile and/or admin role
+router.patch('/users/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { full_name, nickname, email, phone, status, admin_role } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid user ID', 'INVALID_ID'));
+    }
+
+    if (status !== undefined && !['active', 'deactivated', 'suspended'].includes(status)) {
+      return res.status(400).json(error('Invalid status value', 'INVALID_STATUS'));
+    }
+
+    const validRoles = ['super_admin', 'admin', 'support_staff', null];
+    if (admin_role !== undefined && !validRoles.includes(admin_role)) {
+      return res.status(400).json(error('Invalid admin role', 'INVALID_ROLE'));
+    }
+
+    const roleHierarchy = { super_admin: 3, admin: 2, support_staff: 1 };
+    const actorLevel = roleHierarchy[req.user.adminRole] || 0;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Get target user's current admin role
+      const currentAdminResult = await client.query(
+        `SELECT role FROM admin_users WHERE user_id = $1 AND is_active = TRUE`,
+        [id]
+      );
+      const currentAdminRole = currentAdminResult.rows[0]?.role || null;
+
+      // Enforce privilege: actor cannot grant or remove a role higher than their own
+      if (admin_role !== undefined) {
+        if (admin_role !== null) {
+          const targetLevel = roleHierarchy[admin_role] || 0;
+          if (actorLevel < targetLevel) {
+            await client.query('ROLLBACK');
+            return res.status(403).json(error('You cannot grant a role higher than your own', 'FORBIDDEN'));
+          }
+        } else if (currentAdminRole) {
+          const currentLevel = roleHierarchy[currentAdminRole] || 0;
+          if (actorLevel < currentLevel) {
+            await client.query('ROLLBACK');
+            return res.status(403).json(error('You cannot remove a role higher than your own', 'FORBIDDEN'));
+          }
+        }
+      }
+
+      // Build user profile update
+      const updates = [];
+      const values = [];
+      let paramCount = 1;
+
+      if (full_name !== undefined) { updates.push(`full_name = $${paramCount++}`); values.push(full_name); }
+      if (nickname !== undefined) { updates.push(`nickname = $${paramCount++}`); values.push(nickname); }
+      if (email !== undefined) { updates.push(`email = $${paramCount++}`); values.push(email || null); }
+      if (phone !== undefined) { updates.push(`phone = $${paramCount++}`); values.push(phone || null); }
+      if (status !== undefined) { updates.push(`status = $${paramCount++}`); values.push(status); }
+
+      let updatedUser = null;
+      if (updates.length > 0) {
+        updates.push(`updated_at = NOW()`);
+        values.push(id);
+        const result = await client.query(
+          `UPDATE users SET ${updates.join(', ')}
+           WHERE user_id = $${paramCount}
+           RETURNING user_id, full_name, nickname, phone, email, status, verification_tier`,
+          values
+        );
+        if (result.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json(error('User not found', 'NOT_FOUND'));
+        }
+        updatedUser = result.rows[0];
+      }
+
+      // Handle admin role change
+      if (admin_role !== undefined) {
+        if (admin_role === null) {
+          await client.query(`DELETE FROM admin_users WHERE user_id = $1`, [id]);
+        } else {
+          await client.query(
+            `INSERT INTO admin_users (user_id, role, is_active, created_by)
+             VALUES ($1, $2, TRUE, $3)
+             ON CONFLICT (user_id) DO UPDATE SET role = $2, is_active = TRUE, created_by = $3`,
+            [id, admin_role, req.user.userId]
+          );
+        }
+      }
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_value)
+         VALUES ($1, 'updated_user', 'user', $2, $3)`,
+        [req.user.userId, id, JSON.stringify(req.body)]
+      );
+
+      await client.query('COMMIT');
+
+      logger.info('Admin updated user', { targetUserId: id, adminId: req.user.userId });
+
+      const finalAdminRole = admin_role !== undefined ? admin_role : currentAdminRole;
+      res.json(success({
+        ...(updatedUser || { user_id: id }),
+        admin_role: finalAdminRole,
+      }, 'User updated successfully'));
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
 
   } catch (err) {
     next(err);
