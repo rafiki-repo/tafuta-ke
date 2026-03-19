@@ -63,6 +63,10 @@ function BusinessCard({ business }) {
   const navigate = useNavigate();
   const initial = business.business_name?.charAt(0)?.toUpperCase() || '?';
   const isPremium = business.verification_tier && business.verification_tier !== 'basic';
+  const logoSlug = business.media?.logo;
+  const logoUrl = logoSlug && business.business_tag
+    ? `/media/${business.business_tag}/logo/${logoSlug}_icon.webp`
+    : null;
 
   return (
     <div
@@ -71,7 +75,22 @@ function BusinessCard({ business }) {
     >
       {/* Avatar */}
       <div className="w-20 h-20 rounded-md flex-shrink-0 relative">
-        <div className="w-full h-full rounded-md bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={business.business_name}
+            className="w-full h-full rounded-md object-cover"
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        <div
+          className="w-full h-full rounded-md bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
+          style={logoUrl ? { display: 'none' } : undefined}
+        >
           <span className="text-2xl font-bold text-primary/60">{initial}</span>
         </div>
         {isPremium && (
