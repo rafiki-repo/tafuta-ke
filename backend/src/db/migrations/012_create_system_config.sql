@@ -31,7 +31,7 @@ INSERT INTO system_config (key, value, description) VALUES
   }', 'Service pricing in KES per month'),
   ('vat_rate', '0.16', 'VAT rate (16%)'),
   ('categories', '["salon", "restaurant", "shop", "hotel", "cyber", "entertainment", "church", "school", "hospital", "pharmacy", "mechanic", "other"]', 'Available business categories'),
-  ('regions', '["Machakos", "Kisumu"]', 'Available regions for MVP')
+  ('regions', '["Machakos", "Kisumu", "Ruiru"]', 'Available regions for MVP')
 ON CONFLICT (key) DO NOTHING;
 
 -- Comments
