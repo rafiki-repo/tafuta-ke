@@ -76,5 +76,25 @@ Available roles:
 - The script is idempotent — running it again on the same phone updates the role without creating duplicates
 - To revoke admin access, set `is_active = false` in the `admin_users` table directly (a UI for this will be added in the admin panel)
 
+## Database Backup
+
+Use the backup script to dump the PostgreSQL database to a compressed file:
+
+```bash
+./scripts/backup-db.sh
+```
+
+- Creates a `backups/` folder at the project root if it doesn't exist
+- Reads `DATABASE_URL` from `backend/.env` (or the environment)
+- Saves the dump to `backups/tafuta-db-<timestamp>.sql.gz`
+
+**To restore a backup:**
+
+```bash
+gunzip -c backups/tafuta-db-<timestamp>.sql.gz | psql "$DATABASE_URL"
+```
+
+The `backups/` folder is excluded from rsync in `deploy.sh` so backups are never wiped during deployment.
+
 ## Deployment
 See /DEPLOYMENT.md
