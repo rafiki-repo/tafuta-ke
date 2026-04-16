@@ -401,6 +401,16 @@ See PRD-01 and PRD-02 for detailed schema.
 - Staging environment (production-identical) for pre-launch validation
 - CI/CD: GitHub Actions or GitLab CI
 
+### Backup & Recovery
+
+- Nightly automated backup via cron (2 AM) using `scripts/backup.sh`
+- **Database**: `scripts/backup-db.sh` dumps the full PostgreSQL database to `backup/db/` as a gzip-compressed SQL file; can be run standalone
+- **Full archive**: `scripts/backup.sh` calls the DB script then tars the entire application (code, media, logs, `.env`) into `backup/full/`, excluding `node_modules`, compiled assets, and prior archives
+- A `latest` symlink in `backup/full/` always points to the newest archive for easy SFTP retrieval
+- Local retention: 3 days; older backups are pruned automatically
+- Remote collection: backup engine pulls `backup/full/latest` via SFTP/SCP using an SSH key
+- See `docs/PRD-08-backup.md` for full details, cron setup, and restore procedure
+
 ---
 
 ## Pre-Launch Compliance Checklist
@@ -428,5 +438,6 @@ The following items are launch gates — the application must not go live until 
 ├── PRD-04-ui-ux.md          ← User Interface & Experience
 ├── PRD-05-admin.md          ← Admin Dashboard & Configuration
 ├── PRD-06-infrastructure.md ← Infrastructure, Testing & DevOps
-└── PRD-07-photos.md         ← Business Photos & Image Management
+├── PRD-07-photos.md         ← Business Photos & Image Management
+└── PRD-08-backup.md         ← Backup & Recovery
 ```

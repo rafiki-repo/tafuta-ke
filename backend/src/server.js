@@ -9,6 +9,7 @@ import './config/passport.js'; // registers the Google OAuth strategy
 import config from './config/index.js';
 import pool from './config/database.js';
 import logger from './utils/logger.js';
+import { initCron } from './cron.js';
 import errorHandler from './middleware/errorHandler.js';
 import { generalLimiter } from './middleware/rateLimit.js';
 
@@ -116,6 +117,7 @@ app.listen(PORT, () => {
     environment: config.env,
     port: PORT,
   });
+  initCron();
 });
 
 // Graceful shutdown

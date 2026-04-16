@@ -76,25 +76,23 @@ Available roles:
 - The script is idempotent — running it again on the same phone updates the role without creating duplicates
 - To revoke admin access, set `is_active = false` in the `admin_users` table directly (a UI for this will be added in the admin panel)
 
-## Database Backup
+## Backup
 
-Use the backup script to dump the PostgreSQL database to a compressed file:
+**Full backup** (code + media + logs + .env + database — cron target):
+```bash
+./scripts/backup.sh
+```
 
+**Database-only backup** (quick snapshot before migrations etc.):
 ```bash
 ./scripts/backup-db.sh
 ```
 
-- Creates a `backups/` folder at the project root if it doesn't exist
-- Reads `DATABASE_URL` from `backend/.env` (or the environment)
-- Saves the dump to `backups/tafuta-db-<timestamp>.sql.gz`
+Backups are written to `backup/db/` and `backup/full/`. A `latest` symlink in `backup/full/` always points to the newest full archive for SFTP retrieval. The `backup/` folder is excluded from rsync and is never wiped by deployments.
 
-**To restore a backup:**
+The nightly backup is scheduled automatically by the backend via `node-cron` (`backend/src/cron.js`) — no manual cron setup needed. It runs at 02:00 East Africa Time. Only PM2 instance 0 schedules tasks to prevent duplicate runs in cluster mode.
 
-```bash
-gunzip -c backups/tafuta-db-<timestamp>.sql.gz | psql "$DATABASE_URL"
-```
-
-The `backups/` folder is excluded from rsync in `deploy.sh` so backups are never wiped during deployment.
+See [docs/PRD-08-backup.md](docs/PRD-08-backup.md) for scheduling details, SFTP retrieval, and full restore procedure.
 
 ## Deployment
 See /DEPLOYMENT.md

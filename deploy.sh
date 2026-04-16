@@ -38,9 +38,8 @@ rsync -av --delete \
     --exclude frontend/dist \
     --exclude backend/logs \
     --exclude uploads \
-    --exclude backups \
+    --exclude backup \
     --exclude business-sites \
-    --exclude backup-db.sh \
     --exclude deploy.log \
     --exclude media \
     "$WORKSPACE/" "$DEPLOY_DIR/" || fail "rsync failed"
@@ -59,13 +58,13 @@ fi
 # 3. Database backup
 echo "Backing up database..."
 cd "$DEPLOY_DIR"
-if [ -f "backup-db.sh" ]; then
-    ./backup-db.sh 2>&1 | tee -a "$LOG_FILE"
+if [ -f "scripts/backup.sh" ]; then
+    bash scripts/backup.sh 2>&1 | tee -a "$LOG_FILE"
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         echo "Backup failed but continuing..." >&2
     fi
 else
-    echo "Warning: backup-db.sh not found, skipping backup." | tee -a "$LOG_FILE"
+    echo "Warning: scripts/backup.sh not found, skipping backup." | tee -a "$LOG_FILE"
 fi
 
 # 4. Stop backend BEFORE touching node_modules to prevent PM2 auto-restart
