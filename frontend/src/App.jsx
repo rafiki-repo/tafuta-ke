@@ -27,6 +27,9 @@ import MyBusinesses from './pages/dashboard/MyBusinesses';
 import BusinessEditor from './pages/dashboard/BusinessEditor';
 import ContentHistory from './pages/dashboard/ContentHistory';
 import Payments from './pages/dashboard/Payments';
+import PaymentCheckout from './pages/dashboard/PaymentCheckout';
+import PaymentSuccess from './pages/payment/PaymentSuccess';
+import PaymentFailed from './pages/payment/PaymentFailed';
 import Profile from './pages/dashboard/Profile';
 
 // Admin Pages
@@ -78,6 +81,10 @@ function App() {
       {/* Google OAuth callback — no layout wrapper (full-page loading/phone prompt) */}
       <Route path="/auth/google" element={<GoogleCallbackPage />} />
 
+      {/* Payment result pages — standalone, no dashboard chrome */}
+      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/failed"  element={<PaymentFailed />} />
+
       {/* Register has its own layout (marketing cards + form, single-column) */}
       <Route element={<RegisterLayout />}>
         <Route path="/register" element={<RegisterPage />} />
@@ -98,6 +105,7 @@ function App() {
         <Route path="businesses/:id/edit" element={<BusinessEditor />} />
         <Route path="businesses/:id/history" element={<ContentHistory />} />
         <Route path="payments" element={<Payments />} />
+        <Route path="payments/checkout/:businessId" element={<PaymentCheckout />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

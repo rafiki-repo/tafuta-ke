@@ -100,11 +100,20 @@ export const searchAPI = {
 
 // Payment API
 export const paymentAPI = {
-  initiate: (data) => api.post('/payments/initiate', data),
-  getTransaction: (id) => api.get(`/payments/transactions/${id}`),
-  getReceipt: (id) => api.get(`/payments/receipts/${id}`, { responseType: 'blob' }),
-  getBusinessTransactions: (businessId, params) => 
-    api.get(`/payments/business/${businessId}`, { params }),
+  getPricing:             ()                       => api.get('/payments/pricing'),
+  getSubscriptions:       (businessId)             => api.get(`/payments/subscriptions/${businessId}`),
+  initiate:               (data)                   => api.post('/payments/initiate', data),
+  getTransaction:         (id)                     => api.get(`/payments/transactions/${id}`),
+  getReceipt:             (id)                     => api.get(`/payments/receipts/${id}`, { responseType: 'blob' }),
+  getBusinessTransactions:(businessId, params)     => api.get(`/payments/business/${businessId}`, { params }),
+  // Admin
+  adminGetTransactions:   (params)                 => api.get('/payments/admin/transactions', { params }),
+  adminGetRefunds:        (params)                 => api.get('/payments/refunds', { params }),
+  adminCreateRefund:      (data)                   => api.post('/payments/refunds', data),
+  adminGetRefund:         (id)                     => api.get(`/payments/refunds/${id}`),
+  adminApproveRefund:     (id)                     => api.patch(`/payments/refunds/${id}/approve`),
+  adminCompleteRefund:    (id)                     => api.patch(`/payments/refunds/${id}/complete`),
+  adminRejectRefund:      (id, data)               => api.patch(`/payments/refunds/${id}/reject`, data),
 };
 
 // Admin API
