@@ -32,7 +32,7 @@ CREATE INDEX idx_businesses_created_at ON businesses(created_at);
 
 -- Full-text search index
 CREATE INDEX idx_businesses_search ON businesses 
-  USING gin(to_tsvector('english', business_name || ' ' || COALESCE(content_json->>'profile'->>'en'->>'description', '')));
+  USING gin(to_tsvector('english', business_name || ' ' || COALESCE(content_json->'profile'->'en'->>'description', '')));
 
 -- JSONB index for content queries
 CREATE INDEX idx_businesses_content_json ON businesses USING gin(content_json);
