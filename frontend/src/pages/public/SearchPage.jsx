@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Search, MapPin, Star, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
-import { searchAPI } from '@/lib/api';
-import { truncate } from '@/lib/utils';
+import { useState, useEffect, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Search, MapPin, Star, Filter } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
+import { searchAPI } from "@/lib/api";
+import { truncate } from "@/lib/utils";
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,12 +16,16 @@ export default function SearchPage() {
   const [categories, setCategories] = useState([]);
   const [regions, setRegions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    total: 0,
+    totalPages: 0,
+  });
 
   const [filters, setFilters] = useState({
-    q: searchParams.get('q') || '',
-    category: searchParams.get('category') || '',
-    region: searchParams.get('region') || '',
+    q: searchParams.get("q") || "",
+    category: searchParams.get("category") || "",
+    region: searchParams.get("region") || "",
   });
 
   const isFirstRender = useRef(true);
@@ -42,9 +46,9 @@ export default function SearchPage() {
     }
     const timer = setTimeout(() => {
       const params = new URLSearchParams();
-      if (filters.q) params.set('q', filters.q);
-      if (filters.category) params.set('category', filters.category);
-      if (filters.region) params.set('region', filters.region);
+      if (filters.q) params.set("q", filters.q);
+      if (filters.category) params.set("category", filters.category);
+      if (filters.region) params.set("region", filters.region);
       setSearchParams(params, { replace: true });
     }, 300);
     return () => clearTimeout(timer);
@@ -59,7 +63,7 @@ export default function SearchPage() {
       setCategories(categoriesRes.data.data.categories || []);
       setRegions(regionsRes.data.data.regions || []);
     } catch (error) {
-      console.error('Failed to load metadata:', error);
+      console.error("Failed to load metadata:", error);
     }
   };
 
@@ -67,17 +71,17 @@ export default function SearchPage() {
     setLoading(true);
     try {
       const params = {
-        q: searchParams.get('q') || undefined,
-        category: searchParams.get('category') || undefined,
-        region: searchParams.get('region') || undefined,
-        page: searchParams.get('page') || 1,
+        q: searchParams.get("q") || undefined,
+        category: searchParams.get("category") || undefined,
+        region: searchParams.get("region") || undefined,
+        page: searchParams.get("page") || 1,
         limit: 20,
       };
       const response = await searchAPI.search(params);
       setBusinesses(response.data.data);
       setPagination(response.data.pagination);
     } catch (error) {
-      console.error('Search failed:', error);
+      console.error("Search failed:", error);
     } finally {
       setLoading(false);
     }
@@ -85,7 +89,7 @@ export default function SearchPage() {
 
   const handlePageChange = (newPage) => {
     const params = new URLSearchParams(searchParams);
-    params.set('page', newPage.toString());
+    params.set("page", newPage.toString());
     setSearchParams(params);
   };
 
@@ -104,20 +108,28 @@ export default function SearchPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Search</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Search
+                  </label>
                   <Input
                     type="text"
                     placeholder="Keywords..."
                     value={filters.q}
-                    onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+                    onChange={(e) =>
+                      setFilters({ ...filters, q: e.target.value })
+                    }
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Category</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Category
+                  </label>
                   <Select
                     value={filters.category}
-                    onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                    onChange={(e) =>
+                      setFilters({ ...filters, category: e.target.value })
+                    }
                   >
                     <option value="">All Categories</option>
                     {categories.map((cat) => (
@@ -129,10 +141,14 @@ export default function SearchPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Region</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Region
+                  </label>
                   <Select
                     value={filters.region}
-                    onChange={(e) => setFilters({ ...filters, region: e.target.value })}
+                    onChange={(e) =>
+                      setFilters({ ...filters, region: e.target.value })
+                    }
                   >
                     <option value="">All Regions</option>
                     {regions.map((region) => (
@@ -151,7 +167,9 @@ export default function SearchPage() {
             <div className="mb-6">
               <h1 className="text-3xl font-bold mb-2">Search Results</h1>
               <p className="text-muted-foreground">
-                {loading ? 'Searching...' : `Found ${pagination.total} businesses`}
+                {loading
+                  ? "Searching..."
+                  : `Found ${pagination.total} businesses`}
               </p>
             </div>
 
@@ -163,7 +181,9 @@ export default function SearchPage() {
               <Card>
                 <CardContent className="p-12 text-center">
                   <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">No businesses found</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No businesses found
+                  </h3>
                   <p className="text-muted-foreground">
                     Try adjusting your filters or search terms
                   </p>
@@ -174,59 +194,68 @@ export default function SearchPage() {
                 <div className="space-y-4">
                   {businesses.map((business) => {
                     const logoSlug = business.media?.logo;
-                    const logoUrl = logoSlug && business.business_tag
-                      ? `/media/${business.business_tag}/logo/${logoSlug}_icon.webp`
-                      : null;
+                    const ver = business.content_version || 0;
+                    const logoUrl =
+                      logoSlug && business.business_tag
+                        ? `/media/${business.business_tag}/logo/${logoSlug}_icon.webp?v=${ver}`
+                        : null;
                     return (
-                    <Link key={business.business_id} to={`/business/${business.business_id}`}>
-                      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                        <CardContent className="p-6">
-                          <div className="flex items-start gap-4 mb-3">
-                            {logoUrl ? (
-                              <img
-                                src={logoUrl}
-                                alt={business.business_name}
-                                className="h-12 w-12 rounded-lg object-cover shrink-0"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0 text-lg font-bold text-muted-foreground">
-                                {business.business_name.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-xl font-semibold mb-2">
-                                {business.business_name}
-                              </h3>
-                              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-2">
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  {business.region}
+                      <Link
+                        key={business.business_id}
+                        to={`/business/${business.business_id}`}
+                      >
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardContent className="p-6">
+                            <div className="flex items-start gap-4 mb-3">
+                              {logoUrl ? (
+                                <img
+                                  src={logoUrl}
+                                  alt={business.business_name}
+                                  className="h-12 w-12 rounded-lg object-cover shrink-0"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0 text-lg font-bold text-muted-foreground">
+                                  {business.business_name
+                                    .charAt(0)
+                                    .toUpperCase()}
                                 </div>
-                                <Badge variant="outline">{business.category}</Badge>
-                                {business.verification_tier !== 'basic' && (
-                                  <Badge variant="success">
-                                    <Star className="h-3 w-3 mr-1" />
-                                    {business.verification_tier}
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-xl font-semibold mb-2">
+                                  {business.business_name}
+                                </h3>
+                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-2">
+                                  <div className="flex items-center gap-1">
+                                    <MapPin className="h-4 w-4" />
+                                    {business.region}
+                                  </div>
+                                  <Badge variant="outline">
+                                    {business.category}
                                   </Badge>
-                                )}
-                                {business.has_active_ads && (
-                                  <Badge variant="secondary">Featured</Badge>
-                                )}
+                                  {business.verification_tier !== "basic" && (
+                                    <Badge variant="success">
+                                      <Star className="h-3 w-3 mr-1" />
+                                      {business.verification_tier}
+                                    </Badge>
+                                  )}
+                                  {business.has_active_ads && (
+                                    <Badge variant="secondary">Featured</Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <p className="text-muted-foreground">
-                            {truncate(business.description, 200)}
-                          </p>
-                          {business.phone && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                              📞 {business.phone}
+                            <p className="text-muted-foreground">
+                              {truncate(business.description, 200)}
                             </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Link>
+                            {business.phone && (
+                              <p className="text-sm text-muted-foreground mt-2">
+                                📞 {business.phone}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Link>
                     );
                   })}
                 </div>
