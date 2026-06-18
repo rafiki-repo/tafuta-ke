@@ -4,6 +4,7 @@ Do not work on these action items unless explicitly told to do so. [IMPLEMENT] m
 
 - [IMPLEMENT] backend/.env includes NODE_ENV=production vs development. Indicate in db/seed.js comments that it is only intended to run on DEV and not PROD. Have a check for NOD_ENV in seed.js that aborts if it is PROD.
 - [IMPLEMENT] Contact Arich and test a sample Pesapal payment.
+- [NEW] Please ask Claude to update the PRDs and Requirements and anything else (mostly in root and in /docs) to capture the most recent changes. This should be detailed enough that if we regenerated the app from scratch, it would meet all the same specifications.
 - Single page website for a business 450 KSH per month
 - Business is prompted monthly to 1) review announcements and ads 2) update their info if needed 3) provide hours of operation for that week 4) pay any outstanding bills and 5) confirm they are still in business (which is kind of already done when they update their schedule) - will not be listed unless they respond to this prompt
 - System to prompt user via an app on phone - rather than pay money to email weekly. Email or WhatsApp a reminder if they have been away for a while without responding.
