@@ -6,11 +6,11 @@
  * and image file deletion.
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
-import flexJson from 'flex-json';
-import config from '../config/index.js';
-import logger from '../utils/logger.js';
+import { promises as fs } from "fs";
+import path from "path";
+import flexJson from "flex-json";
+import config from "../config/index.js";
+import logger from "../utils/logger.js";
 
 // ---------------------------------------------------------------------------
 // App config cache
@@ -21,7 +21,7 @@ let _appConfigCacheTime = 0;
 const CONFIG_TTL_MS = 60_000; // 60 seconds
 
 function getConfigPath() {
-  return path.join(config.media.path, 'app-config.jfx');
+  return path.join(config.media.path, "app-config.jfx");
 }
 
 /**
@@ -38,35 +38,39 @@ export async function readAppConfig() {
   const fj = new flexJson();
   fj.DeserializeFlexFile(configPath);
 
-  const maxUploadSizeMb = fj.getNum('max_upload_size_mb') || 10;
+  const maxUploadSizeMb = fj.getNum("max_upload_size_mb") || 10;
 
   // accepted_formats: hardcoded because flex-json array iteration is not
   // straightforward for simple value arrays; these formats rarely change.
-  const accepted_formats = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  const accepted_formats = ["jpg", "jpeg", "png", "gif", "webp"];
 
   // image_types: iterate the object whose keys are type names
   const image_types = {};
-  fj.item('image_types').forEach((typeItem) => {
+  fj.item("image_types").forEach((typeItem) => {
     const typeName = typeItem._key;
     if (!typeName) return;
 
-    const label = typeItem.getStr('label');
-    const max_images = typeItem.getNum('max_images');
+    const label = typeItem.getStr("label");
+    const max_images = typeItem.getNum("max_images");
 
     const sizes = {};
-    typeItem.item('sizes').forEach((sizeItem) => {
+    typeItem.item("sizes").forEach((sizeItem) => {
       const sizeTag = sizeItem._key;
       if (!sizeTag) return;
       sizes[sizeTag] = {
-        width: sizeItem.getNum('width'),
-        height: sizeItem.getNum('height'),
+        width: sizeItem.getNum("width"),
+        height: sizeItem.getNum("height"),
       };
     });
 
     image_types[typeName] = { label, max_images, sizes };
   });
 
-  _appConfigCache = { max_upload_size_mb: maxUploadSizeMb, accepted_formats, image_types };
+  _appConfigCache = {
+    max_upload_size_mb: maxUploadSizeMb,
+    accepted_formats,
+    image_types,
+  };
   _appConfigCacheTime = now;
   return _appConfigCache;
 }
@@ -96,9 +100,9 @@ export function slugifyName(displayName) {
   return (
     displayName
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 60) || 'image'
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "image"
   );
 }
 
@@ -117,7 +121,7 @@ export async function getExistingSlugs(businessFolder, imageType) {
   const typeFolder = path.join(businessFolder, imageType);
   try {
     const files = await fs.readdir(typeFolder);
-    return files.filter((f) => f.endsWith('.jfx')).map((f) => f.slice(0, -4));
+    return files.filter((f) => f.endsWith(".jfx")).map((f) => f.slice(0, -4));
   } catch {
     return [];
   }
@@ -149,9 +153,11 @@ export async function processImage(sourceBuffer, transform, targetSize) {
   // Only photo upload/transform endpoints will be affected if sharp is unavailable.
   let sharp;
   try {
-    sharp = (await import('sharp')).default;
+    sharp = (await import("sharp")).default;
   } catch (err) {
-    throw new Error(`Image processing unavailable: sharp failed to load (${err.message})`);
+    throw new Error(
+      `Image processing unavailable: sharp failed to load (${err.message})`,
+    );
   }
 
   const {
@@ -191,23 +197,38 @@ export async function processImage(sourceBuffer, transform, targetSize) {
 
   // 4. Flips
   if (flip_horizontal) img = img.flop(); // mirror left–right
-  if (flip_vertical) img = img.flip();   // mirror top–bottom
+  if (flip_vertical) img = img.flip(); // mirror top–bottom
 
   // 5. Zoom: base scale makes source width === targetW; slider value is a multiplier.
   const meta = await sharp(sourceBuffer).metadata();
   const baseZoom = targetW / meta.width;
   const effectiveZoom = baseZoom * Math.max(0.25, zoom);
-  const zoomedW = Math.round(meta.width * effectiveZoom);
-  const zoomedH = Math.round(meta.height * effectiveZoom);
+  let zoomedW = Math.round(meta.width * effectiveZoom);
+  let zoomedH = Math.round(meta.height * effectiveZoom);
+
+  // Ensure zoomed dimensions are at least as large as the target extraction size.
+  // If they are smaller, upscale to avoid sharp.extract "bad extract area" errors.
+  if (zoomedW < targetW) zoomedW = targetW;
+  if (zoomedH < targetH) zoomedH = targetH;
+
   img = img.resize(zoomedW, zoomedH);
 
   // 6. Extract the target region, centred on the zoomed image + offset.
   // offset_x/y are percentages (-50..+50) of target dimensions.
-  let cropLeft = Math.round((zoomedW - targetW) / 2 - (offset_x / 100) * targetW);
-  let cropTop = Math.round((zoomedH - targetH) / 2 - (offset_y / 100) * targetH);
+  let cropLeft = Math.round(
+    (zoomedW - targetW) / 2 - (offset_x / 100) * targetW,
+  );
+  let cropTop = Math.round(
+    (zoomedH - targetH) / 2 - (offset_y / 100) * targetH,
+  );
   cropLeft = Math.max(0, Math.min(cropLeft, zoomedW - targetW));
   cropTop = Math.max(0, Math.min(cropTop, zoomedH - targetH));
-  img = img.extract({ left: cropLeft, top: cropTop, width: targetW, height: targetH });
+  img = img.extract({
+    left: cropLeft,
+    top: cropTop,
+    width: targetW,
+    height: targetH,
+  });
 
   // 7. Encode as WebP
   return img.webp({ quality: 85 }).toBuffer();
@@ -217,16 +238,21 @@ export async function processImage(sourceBuffer, transform, targetSize) {
 // Transform spec (.jfx) read/write
 // ---------------------------------------------------------------------------
 
-export async function writeTransformSpec(businessFolder, imageType, slug, spec) {
+export async function writeTransformSpec(
+  businessFolder,
+  imageType,
+  slug,
+  spec,
+) {
   const typeFolder = path.join(businessFolder, imageType);
   await fs.mkdir(typeFolder, { recursive: true });
   const specPath = path.join(typeFolder, `${slug}.jfx`);
-  await fs.writeFile(specPath, JSON.stringify(spec, null, 2), 'utf8');
+  await fs.writeFile(specPath, JSON.stringify(spec, null, 2), "utf8");
 }
 
 export async function readTransformSpec(businessFolder, imageType, slug) {
   const specPath = path.join(businessFolder, imageType, `${slug}.jfx`);
-  const raw = await fs.readFile(specPath, 'utf8');
+  const raw = await fs.readFile(specPath, "utf8");
   return JSON.parse(raw);
 }
 
@@ -240,7 +266,12 @@ export async function readTransformSpec(businessFolder, imageType, slug) {
  *   - {imageType}/{slug}_*.webp  (all size outputs)
  *   - {slug}.{sourceExt}         (source file in business root)
  */
-export async function deleteImageFiles(businessFolder, imageType, slug, sourceExt) {
+export async function deleteImageFiles(
+  businessFolder,
+  imageType,
+  slug,
+  sourceExt,
+) {
   const typeFolder = path.join(businessFolder, imageType);
 
   // Delete .jfx spec
@@ -251,14 +282,16 @@ export async function deleteImageFiles(businessFolder, imageType, slug, sourceEx
     const files = await fs.readdir(typeFolder);
     await Promise.all(
       files
-        .filter((f) => f.startsWith(`${slug}_`) && f.endsWith('.webp'))
-        .map((f) => fs.unlink(path.join(typeFolder, f)).catch(() => {}))
+        .filter((f) => f.startsWith(`${slug}_`) && f.endsWith(".webp"))
+        .map((f) => fs.unlink(path.join(typeFolder, f)).catch(() => {})),
     );
   } catch {}
 
   // Delete source file from business root
   if (sourceExt) {
-    await fs.unlink(path.join(businessFolder, `${slug}.${sourceExt}`)).catch(() => {});
+    await fs
+      .unlink(path.join(businessFolder, `${slug}.${sourceExt}`))
+      .catch(() => {});
   }
 }
 
@@ -271,7 +304,7 @@ export async function countImages(businessFolder, imageType) {
   const typeFolder = path.join(businessFolder, imageType);
   try {
     const files = await fs.readdir(typeFolder);
-    return files.filter((f) => f.endsWith('.jfx')).length;
+    return files.filter((f) => f.endsWith(".jfx")).length;
   } catch {
     return 0;
   }
@@ -281,13 +314,18 @@ export async function countImages(businessFolder, imageType) {
  * List all images for a given type. Returns an array of:
  *   { slug, name, source, uploaded_at, sizes: { sizeTag: '/media/...' } }
  */
-export async function listImagesForType(businessFolder, imageType, appConfig, businessTag) {
+export async function listImagesForType(
+  businessFolder,
+  imageType,
+  appConfig,
+  businessTag,
+) {
   const typeFolder = path.join(businessFolder, imageType);
   const imageSizes = appConfig.image_types[imageType]?.sizes ?? {};
 
   try {
     const files = await fs.readdir(typeFolder);
-    const jfxFiles = files.filter((f) => f.endsWith('.jfx'));
+    const jfxFiles = files.filter((f) => f.endsWith(".jfx"));
 
     const results = [];
     for (const jfxFile of jfxFiles) {
@@ -296,7 +334,8 @@ export async function listImagesForType(businessFolder, imageType, appConfig, bu
         const spec = await readTransformSpec(businessFolder, imageType, slug);
         const sizes = {};
         for (const sizeTag of Object.keys(imageSizes)) {
-          sizes[sizeTag] = `/media/${businessTag}/${imageType}/${slug}_${sizeTag}.webp`;
+          sizes[sizeTag] =
+            `/media/${businessTag}/${imageType}/${slug}_${sizeTag}.webp`;
         }
         results.push({
           slug,

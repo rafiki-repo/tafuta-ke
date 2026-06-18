@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, Globe, Star, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { businessAPI } from '@/lib/api';
-import { formatPhoneNumber } from '@/lib/utils';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { MapPin, Phone, Mail, Globe, Star, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert, AlertDescription } from "@/components/ui/Alert";
+import { businessAPI } from "@/lib/api";
+import { formatPhoneNumber } from "@/lib/utils";
 
 export default function BusinessDetailPage() {
   const { id } = useParams();
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadBusiness();
@@ -24,7 +24,7 @@ export default function BusinessDetailPage() {
       const response = await businessAPI.get(id);
       setBusiness(response.data.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load business details');
+      setError(err.response?.data?.error || "Failed to load business details");
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export default function BusinessDetailPage() {
       <div className="py-12">
         <div className="container-safe max-w-2xl">
           <Alert variant="destructive">
-            <AlertDescription>{error || 'Business not found'}</AlertDescription>
+            <AlertDescription>{error || "Business not found"}</AlertDescription>
           </Alert>
           <Link to="/search" className="mt-4 inline-block">
             <Button variant="outline">
@@ -69,13 +69,16 @@ export default function BusinessDetailPage() {
     : null;
   const media = content.media || {};
   const bannerSlug = Array.isArray(media.banner) ? media.banner[0] : null;
-  const bannerUrl = mediaBase && bannerSlug
-    ? `${mediaBase}/banner/${bannerSlug}_600x200.webp`
-    : null;
-  const logoSlug = typeof media.logo === 'string' ? media.logo : null;
-  const logoUrl = mediaBase && logoSlug
-    ? `${mediaBase}/logo/${logoSlug}_medium.webp`
-    : business.logo_url || null;
+  const ver = business.content_version || 0;
+  const bannerUrl =
+    mediaBase && bannerSlug
+      ? `${mediaBase}/banner/${bannerSlug}_600x200.webp?v=${ver}`
+      : null;
+  const logoSlug = typeof media.logo === "string" ? media.logo : null;
+  const logoUrl =
+    mediaBase && logoSlug
+      ? `${mediaBase}/logo/${logoSlug}_medium.webp?v=${ver}`
+      : business.logo_url || null;
   const gallerySlugs = Array.isArray(media.gallery) ? media.gallery : [];
 
   return (
@@ -112,13 +115,17 @@ export default function BusinessDetailPage() {
                     </CardTitle>
                     <div className="flex flex-wrap items-center gap-2 mb-4">
                       <Badge variant="outline">{business.category}</Badge>
-                      {business.verification_tier !== 'basic' && (
+                      {business.verification_tier !== "basic" && (
                         <Badge variant="success">
                           <Star className="h-3 w-3 mr-1" />
                           {business.verification_tier}
                         </Badge>
                       )}
-                      <Badge variant={business.status === 'active' ? 'success' : 'secondary'}>
+                      <Badge
+                        variant={
+                          business.status === "active" ? "success" : "secondary"
+                        }
+                      >
                         {business.status}
                       </Badge>
                     </div>
@@ -137,7 +144,7 @@ export default function BusinessDetailPage() {
                 <div>
                   <h3 className="font-semibold mb-2">About</h3>
                   <p className="text-muted-foreground">
-                    {profile.description || 'No description available'}
+                    {profile.description || "No description available"}
                   </p>
                 </div>
 
@@ -195,9 +202,12 @@ export default function BusinessDetailPage() {
                 <CardContent>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {gallerySlugs.map((slug) => (
-                      <div key={slug} className="aspect-square rounded overflow-hidden bg-muted">
+                      <div
+                        key={slug}
+                        className="aspect-square rounded overflow-hidden bg-muted"
+                      >
                         <img
-                          src={`${mediaBase}/gallery/${slug}_thumb.webp`}
+                          src={`${mediaBase}/gallery/${slug}_thumb.webp?v=${ver}`}
                           alt="Gallery"
                           className="w-full h-full object-cover"
                           loading="lazy"
@@ -221,7 +231,9 @@ export default function BusinessDetailPage() {
                   <div className="flex items-start gap-3">
                     <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Phone
+                      </p>
                       <a
                         href={`tel:${contact.phone}`}
                         className="font-medium hover:text-primary"
@@ -236,7 +248,9 @@ export default function BusinessDetailPage() {
                   <div className="flex items-start gap-3">
                     <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Email</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Email
+                      </p>
                       <a
                         href={`mailto:${contact.email}`}
                         className="font-medium hover:text-primary"
@@ -251,7 +265,9 @@ export default function BusinessDetailPage() {
                   <div className="flex items-start gap-3">
                     <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Website</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Website
+                      </p>
                       <a
                         href={contact.website}
                         target="_blank"
@@ -276,7 +292,9 @@ export default function BusinessDetailPage() {
                   <div>
                     <p className="font-medium">{business.region}</p>
                     {location.city && (
-                      <p className="text-sm text-muted-foreground">{location.city}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {location.city}
+                      </p>
                     )}
                     {location.address && (
                       <p className="text-sm text-muted-foreground mt-1">
@@ -287,6 +305,20 @@ export default function BusinessDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* How to find us */}
+            {profile.how_to_find && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to find us</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {profile.how_to_find}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

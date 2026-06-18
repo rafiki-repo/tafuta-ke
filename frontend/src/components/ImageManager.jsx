@@ -7,15 +7,24 @@
  *                           (owner/admin can; employee cannot per PRD-07 §13)
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { Upload, Trash2, Edit2, X, RotateCcw, Lock, ImageOff, Star } from 'lucide-react';
-import { businessAPI } from '@/lib/api';
-import ImageTransformPreview from './ImageTransformPreview';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { useState, useEffect, useRef } from "react";
+import {
+  Upload,
+  Trash2,
+  Edit2,
+  X,
+  RotateCcw,
+  Lock,
+  ImageOff,
+  Star,
+} from "lucide-react";
+import { businessAPI } from "@/lib/api";
+import ImageTransformPreview from "./ImageTransformPreview";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert, AlertDescription } from "@/components/ui/Alert";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -41,7 +50,9 @@ function SliderRow({ label, min, max, step, value, onChange }) {
   const decimals = step < 1 ? 2 : 0;
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
+      <span className="text-xs text-muted-foreground w-20 shrink-0">
+        {label}
+      </span>
       <input
         type="range"
         min={min}
@@ -74,20 +85,69 @@ function TransformSliders({ transform, onChange }) {
         </button>
       </div>
 
-      <SliderRow label="Zoom" min={0.25} max={4} step={0.05} value={transform.zoom} onChange={(v) => update('zoom', v)} />
-      <SliderRow label="Offset X" min={-50} max={50} step={1} value={transform.offset_x} onChange={(v) => update('offset_x', v)} />
-      <SliderRow label="Offset Y" min={-50} max={50} step={1} value={transform.offset_y} onChange={(v) => update('offset_y', v)} />
-      <SliderRow label="Rotation" min={-180} max={180} step={1} value={transform.rotation} onChange={(v) => update('rotation', v)} />
-      <SliderRow label="Brightness" min={-1} max={1} step={0.05} value={transform.brightness} onChange={(v) => update('brightness', v)} />
-      <SliderRow label="Contrast" min={-1} max={1} step={0.05} value={transform.contrast} onChange={(v) => update('contrast', v)} />
-      <SliderRow label="Saturation" min={-1} max={1} step={0.05} value={transform.saturation} onChange={(v) => update('saturation', v)} />
+      <SliderRow
+        label="Zoom"
+        min={0.25}
+        max={4}
+        step={0.05}
+        value={transform.zoom}
+        onChange={(v) => update("zoom", v)}
+      />
+      <SliderRow
+        label="Offset X"
+        min={-50}
+        max={50}
+        step={1}
+        value={transform.offset_x}
+        onChange={(v) => update("offset_x", v)}
+      />
+      <SliderRow
+        label="Offset Y"
+        min={-50}
+        max={50}
+        step={1}
+        value={transform.offset_y}
+        onChange={(v) => update("offset_y", v)}
+      />
+      <SliderRow
+        label="Rotation"
+        min={-180}
+        max={180}
+        step={1}
+        value={transform.rotation}
+        onChange={(v) => update("rotation", v)}
+      />
+      <SliderRow
+        label="Brightness"
+        min={-1}
+        max={1}
+        step={0.05}
+        value={transform.brightness}
+        onChange={(v) => update("brightness", v)}
+      />
+      <SliderRow
+        label="Contrast"
+        min={-1}
+        max={1}
+        step={0.05}
+        value={transform.contrast}
+        onChange={(v) => update("contrast", v)}
+      />
+      <SliderRow
+        label="Saturation"
+        min={-1}
+        max={1}
+        step={0.05}
+        value={transform.saturation}
+        onChange={(v) => update("saturation", v)}
+      />
 
       <div className="flex gap-6 pt-1">
         <label className="flex items-center gap-2 cursor-pointer text-sm">
           <input
             type="checkbox"
             checked={transform.flip_horizontal}
-            onChange={(e) => update('flip_horizontal', e.target.checked)}
+            onChange={(e) => update("flip_horizontal", e.target.checked)}
             className="h-4 w-4"
           />
           Flip H
@@ -96,7 +156,7 @@ function TransformSliders({ transform, onChange }) {
           <input
             type="checkbox"
             checked={transform.flip_vertical}
-            onChange={(e) => update('flip_vertical', e.target.checked)}
+            onChange={(e) => update("flip_vertical", e.target.checked)}
             className="h-4 w-4"
           />
           Flip V
@@ -116,7 +176,11 @@ function Modal({ title, onClose, children }) {
       <div className="bg-background rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b shrink-0">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -130,18 +194,24 @@ function Modal({ title, onClose, children }) {
 // ImageManager
 // ---------------------------------------------------------------------------
 
-export default function ImageManager({ businessId, businessTag, canDelete = true }) {
+export default function ImageManager({
+  businessId,
+  businessTag,
+  canDelete = true,
+}) {
   const [config, setConfig] = useState(null);
   const [images, setImages] = useState({});
-  const [activeType, setActiveType] = useState('logo');
+  const [activeType, setActiveType] = useState("logo");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Upload modal state
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
-  const [uploadName, setUploadName] = useState('');
-  const [uploadTransform, setUploadTransform] = useState({ ...DEFAULT_TRANSFORM });
+  const [uploadName, setUploadName] = useState("");
+  const [uploadTransform, setUploadTransform] = useState({
+    ...DEFAULT_TRANSFORM,
+  });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const fileInputRef = useRef(null);
@@ -176,7 +246,7 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
       setPrimarySlugs(photosData._primary || {});
       setImages(photosData);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load photos.');
+      setError(err.response?.data?.message || "Failed to load photos.");
     } finally {
       setLoading(false);
     }
@@ -193,7 +263,9 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
   const typeList = config ? Object.keys(config.image_types) : [];
   const currentImages = images[activeType] || [];
   const typeConfig = config?.image_types?.[activeType];
-  const atMax = typeConfig ? currentImages.length >= typeConfig.max_images : false;
+  const atMax = typeConfig
+    ? currentImages.length >= typeConfig.max_images
+    : false;
 
   // Preview target size: use first configured size for the active type
   const previewTarget = (() => {
@@ -203,7 +275,10 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
   })();
 
   // Smallest size URL for a given image (for thumbnails and edit preview)
-  const thumbUrl = (image) => Object.values(image.sizes)[0];
+  const thumbUrl = (image) => {
+    const url = Object.values(image.sizes)[0];
+    return url;
+  };
 
   // ---------------------------------------------------------------------------
   // Upload handlers
@@ -211,7 +286,7 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
 
   const openUpload = () => {
     setUploadFile(null);
-    setUploadName('');
+    setUploadName("");
     setUploadTransform({ ...DEFAULT_TRANSFORM });
     setUploadError(null);
     setUploadOpen(true);
@@ -223,27 +298,40 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
     setUploadFile(f);
     // Auto-fill name from filename (strip extension)
     if (!uploadName) {
-      setUploadName(f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim());
+      setUploadName(
+        f.name
+          .replace(/\.[^.]+$/, "")
+          .replace(/[-_]+/g, " ")
+          .trim(),
+      );
     }
   };
 
   const handleUpload = async () => {
-    if (!uploadFile) { setUploadError('Please select an image file.'); return; }
-    if (!uploadName.trim()) { setUploadError('Please enter a name for this image.'); return; }
+    if (!uploadFile) {
+      setUploadError("Please select an image file.");
+      return;
+    }
+    if (!uploadName.trim()) {
+      setUploadError("Please enter a name for this image.");
+      return;
+    }
 
     setUploading(true);
     setUploadError(null);
     try {
       const fd = new FormData();
-      fd.append('file', uploadFile);
-      fd.append('image_type', activeType);
-      fd.append('image_name', uploadName.trim());
-      fd.append('transform', JSON.stringify(uploadTransform));
+      fd.append("file", uploadFile);
+      fd.append("image_type", activeType);
+      fd.append("image_name", uploadName.trim());
+      fd.append("transform", JSON.stringify(uploadTransform));
       await businessAPI.uploadPhoto(businessId, fd);
       setUploadOpen(false);
       await loadData();
     } catch (err) {
-      setUploadError(err.response?.data?.message || 'Upload failed. Please try again.');
+      setUploadError(
+        err.response?.data?.message || "Upload failed. Please try again.",
+      );
     } finally {
       setUploading(false);
     }
@@ -254,10 +342,14 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
   // ---------------------------------------------------------------------------
 
   const openEdit = (image) => {
+    const ver = images._version || null;
+    const imageUrl = businessTag
+      ? `/media/${businessTag}/${image.source}${ver ? `?v=${ver}` : ""}`
+      : thumbUrl(image);
     setEditImage({
       slug: image.slug,
       imageType: activeType,
-      imageUrl: businessTag ? `/media/${businessTag}/${image.source}` : thumbUrl(image),
+      imageUrl,
       name: image.name,
     });
     setEditTransform({ ...DEFAULT_TRANSFORM, ...(image.transform || {}) });
@@ -277,7 +369,7 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
       setEditOpen(false);
       await loadData();
     } catch (err) {
-      setEditError(err.response?.data?.message || 'Failed to save changes.');
+      setEditError(err.response?.data?.message || "Failed to save changes.");
     } finally {
       setSaving(false);
     }
@@ -292,9 +384,11 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
     const newSlug = isCurrentPrimary ? null : slug;
     try {
       await businessAPI.setPrimaryPhoto(businessId, activeType, newSlug);
-      setPrimarySlugs(prev => ({ ...prev, [activeType]: newSlug }));
+      setPrimarySlugs((prev) => ({ ...prev, [activeType]: newSlug }));
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update primary image.');
+      setError(
+        err.response?.data?.message || "Failed to update primary image.",
+      );
     }
   };
 
@@ -309,7 +403,7 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
       setDeleteConfirm(null);
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete image.');
+      setError(err.response?.data?.message || "Failed to delete image.");
     } finally {
       setDeleting(false);
     }
@@ -353,15 +447,21 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
             <button
               key={type}
               type="button"
-              onClick={() => { setActiveType(type); setDeleteConfirm(null); }}
+              onClick={() => {
+                setActiveType(type);
+                setDeleteConfirm(null);
+              }}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                 activeType === type
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {tc.label || type.charAt(0).toUpperCase() + type.slice(1)}
-              <Badge variant={full ? 'secondary' : 'outline'} className="text-xs">
+              <Badge
+                variant={full ? "secondary" : "outline"}
+                className="text-xs"
+              >
                 {full ? <Lock className="h-3 w-3 mr-1 inline" /> : null}
                 {count}/{tc.max_images}
               </Badge>
@@ -373,7 +473,12 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
       {/* Upload button */}
       {!atMax && (
         <div>
-          <Button type="button" variant="outline" size="sm" onClick={openUpload}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={openUpload}
+          >
             <Upload className="h-4 w-4 mr-2" />
             Upload {typeConfig?.label || activeType}
           </Button>
@@ -381,7 +486,8 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
       )}
       {atMax && (
         <p className="text-sm text-muted-foreground">
-          Maximum number of {typeConfig?.label?.toLowerCase() || activeType} images reached. Delete one to upload another.
+          Maximum number of {typeConfig?.label?.toLowerCase() || activeType}{" "}
+          images reached. Delete one to upload another.
         </p>
       )}
 
@@ -389,12 +495,17 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
       {currentImages.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3 border border-dashed rounded-lg">
           <ImageOff className="h-10 w-10" />
-          <p className="text-sm">No {typeConfig?.label?.toLowerCase() || activeType} images yet.</p>
+          <p className="text-sm">
+            No {typeConfig?.label?.toLowerCase() || activeType} images yet.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {currentImages.map((image) => (
-            <div key={image.slug} className="border rounded-lg overflow-hidden bg-muted/30">
+            <div
+              key={image.slug}
+              className="border rounded-lg overflow-hidden bg-muted/30"
+            >
               <div className="aspect-square overflow-hidden bg-muted">
                 <img
                   src={thumbUrl(image)}
@@ -404,11 +515,15 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
                 />
               </div>
               <div className="p-2">
-                <p className="text-sm font-medium truncate mb-2">{image.name}</p>
+                <p className="text-sm font-medium truncate mb-2">
+                  {image.name}
+                </p>
 
                 {deleteConfirm === image.slug ? (
                   <div className="space-y-1">
-                    <p className="text-xs text-destructive">Delete this image?</p>
+                    <p className="text-xs text-destructive">
+                      Delete this image?
+                    </p>
                     <div className="flex gap-1">
                       <Button
                         type="button"
@@ -418,7 +533,7 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
                         onClick={() => handleDelete(image.slug)}
                         disabled={deleting}
                       >
-                        {deleting ? <Spinner size="sm" /> : 'Yes, delete'}
+                        {deleting ? <Spinner size="sm" /> : "Yes, delete"}
                       </Button>
                       <Button
                         type="button"
@@ -438,11 +553,26 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
                       type="button"
                       variant="ghost"
                       size="sm"
-                      title={primarySlugs[activeType] === image.slug ? 'Primary — click to unset' : 'Set as primary'}
+                      title={
+                        primarySlugs[activeType] === image.slug
+                          ? "Primary — click to unset"
+                          : "Set as primary"
+                      }
                       onClick={() => handleSetPrimary(image.slug)}
-                      className={primarySlugs[activeType] === image.slug ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground hover:text-foreground'}
+                      className={
+                        primarySlugs[activeType] === image.slug
+                          ? "text-yellow-500 hover:text-yellow-600"
+                          : "text-muted-foreground hover:text-foreground"
+                      }
                     >
-                      <Star className="h-3 w-3" fill={primarySlugs[activeType] === image.slug ? 'currentColor' : 'none'} />
+                      <Star
+                        className="h-3 w-3"
+                        fill={
+                          primarySlugs[activeType] === image.slug
+                            ? "currentColor"
+                            : "none"
+                        }
+                      />
                     </Button>
                     <Button
                       type="button"
@@ -486,7 +616,9 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-1">Image File</label>
+              <label className="block text-sm font-medium mb-1">
+                Image File
+              </label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -495,12 +627,15 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
                 className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Accepted: JPG, PNG, GIF, WebP · Max {config?.max_upload_size_mb || 10} MB
+                Accepted: JPG, PNG, GIF, WebP · Max{" "}
+                {config?.max_upload_size_mb || 10} MB
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Image Name</label>
+              <label className="block text-sm font-medium mb-1">
+                Image Name
+              </label>
               <Input
                 value={uploadName}
                 onChange={(e) => setUploadName(e.target.value)}
@@ -526,11 +661,19 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
             </div>
 
             <div className="flex gap-2 pt-2 border-t">
-              <Button type="button" onClick={handleUpload} disabled={uploading || !uploadFile}>
+              <Button
+                type="button"
+                onClick={handleUpload}
+                disabled={uploading || !uploadFile}
+              >
                 {uploading ? (
-                  <><Spinner size="sm" className="mr-2" /> Uploading…</>
+                  <>
+                    <Spinner size="sm" className="mr-2" /> Uploading…
+                  </>
                 ) : (
-                  <><Upload className="h-4 w-4 mr-2" /> Upload</>
+                  <>
+                    <Upload className="h-4 w-4 mr-2" /> Upload
+                  </>
                 )}
               </Button>
               <Button
@@ -569,7 +712,8 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
                   targetHeight={previewTarget.height}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Preview uses the thumbnail. The full-resolution output will be regenerated on save.
+                  Preview uses the thumbnail. The full-resolution output will be
+                  regenerated on save.
                 </p>
               </div>
               <TransformSliders
@@ -581,9 +725,11 @@ export default function ImageManager({ businessId, businessTag, canDelete = true
             <div className="flex gap-2 pt-2 border-t">
               <Button type="button" onClick={handleSaveEdit} disabled={saving}>
                 {saving ? (
-                  <><Spinner size="sm" className="mr-2" /> Saving…</>
+                  <>
+                    <Spinner size="sm" className="mr-2" /> Saving…
+                  </>
                 ) : (
-                  'Save Transform'
+                  "Save Transform"
                 )}
               </Button>
               <Button

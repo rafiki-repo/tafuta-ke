@@ -1,108 +1,122 @@
-import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import compression from 'compression';
-import session from 'express-session';
-import pgSession from 'connect-pg-simple';
-import passport from 'passport';
-import './config/passport.js'; // registers the Google OAuth strategy
-import config from './config/index.js';
-import pool from './config/database.js';
-import logger from './utils/logger.js';
-import { initCron } from './cron.js';
-import errorHandler from './middleware/errorHandler.js';
-import { generalLimiter } from './middleware/rateLimit.js';
+import express from "express";
+import helmet from "helmet";
+import cors from "cors";
+import compression from "compression";
+import session from "express-session";
+import pgSession from "connect-pg-simple";
+import passport from "passport";
+import "./config/passport.js"; // registers the Google OAuth strategy
+import config from "./config/index.js";
+import pool from "./config/database.js";
+import path from "path";
+import logger from "./utils/logger.js";
+import { initCron } from "./cron.js";
+import errorHandler from "./middleware/errorHandler.js";
+import { generalLimiter } from "./middleware/rateLimit.js";
 
 // Import routes
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import businessRoutes from './routes/businesses.js';
-import paymentRoutes from './routes/payments.js';
-import searchRoutes from './routes/search.js';
-import adminRoutes from './routes/admin.js';
-import photoRoutes from './routes/photos.js';
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
+import businessRoutes from "./routes/businesses.js";
+import paymentRoutes from "./routes/payments.js";
+import searchRoutes from "./routes/search.js";
+import adminRoutes from "./routes/admin.js";
+import photoRoutes from "./routes/photos.js";
 
 const app = express();
 const PgStore = pgSession(session);
 
 // Trust proxy for rate limiting behind reverse proxy (Caddy)
-app.set('trust proxy', 'loopback');
+app.set("trust proxy", "loopback");
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
     },
-  },
-}));
+  }),
+);
 
 // CORS configuration
-app.use(cors({
-  origin: config.env === 'production' 
-    ? ['https://tafuta.ke', /\.tafuta\.ke$/]
-    : ['http://localhost:3000', 'http://localhost:5173'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(
+  cors({
+    origin:
+      config.env === "production"
+        ? ["https://tafuta.ke", /\.tafuta\.ke$/]
+        : ["http://localhost:3000", "http://localhost:5173"],
+    credentials: true,
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Compression
 app.use(compression());
 
+// Serve media files directly in development so the frontend can load /media/* URLs
+if (config.env !== "production") {
+  const mediaPath = path.resolve(config.media.path);
+  app.use("/media", express.static(mediaPath));
+}
+
 // Session management
-app.use(session({
-  store: new PgStore({
-    pool,
-    tableName: 'sessions',
+app.use(
+  session({
+    store: new PgStore({
+      pool,
+      tableName: "sessions",
+    }),
+    secret: config.session.secret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: config.env === "production",
+      httpOnly: true,
+      maxAge: config.session.maxAge,
+      sameSite: "lax",
+    },
   }),
-  secret: config.session.secret,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: config.env === 'production',
-    httpOnly: true,
-    maxAge: config.session.maxAge,
-    sameSite: 'lax',
-  },
-}));
+);
 
 // Passport (stateless — session: false in each OAuth route)
 app.use(passport.initialize());
 
 // Rate limiting
-app.use('/api', generalLimiter);
+app.use("/api", generalLimiter);
 
 // Health check endpoint — no auth required
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/businesses', businessRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/api/admin', adminRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/businesses", businessRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/admin", adminRoutes);
 // Photos: mounted at /api so it can serve both /api/photos/config and
 // /api/businesses/:id/photos* (falls through from businessRoutes when no route matches)
-app.use('/api', photoRoutes);
+app.use("/api", photoRoutes);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     error: {
-      code: 'NOT_FOUND',
-      message: 'Endpoint not found',
+      code: "NOT_FOUND",
+      message: "Endpoint not found",
     },
   });
 });
@@ -121,14 +135,14 @@ app.listen(PORT, () => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully');
+process.on("SIGTERM", async () => {
+  logger.info("SIGTERM received, shutting down gracefully");
   await pool.end();
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully');
+process.on("SIGINT", async () => {
+  logger.info("SIGINT received, shutting down gracefully");
   await pool.end();
   process.exit(0);
 });
