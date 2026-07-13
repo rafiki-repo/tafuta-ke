@@ -3,6 +3,7 @@
 Do not work on these action items unless explicitly told to do so. [IMPLEMENT] marks actions that Kelvin M can work on.
 
 - [Bug] Back link on business listing did not go back to the main listing but to a different search page.
+- [IMPLEMENT] Create an admin link to add/modify categories. DK Secondhand should be in a Household and Electronics. Daniel's coputers should be "Technology". Snap Image Studio in a new category "Studio"
 - [IMPLEMENT] Landing page for a topic. For now it can have simple content like top 3 businesses in that category and a few related ads (like "come learn hair styling at Heniv") but in the future the landing pages will be expanded.
 - [IMPLEMENT] backend/.env includes NODE_ENV=production vs development. Indicate in db/seed.js comments that it is only intended to run on DEV and not PROD. Have a check for NOD_ENV in seed.js that aborts if it is PROD.
 - [Soon] A log of sorts - visits to the business owner - topics of dicussion. Our team will add notes or at the very least an indicator that they visited.
