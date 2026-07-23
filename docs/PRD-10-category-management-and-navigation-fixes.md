@@ -354,7 +354,7 @@ Ads are stored in `system_config` under key `category_ads` as a JSON array:
 
 Ads are currently edited directly via the System Config editor (Super Admin). A dedicated ad management UI is a future enhancement.
 
-Migration `018_seed_category_ads.sql` seeds three starter ads:
+Migration `018_seed_category_ads.sql` seeds three starter ads for local/demo environments only. Production should not seed these ads unless the team explicitly wants the sample promotions live.
 
 | Ad | Category | Description |
 |---|---|---|
@@ -522,17 +522,21 @@ This work is considered complete when:
 
 ### Required on production if not already applied
 
-Run pending migrations through the normal migration runner:
+Apply the required category data migration in production:
 
 ```bash
-cd backend
-npm run migrate
+backend/src/db/migrations/017_categories_admin_and_updates.sql
 ```
+
+Do not run all pending migrations blindly if `018_seed_category_ads.sql` is still pending, because the default migration runner executes every pending SQL file in order.
 
 For this PRD, production needs:
 
 - `017_categories_admin_and_updates.sql` — adds/merges category values and corrects initial business categories.
-- `018_seed_category_ads.sql` — seeds category landing page promotional ads.
+
+Production does **not** need:
+
+- `018_seed_category_ads.sql` — sample promotional ads for local/demo environments only.
 
 ### Not required as a new migration
 
@@ -544,7 +548,7 @@ The following changes are code-only and do not require a new schema migration:
 - Postgres `$1` type fix for category assignment.
 - Visible row UI for categories.
 
-If production has already run migrations through `018`, there are no additional category migrations required for the latest fixes.
+If production has already run `017_categories_admin_and_updates.sql`, there are no additional category migrations required for the latest fixes.
 
 ---
 

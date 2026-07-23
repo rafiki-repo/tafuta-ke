@@ -22,13 +22,8 @@
   }
   .wrap{max-width:840px;margin:0 auto;padding:48px 24px 96px;}
   header.doc{border-bottom:3px solid var(--accent);padding-bottom:24px;margin-bottom:32px;}
-  .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
-  .brand .mark{
-    width:34px;height:34px;border-radius:8px;background:var(--accent);
-    color:#fff;display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:16px;font-family:Georgia,serif;
-  }
-  .brand .name{font-weight:700;font-size:18px;letter-spacing:.2px;}
+  .brand{display:flex;align-items:center;margin-bottom:18px;}
+  .brand img{display:block;width:auto;height:40px;}
   h1{font-size:28px;margin:0 0 8px;color:var(--ink);}
   .meta{color:var(--muted);font-size:14px;}
   .meta strong{color:var(--ink);}
@@ -72,8 +67,9 @@
 
   <header class="doc">
     <div class="brand">
-      <div class="mark">T</div>
-      <div class="name">Tafuta</div>
+      <a href="/" aria-label="Tafuta home">
+        <img src="/tafuta-logo.png" alt="Tafuta">
+      </a>
     </div>
     <h1>Privacy Policy</h1>
     <p class="meta"><strong>Effective date:</strong> July 23, 2026 &nbsp;·&nbsp; <strong>Last updated:</strong> July 23, 2026</p>
@@ -168,7 +164,7 @@
     <ul>
       <li><strong>To provide the Service</strong> — create and manage your account, publish and display business listings and websites, process payments and issue VAT receipts, and deliver OTP codes and notifications.</li>
       <li><strong>To review and moderate listings</strong> — new and edited business listings go through an approval process before they appear publicly; we may use submitted content and contact details to verify a business is genuine.</li>
-      <li><strong>To secure the Service</strong> — detect and prevent fraud, abuse, unauthorized access, and to enforce our <a href="Terms of Use-07-2026.html">Terms of Use</a>.</li>
+      <li><strong>To secure the Service</strong> — detect and prevent fraud, abuse, unauthorized access, and to enforce our <a href="/legal/terms-of-use.html">Terms of Use</a>.</li>
       <li><strong>To communicate with you</strong> — service notices (payment receipts, expiry reminders, account/security alerts) and, only if you've opted in, marketing messages by SMS or email.</li>
       <li><strong>To comply with legal and tax obligations</strong> — including Kenyan VAT record-keeping requirements for transactions and receipts.</li>
       <li><strong>To improve the Service</strong> — understand usage patterns and troubleshoot issues, generally using aggregated or de-identified data.</li>
@@ -304,16 +300,14 @@
     <p>
       <strong>eBiashara Rahisi Ltd</strong> (trading as Tafuta)<br>
       Email: <a href="mailto:privacy@tafuta.ke">privacy@tafuta.ke</a><br>
-      Address: <span class="placeholder">[Registered physical address]</span><br>
+      Phone: <a href="tel:+254794962729">+254794962729</a><br>
+      Address: <a href="#">Machakos, Mbene business center building</a><br>
       <!-- KRA PIN: <span class="placeholder">[KRA PIN]</span> &nbsp;·&nbsp; VAT Reg. No.: <span class="placeholder">[VAT registration number]</span> -->
     </p>
   </section>
 
   <footer class="doc">
-    See also our <a href="Terms of Use-07-2026.html">Terms of Use</a>. This document is a working draft prepared for eBiashara Rahisi Ltd /
-    Tafuta based on the current tafuta.ke product and data practices 
-    — items in <span class="placeholder">orange brackets</span> must be filled in and the whole document reviewed by a Kenyan-qualified lawyer before
-    publication.
+    See also our <a href="/legal/terms-of-use.html">Terms of Use</a>.
   </footer>
 
 </div>
