@@ -415,7 +415,7 @@ export default function AdminBusinesses() {
                   </Button>
                 </div>
 
-                <Link to={`/admin/businesses/${selected.business_id}/edit`}>
+                <Link to={`/admin/businesses/${selected.business_id}/edit`} className="mt-2 block">
                   <Button variant="outline" className="w-full">
                     <Edit2 className="h-4 w-4 mr-2" />
                     Edit Business

@@ -96,6 +96,7 @@ export const searchAPI = {
   getCategories: () => api.get('/search/categories'),
   getRegions: () => api.get('/search/regions'),
   getFeatured: (params) => api.get('/search/featured', { params }),
+  getCategoryPage: (slug) => api.get(`/search/categories/${slug}`),
 };
 
 // Payment API
@@ -131,8 +132,15 @@ export const adminAPI = {
   updateUserVerification: (id, data) => api.patch(`/admin/users/${id}/verification`, data),
   getSystemConfig: () => api.get('/admin/system/config'),
   updateSystemConfig: (key, data) => api.patch(`/admin/system/config/${key}`, data),
+  getCategories: () => api.get('/admin/categories'),
+  updateCategories: (categories) => api.patch('/admin/categories', { categories }),
+  renameCategory: (oldCategory, newCategory) => api.patch('/admin/categories/rename', {
+    old_category: oldCategory,
+    new_category: newCategory,
+  }),
   getAllBusinesses: (params) => api.get('/admin/businesses', { params }),
   updateBusinessVerification: (id, data) => api.patch(`/admin/businesses/${id}/verification`, data),
+  updateBusinessCategory: (id, category) => api.patch(`/admin/businesses/${id}/category`, { category }),
 };
 
 export default api;

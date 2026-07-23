@@ -1,6 +1,7 @@
 import express from 'express';
 import { optionalAuth } from '../middleware/auth.js';
-import { success, paginated } from '../utils/response.js';
+import { success, paginated, error } from '../utils/response.js';
+import { formatCategoryName } from '../utils/validation.js';
 import pool from '../config/database.js';
 
 const router = express.Router();
@@ -25,7 +26,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
 
     // Category filter
     if (category) {
-      whereClause += ` AND b.category = $${paramCount++}`;
+      whereClause += ` AND LOWER(b.category) = LOWER($${paramCount++})`;
       params.push(category);
     }
 
@@ -178,7 +179,9 @@ router.get('/categories', async (req, res, next) => {
       return res.json(success({ categories: [] }));
     }
 
-    const categories = result.rows[0].value;
+    const categories = Array.isArray(result.rows[0].value)
+      ? result.rows[0].value.map(formatCategoryName)
+      : [];
 
     res.json(success({ categories }));
 
@@ -256,6 +259,88 @@ router.get('/featured', async (req, res, next) => {
 
     res.json(success({ businesses }));
 
+  } catch (err) {
+    next(err);
+  }
+});
+
+function slugify(str) {
+  return String(str)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// GET /api/search/categories/:slug - Category landing page data
+router.get('/categories/:slug', async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+
+    // Resolve slug → canonical category name
+    const configResult = await pool.query(
+      `SELECT value FROM system_config WHERE key = 'categories'`
+    );
+    const allCategories = Array.isArray(configResult.rows[0]?.value)
+      ? configResult.rows[0].value.map(formatCategoryName)
+      : [];
+    const category = allCategories.find(c => slugify(c) === slug);
+    if (!category) {
+      return res.status(404).json(error('Category not found', 'NOT_FOUND'));
+    }
+
+    // Run all three queries in parallel
+    const [businessResult, countResult, adsResult] = await Promise.all([
+      pool.query(
+        `SELECT b.business_id, b.business_name, b.business_tag, b.category, b.region,
+                b.subdomain, b.logo_url, b.verification_tier, b.content_json,
+                CASE WHEN EXISTS (
+                  SELECT 1 FROM service_subscriptions ss
+                  WHERE ss.business_id = b.business_id AND ss.service_type = 'ads'
+                    AND ss.status = 'active'
+                    AND (ss.expiration_date IS NULL OR ss.expiration_date > CURRENT_DATE)
+                ) THEN true ELSE false END as has_active_ads
+         FROM businesses b
+         WHERE b.status = 'active' AND LOWER(b.category) = LOWER($1)
+         ORDER BY
+           CASE b.verification_tier WHEN 'premium' THEN 1 WHEN 'verified' THEN 2 ELSE 3 END,
+           b.updated_at DESC
+         LIMIT 3`,
+        [category]
+      ),
+      pool.query(
+        `SELECT COUNT(*) as total FROM businesses WHERE status = 'active' AND LOWER(category) = LOWER($1)`,
+        [category]
+      ),
+      pool.query(`SELECT value FROM system_config WHERE key = 'category_ads'`),
+    ]);
+
+    const businesses = businessResult.rows.map(b => ({
+      business_id: b.business_id,
+      business_name: b.business_name,
+      business_tag: b.business_tag,
+      category: b.category,
+      region: b.region,
+      subdomain: b.subdomain,
+      logo_url: b.logo_url,
+      verification_tier: b.verification_tier,
+      has_active_ads: b.has_active_ads,
+      media: b.content_json?.media || null,
+      description: b.content_json?.profile?.en?.description || '',
+      phone: b.content_json?.contact?.phone || '',
+    }));
+
+    const allAds = Array.isArray(adsResult.rows[0]?.value) ? adsResult.rows[0].value : [];
+    const ads = allAds.filter(
+      ad => !ad.category || ad.category.toLowerCase() === category.toLowerCase()
+    );
+
+    res.json(success({
+      category,
+      slug,
+      total: parseInt(countResult.rows[0].total, 10),
+      businesses,
+      ads,
+    }));
   } catch (err) {
     next(err);
   }

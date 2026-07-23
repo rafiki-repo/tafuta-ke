@@ -9,6 +9,7 @@ import pool from '../config/database.js';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 import { sendOtpEmail } from '../services/emailService.js';
+import { sendOtpSms } from '../services/smsService.js';
 
 const router = express.Router();
 
@@ -318,7 +319,7 @@ router.post('/me/request-phone-change', requireAuth, async (req, res, next) => {
       return res.status(409).json(error('Phone number already in use by another account', 'PHONE_EXISTS'));
     }
     const otp = await storeOtp(phone);
-    // TODO: send via VintEx SMS
+    await sendOtpSms(phone, otp);
     logger.info('Phone change OTP generated', { userId: req.user.userId });
     if (config.env !== 'production') {
       logger.info(`[DEV] Phone change OTP for ${phone}: ${otp}`);

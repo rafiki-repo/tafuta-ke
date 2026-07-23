@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Building2, CheckCircle, Phone } from 'lucide-react';
@@ -20,7 +20,10 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [step, setStep] = useState('register'); // 'register' | 'verify'
   const [registeredPhone, setRegisteredPhone] = useState('');
 
@@ -29,12 +32,27 @@ export default function RegisterPage() {
 
   const password = watch('password');
 
+  useEffect(() => {
+    if (resendCountdown <= 0) return undefined;
+
+    const timerId = window.setTimeout(() => {
+      setResendCountdown((seconds) => Math.max(seconds - 1, 0));
+    }, 1000);
+
+    return () => window.clearTimeout(timerId);
+  }, [resendCountdown]);
+
+  const startResendCountdown = () => {
+    setResendCountdown(60);
+  };
+
   const onSubmit = async (data) => {
     setError('');
+    setMessage('');
     setLoading(true);
     try {
       const cleanPhone = data.phone.replace(/[\s\-()]/g, '');
-      await authAPI.register({
+      const response = await authAPI.register({
         full_name: data.full_name.trim(),
         phone: cleanPhone,
         email: data.email || undefined,
@@ -43,6 +61,8 @@ export default function RegisterPage() {
         privacy_version: '1.0',
       });
       setRegisteredPhone(cleanPhone);
+      setMessage('OTP sent. Please check your phone.');
+      startResendCountdown();
       setStep('verify');
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Registration failed. Please try again.');
@@ -51,11 +71,27 @@ export default function RegisterPage() {
     }
   };
 
+  const onResendOtp = async () => {
+    setError('');
+    setMessage('');
+    setResending(true);
+    try {
+      await authAPI.requestOTP({ identifier: registeredPhone });
+      setMessage('A new OTP has been sent to your phone.');
+      startResendCountdown();
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to resend OTP. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
+
   const onVerifyOtp = async (data) => {
     setError('');
+    setMessage('');
     setLoading(true);
     try {
-      const response = await authAPI.verifyOTP({ phone: registeredPhone, otp: data.otp });
+      const response = await authAPI.verifyOTP({ identifier: registeredPhone, otp: data.otp });
       const { token } = response.data.data;
       localStorage.setItem('token', token);
       const userResponse = await userAPI.getProfile();
@@ -88,6 +124,11 @@ export default function RegisterPage() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+        {message && (
+          <Alert className="mb-4">
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="bg-card border border-border/40 rounded-xl p-6">
           <form onSubmit={handleSubmitOtp(onVerifyOtp)} className="space-y-4">
@@ -112,11 +153,22 @@ export default function RegisterPage() {
               {loading && <Spinner size="sm" className="mr-2" />}
               Verify & Continue
             </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={onResendOtp}
+              disabled={loading || resending || resendCountdown > 0}
+            >
+              {resending && <Spinner size="sm" className="mr-2" />}
+              {resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : 'Resend OTP'}
+            </Button>
           </form>
         </div>
 
         <button
-          onClick={() => { setStep('register'); setError(''); }}
+          onClick={() => { setStep('register'); setError(''); setMessage(''); setResendCountdown(0); }}
           className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
         >
           ← Back to registration

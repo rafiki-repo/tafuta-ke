@@ -3,6 +3,15 @@ export function isValidKenyanPhone(phone) {
   return phoneRegex.test(phone);
 }
 
+export function formatCategoryName(category) {
+  return String(category || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[A-Za-z0-9]+/g, (word) => (
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ));
+}
+
 export function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
