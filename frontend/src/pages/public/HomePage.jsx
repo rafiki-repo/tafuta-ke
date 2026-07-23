@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   MapPin,
+  Camera,
   Scissors,
   UtensilsCrossed,
   Cpu,
@@ -52,7 +53,10 @@ const CATEGORY_ICONS = {
   restaurants: UtensilsCrossed,
   "food & beverage": UtensilsCrossed,
   cyber: Cpu,
+  technology: Cpu,
+  studio: Camera,
   hardware: Wrench,
+  "household and electronics": ShoppingCart,
   grocery: ShoppingCart,
   groceries: ShoppingCart,
   tailor: Shirt,

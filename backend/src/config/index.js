@@ -35,7 +35,9 @@ const config = {
   
   vintex: {
     apiKey: process.env.VINTEX_API_KEY,
-    senderId: process.env.VINTEX_SENDER_ID || 'TAFUTA',
+    email: process.env.VINTEX_EMAIL,
+    senderId: process.env.VINTEX_SENDER_ID || '20642',
+    baseUrl: process.env.VINTEX_BASE_URL || 'https://sms.vintextechnologies.com/api',
   },
 
   google: {

@@ -1,7 +1,7 @@
 import express from 'express';
 import { requireAuth, requireAdmin, requireRole } from '../middleware/auth.js';
 import { success, error, paginated } from '../utils/response.js';
-import { isValidUUID } from '../utils/validation.js';
+import { formatCategoryName, isValidUUID } from '../utils/validation.js';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 
@@ -764,6 +764,253 @@ router.patch('/users/:id/verification', requireRole('admin'), async (req, res, n
 
     res.json(success(result.rows[0], 'User verification tier updated'));
 
+  } catch (err) {
+    next(err);
+  }
+});
+
+const CATEGORY_NAME_MAX_LENGTH = 80;
+const CATEGORY_LIST_MAX_LENGTH = 100;
+const CATEGORY_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 &/()+'.-]*$/;
+
+function validateCategoryName(raw) {
+  const category = formatCategoryName(raw);
+  if (!category) {
+    return { valid: false, message: 'Category name cannot be blank' };
+  }
+  if (category.length > CATEGORY_NAME_MAX_LENGTH) {
+    return { valid: false, message: `Category name must be ${CATEGORY_NAME_MAX_LENGTH} characters or less` };
+  }
+  if (!CATEGORY_NAME_PATTERN.test(category)) {
+    return {
+      valid: false,
+      message: 'Category name can only contain letters, numbers, spaces, &, /, (, ), +, apostrophes, periods, and hyphens',
+    };
+  }
+  return { valid: true, category };
+}
+
+function normalizeCategories(categories) {
+  if (!Array.isArray(categories)) {
+    return { valid: false, message: 'categories must be an array' };
+  }
+  if (categories.length > CATEGORY_LIST_MAX_LENGTH) {
+    return { valid: false, message: `No more than ${CATEGORY_LIST_MAX_LENGTH} categories are allowed` };
+  }
+
+  const seen = new Set();
+  const result = [];
+  for (const raw of categories) {
+    const validation = validateCategoryName(raw);
+    if (!validation.valid) {
+      return { valid: false, message: validation.message };
+    }
+
+    const key = validation.category.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(validation.category);
+    }
+  }
+
+  if (result.length === 0) {
+    return { valid: false, message: 'At least one category is required' };
+  }
+
+  return { valid: true, categories: result.sort((a, b) => a.localeCompare(b)) };
+}
+
+async function getConfiguredCategories() {
+  const result = await pool.query(`SELECT value FROM system_config WHERE key = 'categories'`);
+  return Array.isArray(result.rows[0]?.value)
+    ? result.rows[0].value.map(formatCategoryName)
+    : [];
+}
+
+// PATCH /api/admin/categories/rename - Rename one category and update assigned businesses
+router.patch('/categories/rename', requireRole('admin'), async (req, res, next) => {
+  try {
+    const oldValidation = validateCategoryName(req.body.old_category);
+    const newValidation = validateCategoryName(req.body.new_category);
+
+    if (!oldValidation.valid) {
+      return res.status(400).json(error(oldValidation.message, 'VALIDATION_ERROR'));
+    }
+    if (!newValidation.valid) {
+      return res.status(400).json(error(newValidation.message, 'VALIDATION_ERROR'));
+    }
+
+    const oldCategory = oldValidation.category;
+    const newCategory = newValidation.category;
+    const configuredCategories = await getConfiguredCategories();
+    const existingCategory = configuredCategories.find(
+      (category) => category.toLowerCase() === oldCategory.toLowerCase()
+    );
+
+    if (!existingCategory) {
+      return res.status(404).json(error('Category not found', 'NOT_FOUND'));
+    }
+
+    const duplicate = configuredCategories.some(
+      (category) =>
+        category.toLowerCase() === newCategory.toLowerCase() &&
+        category.toLowerCase() !== existingCategory.toLowerCase()
+    );
+    if (duplicate) {
+      return res.status(409).json(error('That category already exists', 'CATEGORY_EXISTS'));
+    }
+
+    const categories = configuredCategories
+      .map((category) => (
+        category.toLowerCase() === existingCategory.toLowerCase() ? newCategory : category
+      ))
+      .sort((a, b) => a.localeCompare(b));
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const configResult = await client.query(
+        `UPDATE system_config
+         SET value = $1, updated_by = $2, updated_at = NOW()
+         WHERE key = 'categories'
+         RETURNING value`,
+        [JSON.stringify(categories), req.user.userId]
+      );
+
+      const businessResult = await client.query(
+        `UPDATE businesses
+         SET category = $1,
+             content_json = CASE
+               WHEN content_json #> '{profile,en}' IS NOT NULL
+                 THEN jsonb_set(content_json, '{profile,en,category}', to_jsonb($3::text), true)
+               ELSE content_json
+             END,
+             updated_at = NOW()
+         WHERE LOWER(category) = LOWER($2)
+         RETURNING business_id`,
+        [newCategory, existingCategory, newCategory]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, new_value)
+         VALUES ($1, 'renamed_category', 'system_config', $2)`,
+        [
+          req.user.userId,
+          JSON.stringify({
+            old_category: existingCategory,
+            new_category: newCategory,
+            businesses_updated: businessResult.rowCount,
+          }),
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      res.json(success({
+        categories: configResult.rows[0].value,
+        old_category: existingCategory,
+        new_category: newCategory,
+        businesses_updated: businessResult.rowCount,
+      }, 'Category renamed'));
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/categories - Get configured business categories
+router.get('/categories', requireRole('admin'), async (req, res, next) => {
+  try {
+    const categories = await getConfiguredCategories();
+    res.json(success({ categories }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/categories - Replace configured business categories
+router.patch('/categories', requireRole('admin'), async (req, res, next) => {
+  try {
+    const normalized = normalizeCategories(req.body.categories);
+    if (!normalized.valid) {
+      return res.status(400).json(error(normalized.message, 'VALIDATION_ERROR'));
+    }
+    const { categories } = normalized;
+
+    const result = await pool.query(
+      `INSERT INTO system_config (key, value, description, updated_by, updated_at)
+       VALUES ('categories', $1, 'Available business categories', $2, NOW())
+       ON CONFLICT (key) DO UPDATE
+       SET value = $1, updated_by = $2, updated_at = NOW()
+       RETURNING value`,
+      [JSON.stringify(categories), req.user.userId]
+    );
+
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, new_value)
+       VALUES ($1, 'updated_categories', 'system_config', $2)`,
+      [req.user.userId, JSON.stringify({ categories })]
+    );
+
+    logger.info('Categories updated', { adminId: req.user.userId, count: categories.length });
+    res.json(success({ categories: result.rows[0].value }, 'Categories updated'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/businesses/:id/category - Update one business category
+router.patch('/businesses/:id/category', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const validation = validateCategoryName(req.body.category);
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    }
+    if (!validation.valid) {
+      return res.status(400).json(error(validation.message, 'VALIDATION_ERROR'));
+    }
+
+    const configuredCategories = await getConfiguredCategories();
+    const category = configuredCategories.find(
+      (configured) => configured.toLowerCase() === validation.category.toLowerCase()
+    );
+    if (!category) {
+      return res.status(400).json(error('Category must exist in the configured category list before assigning it to a business', 'INVALID_CATEGORY'));
+    }
+
+    const result = await pool.query(
+      `UPDATE businesses
+       SET category = $1,
+           content_json = CASE
+             WHEN content_json #> '{profile,en}' IS NOT NULL
+               THEN jsonb_set(content_json, '{profile,en,category}', to_jsonb($3::text), true)
+             ELSE content_json
+           END,
+           updated_at = NOW()
+       WHERE business_id = $2 AND status != 'deleted'
+       RETURNING business_id, business_name, category, updated_at`,
+      [category, id, category]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+    }
+
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_value)
+       VALUES ($1, 'updated_business_category', 'business', $2, $3)`,
+      [req.user.userId, id, JSON.stringify({ category })]
+    );
+
+    res.json(success(result.rows[0], 'Business category updated'));
   } catch (err) {
     next(err);
   }

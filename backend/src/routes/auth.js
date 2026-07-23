@@ -11,6 +11,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { authLimiter, otpLimiter } from '../middleware/rateLimit.js';
 import logger from '../utils/logger.js';
 import { sendOtpEmail } from '../services/emailService.js';
+import { sendOtpSms } from '../services/smsService.js';
 
 const router = express.Router();
 
@@ -203,9 +204,19 @@ router.post('/register', authLimiter, async (req, res, next) => {
 
     // Generate and store OTP for phone verification
     const otp = await storeOtp(phone);
-
-    // TODO: Send OTP via VintEx SMS
-    logger.info('OTP generated for phone verification', { phone, otp });
+    let otpSent = true;
+    try {
+      await sendOtpSms(phone, otp);
+    } catch (smsErr) {
+      otpSent = false;
+      logger.error('Registration OTP SMS delivery failed', {
+        phone,
+        error: smsErr.message,
+      });
+    }
+    if (config.env !== 'production') {
+      logger.info(`[DEV] Registration OTP for ${phone}: ${otp}`);
+    }
 
     res.status(201).json(success({
       user_id: user.user_id,
@@ -213,7 +224,10 @@ router.post('/register', authLimiter, async (req, res, next) => {
       phone: user.phone,
       verification_tier: user.verification_tier,
       status: user.status,
-      message: 'Account created. Please verify your phone number.',
+      otp_sent: otpSent,
+      message: otpSent
+        ? 'Account created. Please verify your phone number.'
+        : 'Account created, but the OTP SMS could not be sent. Please resend the OTP.',
     }, 'User registered successfully'));
 
   } catch (err) {
@@ -263,8 +277,10 @@ router.post('/request-otp', otpLimiter, async (req, res, next) => {
     if (isEmail) {
       await sendOtpEmail(identifier, otp);
     } else {
-      // TODO: Send OTP via VintEx SMS
-      logger.info('OTP generated for login', { identifier, otp });
+      await sendOtpSms(identifier, otp);
+      if (config.env !== 'production') {
+        logger.info(`[DEV] Login OTP for ${identifier}: ${otp}`);
+      }
     }
 
     await logAuthEvent('otp_requested', {

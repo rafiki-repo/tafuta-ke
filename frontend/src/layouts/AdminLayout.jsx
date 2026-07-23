@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, CreditCard, Tags } from 'lucide-react';
 import { Header } from '@/components/Header';
 import useAuthStore from '@/store/useAuthStore';
 
@@ -11,6 +11,7 @@ export default function AdminLayout() {
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Businesses', href: '/admin/businesses', icon: Building2 },
+    { name: 'Categories', href: '/admin/categories', icon: Tags },
     { name: 'Payments', href: '/admin/payments', icon: CreditCard },
   ];
 

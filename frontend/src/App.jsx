@@ -12,6 +12,7 @@ import AdminLayout from './layouts/AdminLayout';
 import HomePage from './pages/public/HomePage';
 import SearchPage from './pages/public/SearchPage';
 import BusinessDetailPage from './pages/public/BusinessDetailPage';
+import CategoryPage from './pages/public/CategoryPage';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -41,6 +42,7 @@ import Users from './pages/admin/Users';
 import Analytics from './pages/admin/Analytics';
 import Logs from './pages/admin/Logs';
 import SystemConfig from './pages/admin/SystemConfig';
+import Categories from './pages/admin/Categories';
 
 // Protected Route Components
 function ProtectedRoute({ children }) {
@@ -70,6 +72,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/business/:id" element={<BusinessDetailPage />} />
+        <Route path="/category/:slug" element={<CategoryPage />} />
         <Route path="/admin-menu" element={<AppMenuPage />} />
       </Route>
 
@@ -122,10 +125,12 @@ function App() {
         <Route path="users" element={<Users />} />
         <Route path="businesses" element={<AdminBusinesses />} />
         <Route path="businesses/:id/edit" element={<BusinessEditor />} />
+        <Route path="categories" element={<Categories />} />
         <Route path="payments" element={<AdminPayments />} />
         <Route path="pending" element={<PendingBusinesses />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="logs" element={<Logs />} />
+        <Route path="categories" element={<Categories />} />
         <Route path="config" element={<SystemConfig />} />
       </Route>
 

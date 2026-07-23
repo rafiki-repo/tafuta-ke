@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { MapPin, Phone, Mail, Globe, Star, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -11,6 +11,7 @@ import { formatPhoneNumber } from "@/lib/utils";
 
 export default function BusinessDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,12 +48,10 @@ export default function BusinessDetailPage() {
           <Alert variant="destructive">
             <AlertDescription>{error || "Business not found"}</AlertDescription>
           </Alert>
-          <Link to="/search" className="mt-4 inline-block">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Search
-            </Button>
-          </Link>
+          <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
         </div>
       </div>
     );
@@ -84,12 +83,10 @@ export default function BusinessDetailPage() {
   return (
     <div className="py-8">
       <div className="container-safe">
-        <Link to="/search" className="inline-block mb-6">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Search
-          </Button>
-        </Link>
+        <Button variant="ghost" size="sm" className="mb-6" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
 
         {/* Banner */}
         {bannerUrl && (
