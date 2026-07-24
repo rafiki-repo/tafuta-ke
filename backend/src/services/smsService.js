@@ -1,11 +1,15 @@
 /**
- * smsService.js - VintEx SMS sending.
+ * smsService.js - SMS sending with selectable providers.
  *
+ * Set SMS_PROVIDER to galatext, vintex, or vintex_with_galatext_fallback.
  * Requires env vars: VINTEX_API_KEY, VINTEX_EMAIL
  * Optional env vars: VINTEX_SENDER_ID, VINTEX_BASE_URL
+ * Requires Galatext env vars: GALATEXT_API_KEY
+ * Optional Galatext env vars: GALATEXT_SENDER_ID, GALATEXT_BASE_URL, GALATEXT_TIMEOUT_MS
  */
 
 import axios from 'axios';
+import Galatext from 'galatext-api';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 
@@ -30,7 +34,25 @@ function toVintexRecipient(phone) {
   return compact.replace(/^\+/, '');
 }
 
-async function sendSms({ recipients, message, campaignID, campaign_name }) {
+function toE164KenyanRecipient(phone) {
+  const compact = String(phone || '').replace(/[\s\-()]/g, '');
+
+  if (compact.startsWith('+254')) {
+    return compact;
+  }
+
+  if (compact.startsWith('254')) {
+    return `+${compact}`;
+  }
+
+  if (compact.startsWith('0')) {
+    return `+254${compact.slice(1)}`;
+  }
+
+  return compact.startsWith('+') ? compact : `+${compact}`;
+}
+
+async function sendViaVintex({ recipients, message, campaignID, campaign_name }) {
   const { apiKey, email, senderId, baseUrl } = config.vintex;
 
   if (!isConfiguredValue(apiKey) || !isConfiguredValue(email)) {
@@ -71,7 +93,7 @@ async function sendSms({ recipients, message, campaignID, campaign_name }) {
     }
 
     logger.info('SMS sent via VintEx', { recipients: formattedRecipients });
-    return response.data;
+    return { provider: 'vintex', data: response.data };
   } catch (err) {
     logger.error('Failed to send SMS via VintEx', {
       recipients: formattedRecipients,
@@ -83,6 +105,78 @@ async function sendSms({ recipients, message, campaignID, campaign_name }) {
       throw err;
     }
     throw smsError('Failed to send SMS');
+  }
+}
+
+async function sendViaGalatext({ recipients, message }) {
+  const { apiKey, senderId, baseUrl, timeout } = config.galatext;
+
+  if (!isConfiguredValue(apiKey)) {
+    logger.warn('Galatext SMS not configured - SMS not sent', { recipients });
+    throw smsError('Galatext SMS provider is not configured', 'SMS_GALATEXT_NOT_CONFIGURED', 503);
+  }
+
+  const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+  const formattedRecipients = recipientList.map(toE164KenyanRecipient);
+  const client = new Galatext(apiKey, { baseURL: baseUrl, timeout });
+
+  try {
+    const response = formattedRecipients.length === 1
+      ? await client.sms.send(formattedRecipients[0], message, senderId)
+      : await client.sms.bulk(formattedRecipients, message, senderId);
+
+    logger.info('SMS sent via Galatext', { recipients: formattedRecipients.join(',') });
+    return { provider: 'galatext', data: response };
+  } catch (err) {
+    logger.error('Failed to send SMS via Galatext', {
+      recipients: formattedRecipients.join(','),
+      status: err.status,
+      code: err.code,
+      message: err.message,
+    });
+    if (err.code && err.statusCode) {
+      throw err;
+    }
+    throw smsError(err.message || 'Failed to send SMS via fallback provider');
+  }
+}
+
+async function sendSms({ recipients, message, campaignID, campaign_name }) {
+  const provider = config.sms.provider;
+
+  if (provider === 'galatext') {
+    return sendViaGalatext({ recipients, message, campaignID, campaign_name });
+  }
+
+  if (provider === 'vintex') {
+    return sendViaVintex({ recipients, message, campaignID, campaign_name });
+  }
+
+  if (provider !== 'vintex_with_galatext_fallback') {
+    logger.warn('Unknown SMS_PROVIDER, using Galatext', { provider });
+    return sendViaGalatext({ recipients, message, campaignID, campaign_name });
+  }
+
+  try {
+    return await sendViaVintex({ recipients, message, campaignID, campaign_name });
+  } catch (primaryErr) {
+    logger.warn('Primary SMS provider failed; trying fallback provider', {
+      code: primaryErr.code,
+      message: primaryErr.message,
+    });
+
+    try {
+      return await sendViaGalatext({ recipients, message, campaignID, campaign_name });
+    } catch (fallbackErr) {
+      logger.error('All SMS providers failed', {
+        primary: { code: primaryErr.code, message: primaryErr.message },
+        fallback: { code: fallbackErr.code, message: fallbackErr.message },
+      });
+      if (fallbackErr.code === 'SMS_GALATEXT_NOT_CONFIGURED') {
+        throw primaryErr;
+      }
+      throw fallbackErr;
+    }
   }
 }
 

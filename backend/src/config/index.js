@@ -32,12 +32,23 @@ const config = {
     ipnUrl: process.env.PESAPAL_IPN_URL,
     env: process.env.PESAPAL_ENV || 'sandbox',
   },
+
+  sms: {
+    provider: process.env.SMS_PROVIDER || 'galatext',
+  },
   
   vintex: {
     apiKey: process.env.VINTEX_API_KEY,
     email: process.env.VINTEX_EMAIL,
     senderId: process.env.VINTEX_SENDER_ID || '20642',
     baseUrl: process.env.VINTEX_BASE_URL || 'https://sms.vintextechnologies.com/api',
+  },
+
+  galatext: {
+    apiKey: process.env.GALATEXT_API_KEY,
+    senderId: process.env.GALATEXT_SENDER_ID || 'GALATEX',
+    baseUrl: process.env.GALATEXT_BASE_URL || 'https://api.galatext.com/api',
+    timeout: parseInt(process.env.GALATEXT_TIMEOUT_MS, 10) || 30000,
   },
 
   google: {
