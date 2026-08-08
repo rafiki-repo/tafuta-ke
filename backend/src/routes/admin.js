@@ -333,6 +333,34 @@ router.get('/analytics', async (req, res, next) => {
   }
 });
 
+// GET /api/admin/analytics/business-growth - Active business signups over time
+router.get('/analytics/business-growth', async (req, res, next) => {
+  try {
+    const granularity = req.query.granularity === 'week' ? 'week' : 'month';
+
+    const result = await pool.query(
+      `SELECT DATE_TRUNC($1, approved_at) AS period, COUNT(*) AS count
+       FROM businesses
+       WHERE status = 'active'
+       GROUP BY period
+       ORDER BY period ASC`,
+      [granularity]
+    );
+
+    let cumulative = 0;
+    const growth = result.rows.map((row) => {
+      const count = parseInt(row.count, 10);
+      cumulative += count;
+      return { period: row.period, count, cumulative };
+    });
+
+    res.json(success({ granularity, growth }));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/auth-logs - Get authentication logs
 router.get('/auth-logs', async (req, res, next) => {
   try {
