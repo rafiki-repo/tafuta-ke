@@ -123,6 +123,7 @@ export const adminAPI = {
   approveBusiness: (id, data) => api.post(`/admin/businesses/${id}/approve`, data),
   rejectBusiness: (id, data) => api.post(`/admin/businesses/${id}/reject`, data),
   getAnalytics: () => api.get('/admin/analytics'),
+  getBusinessGrowth: (params) => api.get('/admin/analytics/business-growth', { params }),
   getAuthLogs: (params) => api.get('/admin/auth-logs', { params }),
   getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
   adjustSubscription: (id, data) => api.patch(`/admin/subscriptions/${id}/adjust`, data),
