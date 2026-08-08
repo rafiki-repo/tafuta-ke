@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
@@ -15,7 +15,7 @@ const GRID_COLOR = 'hsl(var(--border))';
 const AXIS_COLOR = 'hsl(var(--muted-foreground))';
 
 function formatPeriod(period, granularity) {
-  const date = new Date(period);
+  const date = parseISO(period);
   return granularity === 'week' ? format(date, 'MMM d') : format(date, 'MMM yyyy');
 }
 
