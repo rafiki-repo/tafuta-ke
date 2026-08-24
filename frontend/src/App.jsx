@@ -13,6 +13,7 @@ import HomePage from './pages/public/HomePage';
 import SearchPage from './pages/public/SearchPage';
 import BusinessDetailPage from './pages/public/BusinessDetailPage';
 import CategoryPage from './pages/public/CategoryPage';
+import SitePage from './pages/public/SitePage';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -29,6 +30,8 @@ import BusinessEditor from './pages/dashboard/BusinessEditor';
 import ContentHistory from './pages/dashboard/ContentHistory';
 import Payments from './pages/dashboard/Payments';
 import PaymentCheckout from './pages/dashboard/PaymentCheckout';
+import Invoices from './pages/dashboard/Invoices';
+import InvoiceDetail from './pages/dashboard/InvoiceDetail';
 import PaymentSuccess from './pages/payment/PaymentSuccess';
 import PaymentFailed from './pages/payment/PaymentFailed';
 import Profile from './pages/dashboard/Profile';
@@ -43,6 +46,8 @@ import Analytics from './pages/admin/Analytics';
 import Logs from './pages/admin/Logs';
 import SystemConfig from './pages/admin/SystemConfig';
 import Categories from './pages/admin/Categories';
+import Services from './pages/admin/Services';
+import AdminInvoices from './pages/admin/Invoices';
 
 // Protected Route Components
 function ProtectedRoute({ children }) {
@@ -81,6 +86,9 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
       </Route>
 
+      {/* Business one-page site — no nav chrome, self-contained template */}
+      <Route path="/site/:tag" element={<SitePage />} />
+
       {/* Google OAuth callback — no layout wrapper (full-page loading/phone prompt) */}
       <Route path="/auth/google" element={<GoogleCallbackPage />} />
 
@@ -109,6 +117,8 @@ function App() {
         <Route path="businesses/:id/history" element={<ContentHistory />} />
         <Route path="payments" element={<Payments />} />
         <Route path="payments/checkout/:businessId" element={<PaymentCheckout />} />
+        <Route path="invoices" element={<Invoices />} />
+        <Route path="invoices/:id" element={<InvoiceDetail />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 
@@ -126,11 +136,12 @@ function App() {
         <Route path="businesses" element={<AdminBusinesses />} />
         <Route path="businesses/:id/edit" element={<BusinessEditor />} />
         <Route path="categories" element={<Categories />} />
+        <Route path="services" element={<Services />} />
+        <Route path="invoices" element={<AdminInvoices />} />
         <Route path="payments" element={<AdminPayments />} />
         <Route path="pending" element={<PendingBusinesses />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="logs" element={<Logs />} />
-        <Route path="categories" element={<Categories />} />
         <Route path="config" element={<SystemConfig />} />
       </Route>
 

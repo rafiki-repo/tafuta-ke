@@ -45,6 +45,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { searchAPI } from "@/lib/api";
 
+function toSlug(str) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 // Icon map keyed by lowercase category name
 const CATEGORY_ICONS = {
   salon: Scissors,
@@ -166,7 +170,6 @@ function BusinessCard({ business }) {
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRegion, setSelectedRegion] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
   const [categories, setCategories] = useState([]);
   const [regions, setRegions] = useState([]);
   const [businesses, setBusinesses] = useState([]);
@@ -181,7 +184,7 @@ export default function HomePage() {
 
   // Initial businesses load
   useEffect(() => {
-    loadBusinesses(searchQuery, selectedCategory, selectedRegion);
+    loadBusinesses(searchQuery, selectedRegion);
   }, []);
 
   // Debounced re-fetch when filters change
@@ -191,10 +194,10 @@ export default function HomePage() {
       return;
     }
     const timer = setTimeout(() => {
-      loadBusinesses(searchQuery, selectedCategory, selectedRegion);
+      loadBusinesses(searchQuery, selectedRegion);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedCategory, selectedRegion]);
+  }, [searchQuery, selectedRegion]);
 
   const loadMeta = async () => {
     try {
@@ -211,12 +214,11 @@ export default function HomePage() {
     }
   };
 
-  const loadBusinesses = async (q, category, region) => {
+  const loadBusinesses = async (q, region) => {
     setBusinessesLoading(true);
     try {
       const params = {
         q: q || undefined,
-        category: category || undefined,
         region: region || undefined,
         limit: 20,
       };
@@ -229,21 +231,15 @@ export default function HomePage() {
     }
   };
 
-  const toggleCategory = (cat) => {
-    setSelectedCategory((prev) => (prev === cat ? "" : cat));
-  };
-
   const toggleRegion = (region) => {
     setSelectedRegion((prev) => (prev === region ? "" : region));
   };
 
-  const listingHeading = selectedCategory
-    ? selectedCategory
-    : selectedRegion
-      ? `Businesses in ${selectedRegion}`
-      : searchQuery
-        ? `Results for "${searchQuery}"`
-        : "Popular Businesses";
+  const listingHeading = selectedRegion
+    ? `Businesses in ${selectedRegion}`
+    : searchQuery
+      ? `Results for "${searchQuery}"`
+      : "Popular Businesses";
 
   return (
     <div className="min-h-screen bg-background">
@@ -305,21 +301,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Category Chips */}
+      {/* Browse by Category */}
       <section className="px-4 py-5 max-w-xl mx-auto">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">
-            Categories
-          </h2>
-          <button
-            onClick={() => setSelectedCategory("")}
-            className={`text-xs font-semibold transition-colors ${
-              !selectedCategory ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            All
-          </button>
-        </div>
+        <h2 className="text-sm font-bold text-foreground uppercase tracking-wider mb-3">
+          Browse by Category
+        </h2>
 
         {metaLoading ? (
           <div className="flex gap-2">
@@ -330,26 +316,23 @@ export default function HomePage() {
               />
             ))}
           </div>
+        ) : categories.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No categories configured yet.</p>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
             {categories.map((cat) => {
               const Icon = getCategoryIcon(cat);
-              const isSelected = selectedCategory === cat;
               return (
-                <button
+                <Link
                   key={cat}
-                  onClick={() => toggleCategory(cat)}
-                  className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-xl min-w-[72px] transition-all flex-shrink-0 ${
-                    isSelected
-                      ? "bg-primary text-white shadow-md"
-                      : "bg-card border border-border/40 text-muted-foreground"
-                  }`}
+                  to={`/category/${toSlug(cat)}`}
+                  className="flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-xl min-w-[72px] flex-shrink-0 bg-card border border-border/40 text-muted-foreground hover:border-primary hover:text-primary transition-all"
                 >
                   <Icon className="w-5 h-5" />
                   <span className="text-[10px] font-semibold whitespace-nowrap">
                     {cat}
                   </span>
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -408,11 +391,10 @@ export default function HomePage() {
           <div className="text-center mt-6">
             <Link
               to={`/search${
-                searchQuery || selectedCategory || selectedRegion
+                searchQuery || selectedRegion
                   ? "?" +
                     new URLSearchParams({
                       ...(searchQuery && { q: searchQuery }),
-                      ...(selectedCategory && { category: selectedCategory }),
                       ...(selectedRegion && { region: selectedRegion }),
                     }).toString()
                   : ""

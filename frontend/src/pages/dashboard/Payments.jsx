@@ -7,11 +7,13 @@ import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { paymentAPI, userAPI } from '@/lib/api';
 
-const SERVICE_LABELS = {
+// Fallback labels — updated dynamically when pricing loads
+const SERVICE_LABELS_DEFAULT = {
   website_hosting: 'Website Hosting',
   ads: 'Ads',
   search_promotion: 'Search Promotion',
   image_gallery: 'Image Gallery',
+  flyer: 'Digital Flyer',
 };
 
 const STATUS_BADGE = {
@@ -37,6 +39,7 @@ function daysUntil(dateStr) {
 }
 
 export default function Payments() {
+  const [serviceLabels, setServiceLabels] = useState(SERVICE_LABELS_DEFAULT);
   const [businesses, setBusinesses]       = useState([]);
   const [selectedBiz, setSelectedBiz]     = useState(null);
   const [subscriptions, setSubscriptions] = useState([]);
@@ -47,13 +50,20 @@ export default function Payments() {
   const [downloading, setDownloading]     = useState(null);
   const [error, setError]                 = useState(null);
 
-  // Load user's businesses
+  // Load user's businesses + service type labels
   useEffect(() => {
-    userAPI.getBusinesses()
-      .then(res => {
-        const list = res.data?.data?.businesses || [];
+    Promise.all([
+      userAPI.getBusinesses(),
+      paymentAPI.getPricing(),
+    ])
+      .then(([bizRes, pricingRes]) => {
+        const list = bizRes.data?.data?.businesses || [];
         setBusinesses(list);
         if (list.length > 0) setSelectedBiz(list[0].business_id);
+        const types = pricingRes.data?.data?.service_types || [];
+        if (types.length > 0) {
+          setServiceLabels(Object.fromEntries(types.map(t => [t.id, t.label])));
+        }
       })
       .catch(() => setError('Failed to load businesses'))
       .finally(() => setLoading(false));
@@ -194,7 +204,7 @@ export default function Payments() {
                       <div key={sub.subscription_id} className="flex items-center justify-between py-3">
                         <div>
                           <p className="font-medium text-sm">
-                            {SERVICE_LABELS[sub.service_type] || sub.service_type}
+                            {serviceLabels[sub.service_type] || sub.service_type}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Expires{' '}
@@ -240,7 +250,7 @@ export default function Payments() {
                               day: '2-digit', month: 'short', year: 'numeric',
                             })}
                             {' · '}
-                            {tx.items?.map(i => SERVICE_LABELS[i.service_type] || i.service_type).join(', ')}
+                            {tx.items?.map(i => serviceLabels[i.service_type] || i.service_type).join(', ')}
                           </p>
                         </div>
                       </div>

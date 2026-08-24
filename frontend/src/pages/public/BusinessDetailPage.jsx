@@ -190,6 +190,27 @@ export default function BusinessDetailPage() {
               </Card>
             )}
 
+            {business.has_website_hosting && business.business_tag && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold mb-1">Business Page</h3>
+                      <p className="text-sm text-muted-foreground">
+                        tafuta.ke/site/{business.business_tag}
+                      </p>
+                    </div>
+                    <a href={`/site/${business.business_tag}`} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline">
+                        <Globe className="h-4 w-4 mr-2" />
+                        View Page
+                      </Button>
+                    </a>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Gallery */}
             {gallerySlugs.length > 0 && mediaBase && (
               <Card>

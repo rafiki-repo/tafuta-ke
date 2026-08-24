@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Edit2, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { Check, Edit2, Pin, PinOff, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -47,8 +47,18 @@ export default function Categories() {
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [updatingBusinessId, setUpdatingBusinessId] = useState(null);
 
+  // Featured businesses per category
+  const [featuredMap, setFeaturedMap] = useState({});        // { Hotel: [id1, id2] }
+  const [featuredLoading, setFeaturedLoading] = useState(false);
+  const [featuredCategory, setFeaturedCategory] = useState(''); // which category is open
+  const [featuredQ, setFeaturedQ] = useState('');
+  const [featuredResults, setFeaturedResults] = useState([]);
+  const [featuredSearching, setFeaturedSearching] = useState(false);
+  const [featuredSaving, setFeaturedSaving] = useState(false);
+
   useEffect(() => {
     loadCategories();
+    loadFeatured();
   }, []);
 
   useEffect(() => {
@@ -80,6 +90,67 @@ export default function Categories() {
       setError(err.response?.data?.error?.message || 'Failed to load businesses.');
     } finally {
       setBusinessesLoading(false);
+    }
+  };
+
+  const loadFeatured = async () => {
+    setFeaturedLoading(true);
+    try {
+      const res = await adminAPI.getCategoryFeatured();
+      setFeaturedMap(res.data.data || {});
+    } catch {
+      // non-fatal
+    } finally {
+      setFeaturedLoading(false);
+    }
+  };
+
+  const searchFeaturedBusinesses = async (query) => {
+    if (!featuredCategory) return;
+    setFeaturedSearching(true);
+    try {
+      const res = await adminAPI.getAllBusinesses({
+        q: query || undefined,
+        category: featuredCategory,
+        status: 'active',
+        limit: 20,
+      });
+      setFeaturedResults(res.data.data || []);
+    } catch {
+      setFeaturedResults([]);
+    } finally {
+      setFeaturedSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!featuredCategory) return;
+    const timer = setTimeout(() => searchFeaturedBusinesses(featuredQ), 300);
+    return () => clearTimeout(timer);
+  }, [featuredQ, featuredCategory]);
+
+  const pinBusiness = async (business) => {
+    const current = featuredMap[featuredCategory] || [];
+    if (current.includes(business.business_id)) return;
+    const next = [...current, business.business_id];
+    await saveFeatured(next);
+  };
+
+  const unpinBusiness = async (businessId) => {
+    const current = featuredMap[featuredCategory] || [];
+    const next = current.filter(id => id !== businessId);
+    await saveFeatured(next);
+  };
+
+  const saveFeatured = async (ids) => {
+    setFeaturedSaving(true);
+    try {
+      const res = await adminAPI.setCategoryFeatured(featuredCategory, ids);
+      setFeaturedMap(res.data.data || {});
+    } catch {
+      setError('Failed to update featured businesses.');
+    } finally {
+      setFeaturedSaving(false);
     }
   };
 
@@ -357,6 +428,106 @@ export default function Categories() {
               Save Categories
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Category featured businesses</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Pin up to 3 businesses to appear first on each category page. Remaining slots fill automatically by verification tier.
+          </p>
+          <Select
+            value={featuredCategory}
+            onChange={(e) => { setFeaturedCategory(e.target.value); setFeaturedQ(''); setFeaturedResults([]); }}
+          >
+            <option value="">Select a category to manage</option>
+            {categories.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </Select>
+
+          {featuredCategory && (
+            <div className="space-y-4">
+              {/* Pinned list */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                  Pinned for {featuredCategory} ({(featuredMap[featuredCategory] || []).length}/3)
+                </p>
+                {(featuredMap[featuredCategory] || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">None pinned — showing auto-sorted businesses.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(featuredMap[featuredCategory] || []).map((id, idx) => {
+                      const biz = featuredResults.find(b => b.business_id === id)
+                        || businesses.find(b => b.business_id === id);
+                      return (
+                        <div key={id} className="flex items-center justify-between gap-3 p-2 rounded-md border bg-card">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-bold text-muted-foreground w-4 shrink-0">{idx + 1}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{biz?.business_name || id}</p>
+                              {biz && <p className="text-xs text-muted-foreground">{biz.region}</p>}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => unpinBusiness(id)}
+                            disabled={featuredSaving}
+                            className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 shrink-0"
+                          >
+                            <PinOff className="h-3.5 w-3.5" /> Unpin
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Search to pin */}
+              {(featuredMap[featuredCategory] || []).length < 3 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Add a business</p>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={featuredQ}
+                      onChange={(e) => setFeaturedQ(e.target.value)}
+                      placeholder="Search by business name..."
+                      className="pl-9"
+                    />
+                  </div>
+                  {featuredSearching ? (
+                    <div className="flex justify-center py-4"><Spinner /></div>
+                  ) : (
+                    <div className="space-y-1 max-h-56 overflow-y-auto">
+                      {featuredResults
+                        .filter(b => !(featuredMap[featuredCategory] || []).includes(b.business_id))
+                        .map(b => (
+                          <div key={b.business_id} className="flex items-center justify-between gap-3 p-2 rounded-md border hover:bg-accent/50">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{b.business_name}</p>
+                              <p className="text-xs text-muted-foreground">{b.category} · {b.region}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => pinBusiness(b)}
+                              disabled={featuredSaving}
+                              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 shrink-0"
+                            >
+                              <Pin className="h-3.5 w-3.5" /> Pin
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
