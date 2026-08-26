@@ -16,6 +16,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import pool from './config/database.js';
 import logger from './utils/logger.js';
+import { generateDueInvoices } from './services/autoInvoice.js';
 
 // Resolve paths relative to this file: backend/src/cron.js → app root is two levels up
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -124,4 +125,9 @@ export function initCron() {
   // Daily subscription expiry check at 07:00 EAT (business hours start)
   cron.schedule('0 7 * * *', checkSubscriptionExpiry, { timezone: 'Africa/Nairobi' });
   logger.info('[cron] Scheduled: subscription expiry check at 07:00 Africa/Nairobi');
+
+  // Daily auto-invoice generation at 08:00 EAT — draft invoices for subscriptions
+  // expiring within 7 days that have no recent pending invoice
+  cron.schedule('0 8 * * *', generateDueInvoices, { timezone: 'Africa/Nairobi' });
+  logger.info('[cron] Scheduled: auto-invoice generation at 08:00 Africa/Nairobi');
 }

@@ -99,6 +99,11 @@ export const searchAPI = {
   getCategoryPage: (slug) => api.get(`/search/categories/${slug}`),
 };
 
+// Site API (public one-page business websites)
+export const siteAPI = {
+  getByTag: (tag) => api.get(`/site/${tag}`),
+};
+
 // Payment API
 export const paymentAPI = {
   getPricing:             ()                       => api.get('/payments/pricing'),
@@ -107,6 +112,11 @@ export const paymentAPI = {
   getTransaction:         (id)                     => api.get(`/payments/transactions/${id}`),
   getReceipt:             (id)                     => api.get(`/payments/receipts/${id}`, { responseType: 'blob' }),
   getBusinessTransactions:(businessId, params)     => api.get(`/payments/business/${businessId}`, { params }),
+  // Invoices (user)
+  getInvoices:            (businessId)             => api.get('/payments/invoices', { params: businessId ? { business_id: businessId } : undefined }),
+  getInvoice:             (id)                     => api.get(`/payments/invoices/${id}`),
+  getInvoicePdf:          (id)                     => api.get(`/payments/invoices/${id}/pdf`, { responseType: 'blob' }),
+  payInvoice:             (id)                     => api.post(`/payments/invoices/${id}/pay`),
   // Admin
   adminGetTransactions:   (params)                 => api.get('/payments/admin/transactions', { params }),
   adminGetRefunds:        (params)                 => api.get('/payments/refunds', { params }),
@@ -142,6 +152,23 @@ export const adminAPI = {
   getAllBusinesses: (params) => api.get('/admin/businesses', { params }),
   updateBusinessVerification: (id, data) => api.patch(`/admin/businesses/${id}/verification`, data),
   updateBusinessCategory: (id, category) => api.patch(`/admin/businesses/${id}/category`, { category }),
+  // Subscription management per business
+  getBusinessSubscriptions: (id) => api.get(`/admin/businesses/${id}/subscriptions`),
+  grantSubscription: (id, data) => api.post(`/admin/businesses/${id}/subscriptions`, data),
+  deactivateSubscription: (id, serviceType) => api.patch(`/admin/businesses/${id}/subscriptions/${serviceType}/deactivate`),
+  // Service type definitions
+  getServiceTypes: () => api.get('/admin/service-types'),
+  updateServiceTypes: (service_types) => api.patch('/admin/service-types', { service_types }),
+  // Category featured businesses
+  getCategoryFeatured: () => api.get('/admin/category-featured'),
+  setCategoryFeatured: (category, business_ids) => api.put(`/admin/category-featured/${encodeURIComponent(category)}`, { business_ids }),
+  // Invoices (admin)
+  getInvoices: (params) => api.get('/admin/invoices', { params }),
+  getInvoice: (id) => api.get(`/admin/invoices/${id}`),
+  createInvoice: (data) => api.post('/admin/invoices', data),
+  updateInvoice: (id, data) => api.patch(`/admin/invoices/${id}`, data),
+  getInvoicePdf: (id) => api.get(`/admin/invoices/${id}/pdf`, { responseType: 'blob' }),
+  previewInvoiceItems: (businessId) => api.get(`/admin/invoices/preview/${businessId}`),
 };
 
 export default api;

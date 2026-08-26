@@ -160,9 +160,16 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 
     const result = await pool.query(
       `SELECT business_id, business_name, business_tag, category, region, subdomain, logo_url,
-              verification_tier, status, content_json, content_version, created_at, updated_at
-       FROM businesses
-       WHERE business_id = $1`,
+              verification_tier, status, content_json, content_version, created_at, updated_at,
+              EXISTS (
+                SELECT 1 FROM service_subscriptions ss
+                WHERE ss.business_id = b.business_id
+                  AND ss.service_type = 'website_hosting'
+                  AND ss.status = 'active'
+                  AND (ss.expiration_date IS NULL OR ss.expiration_date > CURRENT_DATE)
+              ) AS has_website_hosting
+       FROM businesses b
+       WHERE b.business_id = $1`,
       [id]
     );
 

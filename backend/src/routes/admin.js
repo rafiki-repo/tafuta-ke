@@ -176,7 +176,7 @@ router.post('/businesses/:id/reject', async (req, res, next) => {
 // GET /api/admin/businesses - Get all businesses (with optional status filter and search)
 router.get('/businesses', async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, status, q } = req.query;
+    const { page = 1, limit = 50, status, q, category } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
@@ -188,6 +188,11 @@ router.get('/businesses', async (req, res, next) => {
     if (status) {
       conditions.push(`b.status = $${paramCount++}`);
       conditionParams.push(status);
+    }
+
+    if (category) {
+      conditions.push(`LOWER(b.category) = LOWER($${paramCount++})`);
+      conditionParams.push(category);
     }
 
     if (q) {
@@ -1096,6 +1101,233 @@ router.patch('/system/config/:key', requireRole('super_admin'), async (req, res,
 
     res.json(success(result.rows[0], 'System config updated'));
 
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Service type definitions (stored in system_config)
+// ---------------------------------------------------------------------------
+
+async function getServiceTypes() {
+  const result = await pool.query(`SELECT value FROM system_config WHERE key = 'service_types'`);
+  return Array.isArray(result.rows[0]?.value) ? result.rows[0].value : [];
+}
+
+function validateServiceType(st) {
+  if (!st.id || !/^[a-z][a-z0-9_]*$/.test(st.id)) return 'id must be lowercase letters/numbers/underscores';
+  if (!st.label || st.label.trim().length < 2) return 'label is required (min 2 chars)';
+  if (st.description !== undefined && typeof st.description !== 'string') return 'description must be a string';
+  if (st.billing_type && !['monthly', 'one_time'].includes(st.billing_type)) return 'billing_type must be monthly or one_time';
+  const price = Number(st.price ?? st.price_per_month ?? 0);
+  if (isNaN(price) || price < 0) return 'price must be a non-negative number';
+  return null;
+}
+
+// GET /api/admin/service-types
+router.get('/service-types', requireRole('admin'), async (req, res, next) => {
+  try {
+    const types = await getServiceTypes();
+    res.json(success({ service_types: types }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/service-types — replace the full list
+router.patch('/service-types', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { service_types } = req.body;
+    if (!Array.isArray(service_types) || service_types.length === 0) {
+      return res.status(400).json(error('service_types must be a non-empty array', 'INVALID_INPUT'));
+    }
+
+    const ids = service_types.map(t => t.id);
+    if (new Set(ids).size !== ids.length) {
+      return res.status(400).json(error('Duplicate service type IDs', 'DUPLICATE_ID'));
+    }
+
+    for (const st of service_types) {
+      const msg = validateServiceType(st);
+      if (msg) return res.status(400).json(error(msg, 'INVALID_SERVICE_TYPE'));
+    }
+
+    const normalized = service_types.map(st => ({
+      id: st.id.trim(),
+      label: st.label.trim(),
+      billing_type: st.billing_type || 'monthly',
+      description: (st.description || '').trim(),
+      price: Number(st.price ?? st.price_per_month ?? 0),
+      enabled: Boolean(st.enabled),
+    }));
+
+    await pool.query(
+      `INSERT INTO system_config (key, value, description, updated_by, updated_at)
+       VALUES ('service_types', $1, 'Paid service type definitions managed via admin console', $2, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_by = $2, updated_at = NOW()`,
+      [JSON.stringify(normalized), req.user.userId]
+    );
+
+    logger.info('Service types updated', { adminId: req.user.userId, count: normalized.length });
+    res.json(success({ service_types: normalized }, 'Service types saved'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Admin subscription management for a business
+// ---------------------------------------------------------------------------
+
+// GET /api/admin/businesses/:id/subscriptions
+router.get('/businesses/:id/subscriptions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isValidUUID(id)) return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+
+    const [subResult, serviceTypes] = await Promise.all([
+      pool.query(
+        `SELECT subscription_id, service_type, months_paid, expiration_date, status, created_at, updated_at
+         FROM service_subscriptions
+         WHERE business_id = $1
+         ORDER BY service_type`,
+        [id]
+      ),
+      getServiceTypes(),
+    ]);
+
+    const map = {};
+    for (const st of serviceTypes) {
+      map[st.id] = subResult.rows.find(r => r.service_type === st.id) || null;
+    }
+
+    res.json(success({ subscriptions: map, service_types: serviceTypes }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/businesses/:id/subscriptions — grant/extend a service
+router.post('/businesses/:id/subscriptions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { service_type, months = 1 } = req.body;
+
+    if (!isValidUUID(id)) return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    const serviceTypes = await getServiceTypes();
+    const serviceTypeDef = serviceTypes.find(st => st.id === service_type);
+    if (!serviceTypeDef) {
+      return res.status(400).json(error(`Invalid service type: ${service_type}`, 'INVALID_SERVICE_TYPE'));
+    }
+
+    const isOneTime = serviceTypeDef.billing_type === 'one_time';
+    let result;
+
+    if (isOneTime) {
+      // One-time purchase: no expiration date, just mark active
+      result = await pool.query(
+        `INSERT INTO service_subscriptions (business_id, service_type, months_paid, expiration_date, status)
+         VALUES ($1, $2, 1, NULL, 'active')
+         ON CONFLICT (business_id, service_type) DO UPDATE SET
+           status     = 'active',
+           updated_at = NOW()
+         RETURNING *`,
+        [id, service_type]
+      );
+    } else {
+      const monthsNum = Math.max(1, Math.min(60, parseInt(months, 10) || 1));
+      result = await pool.query(
+        `INSERT INTO service_subscriptions (business_id, service_type, months_paid, expiration_date, status)
+         VALUES ($1, $2, $3,
+           CURRENT_DATE + ($3::int * INTERVAL '1 month'),
+           'active')
+         ON CONFLICT (business_id, service_type) DO UPDATE SET
+           months_paid     = service_subscriptions.months_paid + $3::int,
+           expiration_date = CASE
+             WHEN service_subscriptions.expiration_date > CURRENT_DATE
+             THEN service_subscriptions.expiration_date + ($3::int * INTERVAL '1 month')
+             ELSE CURRENT_DATE + ($3::int * INTERVAL '1 month')
+           END,
+           status      = 'active',
+           updated_at  = NOW()
+         RETURNING *`,
+        [id, service_type, monthsNum]
+      );
+    }
+
+    logger.info('Admin granted subscription', { businessId: id, service_type, isOneTime, adminId: req.user.userId });
+    res.json(success(result.rows[0], 'Subscription granted'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/businesses/:id/subscriptions/:serviceType/deactivate
+router.patch('/businesses/:id/subscriptions/:serviceType/deactivate', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id, serviceType } = req.params;
+
+    if (!isValidUUID(id)) return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    const serviceTypes = await getServiceTypes();
+    if (!serviceTypes.some(st => st.id === serviceType)) {
+      return res.status(400).json(error(`Invalid service type: ${serviceType}`, 'INVALID_SERVICE_TYPE'));
+    }
+
+    const result = await pool.query(
+      `UPDATE service_subscriptions
+       SET status = 'cancelled', updated_at = NOW()
+       WHERE business_id = $1 AND service_type = $2
+       RETURNING *`,
+      [id, serviceType]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json(error('Subscription not found', 'NOT_FOUND'));
+    }
+
+    logger.info('Admin deactivated subscription', { businessId: id, serviceType, adminId: req.user.userId });
+    res.json(success(result.rows[0], 'Subscription deactivated'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/category-featured — Return the full featured map
+router.get('/category-featured', requireRole('admin'), async (req, res, next) => {
+  try {
+    const result = await pool.query(`SELECT value FROM system_config WHERE key = 'category_featured'`);
+    res.json(success(result.rows[0]?.value || {}));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/category-featured/:category — Replace featured list for one category
+router.put('/category-featured/:category', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { category } = req.params;
+    const { business_ids } = req.body;
+    if (!Array.isArray(business_ids)) {
+      return res.status(400).json(error('business_ids must be an array', 'INVALID_INPUT'));
+    }
+    // Validate all IDs are UUIDs and belong to active businesses in this category
+    const validIds = business_ids.filter(id => isValidUUID(id));
+
+    // Load current map
+    const current = await pool.query(`SELECT value FROM system_config WHERE key = 'category_featured'`);
+    const featuredMap = current.rows[0]?.value || {};
+    if (validIds.length === 0) {
+      delete featuredMap[category];
+    } else {
+      featuredMap[category] = validIds;
+    }
+    await pool.query(
+      `INSERT INTO system_config (key, value) VALUES ('category_featured', $1)
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(featuredMap)]
+    );
+    res.json(success(featuredMap, 'Featured list updated'));
   } catch (err) {
     next(err);
   }

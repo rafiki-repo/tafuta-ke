@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Check, Edit2, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Check, Edit2, Pin, PinOff, Plus, QrCode, RefreshCw, Save, Search, Trash2, X, Download } from 'lucide-react';
+import QRCodeLib from 'qrcode';
 import { adminAPI } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -31,6 +32,91 @@ function formatCategoryName(value) {
     ));
 }
 
+function toSlug(str) {
+  return String(str).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function categoryUrl(category) {
+  return `${window.location.origin}/category/${toSlug(category)}`;
+}
+
+// ── QR Code Modal ────────────────────────────────────────────────────────────
+
+function QrModal({ category, onClose }) {
+  const [dataUrl, setDataUrl] = useState('');
+  const [generating, setGenerating] = useState(false);
+
+  const generate = useCallback(async () => {
+    setGenerating(true);
+    try {
+      const url = categoryUrl(category);
+      const png = await QRCodeLib.toDataURL(url, {
+        width: 400,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+        errorCorrectionLevel: 'H',
+      });
+      setDataUrl(png);
+    } finally {
+      setGenerating(false);
+    }
+  }, [category]);
+
+  useEffect(() => { generate(); }, [generate]);
+
+  const download = () => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `qr-${toSlug(category)}.png`;
+    a.click();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="bg-background rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold">{category}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5 break-all">{categoryUrl(category)}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground ml-3 shrink-0">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* QR image */}
+        <div className="flex items-center justify-center rounded-lg border bg-white p-4">
+          {generating ? (
+            <div className="w-40 h-40 flex items-center justify-center">
+              <Spinner />
+            </div>
+          ) : dataUrl ? (
+            <img src={dataUrl} alt={`QR code for ${category}`} className="w-40 h-40" />
+          ) : (
+            <div className="w-40 h-40 flex items-center justify-center text-xs text-muted-foreground">Failed</div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={generate} disabled={generating} className="flex-1">
+            <RefreshCw className={`h-4 w-4 mr-2 ${generating ? 'animate-spin' : ''}`} />
+            Regenerate
+          </Button>
+          <Button size="sm" onClick={download} disabled={!dataUrl || generating} className="flex-1">
+            <Download className="h-4 w-4 mr-2" />
+            Download PNG
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState('');
@@ -41,14 +127,25 @@ export default function Categories() {
   const [editingCategory, setEditingCategory] = useState('');
   const [editingValue, setEditingValue] = useState('');
   const [renamingCategory, setRenamingCategory] = useState('');
+  const [qrCategory, setQrCategory] = useState(null);
 
   const [q, setQ] = useState('');
   const [businesses, setBusinesses] = useState([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [updatingBusinessId, setUpdatingBusinessId] = useState(null);
 
+  // Featured businesses per category
+  const [featuredMap, setFeaturedMap] = useState({});        // { Hotel: [id1, id2] }
+  const [featuredLoading, setFeaturedLoading] = useState(false);
+  const [featuredCategory, setFeaturedCategory] = useState(''); // which category is open
+  const [featuredQ, setFeaturedQ] = useState('');
+  const [featuredResults, setFeaturedResults] = useState([]);
+  const [featuredSearching, setFeaturedSearching] = useState(false);
+  const [featuredSaving, setFeaturedSaving] = useState(false);
+
   useEffect(() => {
     loadCategories();
+    loadFeatured();
   }, []);
 
   useEffect(() => {
@@ -83,6 +180,67 @@ export default function Categories() {
     }
   };
 
+  const loadFeatured = async () => {
+    setFeaturedLoading(true);
+    try {
+      const res = await adminAPI.getCategoryFeatured();
+      setFeaturedMap(res.data.data || {});
+    } catch {
+      // non-fatal
+    } finally {
+      setFeaturedLoading(false);
+    }
+  };
+
+  const searchFeaturedBusinesses = async (query) => {
+    if (!featuredCategory) return;
+    setFeaturedSearching(true);
+    try {
+      const res = await adminAPI.getAllBusinesses({
+        q: query || undefined,
+        category: featuredCategory,
+        status: 'active',
+        limit: 20,
+      });
+      setFeaturedResults(res.data.data || []);
+    } catch {
+      setFeaturedResults([]);
+    } finally {
+      setFeaturedSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!featuredCategory) return;
+    const timer = setTimeout(() => searchFeaturedBusinesses(featuredQ), 300);
+    return () => clearTimeout(timer);
+  }, [featuredQ, featuredCategory]);
+
+  const pinBusiness = async (business) => {
+    const current = featuredMap[featuredCategory] || [];
+    if (current.includes(business.business_id)) return;
+    const next = [...current, business.business_id];
+    await saveFeatured(next);
+  };
+
+  const unpinBusiness = async (businessId) => {
+    const current = featuredMap[featuredCategory] || [];
+    const next = current.filter(id => id !== businessId);
+    await saveFeatured(next);
+  };
+
+  const saveFeatured = async (ids) => {
+    setFeaturedSaving(true);
+    try {
+      const res = await adminAPI.setCategoryFeatured(featuredCategory, ids);
+      setFeaturedMap(res.data.data || {});
+    } catch {
+      setError('Failed to update featured businesses.');
+    } finally {
+      setFeaturedSaving(false);
+    }
+  };
+
   const normalizeCategory = (value) => formatCategoryName(value);
 
   const addCategory = () => {
@@ -104,6 +262,7 @@ export default function Categories() {
     setNewCategory('');
     setError('');
     setMessage('');
+    setQrCategory(category);
   };
 
   const removeCategory = (category) => {
@@ -332,6 +491,14 @@ export default function Categories() {
                   </span>
                   <button
                     type="button"
+                    onClick={() => setQrCategory(category)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"
+                    title={`QR code for ${category}`}
+                  >
+                    <QrCode className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => startEditingCategory(category)}
                     className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"
                     title={`Edit ${category}`}
@@ -357,6 +524,106 @@ export default function Categories() {
               Save Categories
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Category featured businesses</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Pin up to 3 businesses to appear first on each category page. Remaining slots fill automatically by verification tier.
+          </p>
+          <Select
+            value={featuredCategory}
+            onChange={(e) => { setFeaturedCategory(e.target.value); setFeaturedQ(''); setFeaturedResults([]); }}
+          >
+            <option value="">Select a category to manage</option>
+            {categories.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </Select>
+
+          {featuredCategory && (
+            <div className="space-y-4">
+              {/* Pinned list */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                  Pinned for {featuredCategory} ({(featuredMap[featuredCategory] || []).length}/3)
+                </p>
+                {(featuredMap[featuredCategory] || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">None pinned — showing auto-sorted businesses.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(featuredMap[featuredCategory] || []).map((id, idx) => {
+                      const biz = featuredResults.find(b => b.business_id === id)
+                        || businesses.find(b => b.business_id === id);
+                      return (
+                        <div key={id} className="flex items-center justify-between gap-3 p-2 rounded-md border bg-card">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-bold text-muted-foreground w-4 shrink-0">{idx + 1}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{biz?.business_name || id}</p>
+                              {biz && <p className="text-xs text-muted-foreground">{biz.region}</p>}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => unpinBusiness(id)}
+                            disabled={featuredSaving}
+                            className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 shrink-0"
+                          >
+                            <PinOff className="h-3.5 w-3.5" /> Unpin
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Search to pin */}
+              {(featuredMap[featuredCategory] || []).length < 3 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Add a business</p>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={featuredQ}
+                      onChange={(e) => setFeaturedQ(e.target.value)}
+                      placeholder="Search by business name..."
+                      className="pl-9"
+                    />
+                  </div>
+                  {featuredSearching ? (
+                    <div className="flex justify-center py-4"><Spinner /></div>
+                  ) : (
+                    <div className="space-y-1 max-h-56 overflow-y-auto">
+                      {featuredResults
+                        .filter(b => !(featuredMap[featuredCategory] || []).includes(b.business_id))
+                        .map(b => (
+                          <div key={b.business_id} className="flex items-center justify-between gap-3 p-2 rounded-md border hover:bg-accent/50">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{b.business_name}</p>
+                              <p className="text-xs text-muted-foreground">{b.category} · {b.region}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => pinBusiness(b)}
+                              disabled={featuredSaving}
+                              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 shrink-0"
+                            >
+                              <Pin className="h-3.5 w-3.5" /> Pin
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -413,6 +680,10 @@ export default function Categories() {
           )}
         </CardContent>
       </Card>
+
+      {qrCategory && (
+        <QrModal category={qrCategory} onClose={() => setQrCategory(null)} />
+      )}
     </div>
   );
 }

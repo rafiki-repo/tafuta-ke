@@ -92,6 +92,11 @@ function BusinessCard({ business }) {
         </div>
 
         <div className="flex flex-wrap gap-1 mb-1.5">
+          {business.is_featured && (
+            <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 font-medium border-0">
+              ★ Top Pick
+            </Badge>
+          )}
           {business.has_active_ads && (
             <Badge className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary font-medium border-0">
               Featured
@@ -221,35 +226,20 @@ export default function CategoryPage() {
       </section>
 
       <div className="px-4 py-6 max-w-xl mx-auto space-y-6">
-        {/* Top businesses */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-foreground">
-              {businesses.length > 0 ? 'Top Businesses' : 'No Businesses Yet'}
-            </h2>
-            {businesses.length > 0 && (
-              <Badge variant="secondary" className="text-xs">{businesses.length} shown</Badge>
-            )}
-          </div>
-
-          {businesses.length === 0 ? (
-            <div className="text-center py-10 rounded-lg border border-dashed border-border">
-              <Store className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">
-                No businesses in this category yet.
-              </p>
-              <p className="text-xs text-muted-foreground/60 mt-1">
-                Be the first to list your business!
-              </p>
+        {/* Featured / pinned businesses */}
+        {businesses.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-foreground">Featured Businesses</h2>
+              <Badge variant="secondary" className="text-xs">★ Top Picks</Badge>
             </div>
-          ) : (
             <div className="space-y-3">
               {businesses.map(b => (
                 <BusinessCard key={b.business_id} business={b} />
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
         {/* View all link */}
         {total > 3 && (

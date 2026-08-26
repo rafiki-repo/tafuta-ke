@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, Building2, CreditCard, User } from 'lucide-react';
+import { Home, Building2, CreditCard, FileText, User } from 'lucide-react';
 import { Header } from '@/components/Header';
 import useAuthStore from '@/store/useAuthStore';
 
@@ -11,6 +11,7 @@ export default function DashboardLayout() {
     { name: 'Overview', href: '/dashboard', icon: Home },
     { name: 'My Businesses', href: '/dashboard/businesses', icon: Building2 },
     { name: 'Payments', href: '/dashboard/payments', icon: CreditCard },
+    { name: 'Invoices', href: '/dashboard/invoices', icon: FileText },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
   ];
 
