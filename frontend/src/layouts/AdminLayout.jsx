@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, CreditCard, Tags, Layers, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, BarChart3, CreditCard, Tags, Layers, FileText } from 'lucide-react';
 import { Header } from '@/components/Header';
 import useAuthStore from '@/store/useAuthStore';
 
