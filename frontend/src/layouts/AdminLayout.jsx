@@ -11,6 +11,7 @@ export default function AdminLayout() {
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Businesses', href: '/admin/businesses', icon: Building2 },
+    { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { name: 'Categories', href: '/admin/categories', icon: Tags },
     { name: 'Services', href: '/admin/services', icon: Layers },
     { name: 'Invoices', href: '/admin/invoices', icon: FileText },

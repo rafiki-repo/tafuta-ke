@@ -338,6 +338,39 @@ router.get('/analytics', async (req, res, next) => {
   }
 });
 
+// GET /api/admin/analytics/business-growth - Active business signups over time
+router.get('/analytics/business-growth', async (req, res, next) => {
+  try {
+    const granularity = req.query.granularity === 'week' ? 'week' : 'month';
+
+    // period is returned as a plain YYYY-MM-DD string, not a timestamp — a
+    // Date object here would get reinterpreted through the server's local
+    // timezone on serialization and the browser's on parsing, silently
+    // shifting bucket boundaries by hours (enough to flip a business into
+    // the wrong week/month).
+    const result = await pool.query(
+      `SELECT TO_CHAR(DATE_TRUNC($1, approved_at), 'YYYY-MM-DD') AS period, COUNT(*) AS count
+       FROM businesses
+       WHERE status = 'active'
+       GROUP BY DATE_TRUNC($1, approved_at)
+       ORDER BY DATE_TRUNC($1, approved_at) ASC`,
+      [granularity]
+    );
+
+    let cumulative = 0;
+    const growth = result.rows.map((row) => {
+      const count = parseInt(row.count, 10);
+      cumulative += count;
+      return { period: row.period, count, cumulative };
+    });
+
+    res.json(success({ granularity, growth }));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/auth-logs - Get authentication logs
 router.get('/auth-logs', async (req, res, next) => {
   try {
