@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { FileText, Plus, Download, RefreshCw, Search, Check, Send, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { FileText, Plus, Download, RefreshCw, Search, Check, Send, X, ArrowLeft, Eye } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -25,6 +25,210 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+// ── Invoice Detail Modal ──────────────────────────────────────────────────────
+
+function InvoiceDetailModal({ invoiceId, onClose, onStatusChange }) {
+  const [invoice, setInvoice] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [updating, setUpdating] = useState('');
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    adminAPI.getInvoice(invoiceId)
+      .then(res => setInvoice(res.data?.data))
+      .catch(() => setError('Failed to load invoice details.'))
+      .finally(() => setLoading(false));
+  }, [invoiceId]);
+
+  const updateStatus = async (status) => {
+    setUpdating(status);
+    try {
+      const res = await adminAPI.updateInvoice(invoiceId, { status });
+      const updated = res.data.data;
+      setInvoice(prev => ({ ...prev, ...updated }));
+      onStatusChange(updated);
+    } catch {
+      setError('Failed to update status.');
+    } finally {
+      setUpdating('');
+    }
+  };
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const res = await adminAPI.getInvoicePdf(invoiceId);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoice?.invoice_number || invoiceId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Failed to download PDF.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const items = Array.isArray(invoice?.items) ? invoice.items : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-background rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b shrink-0">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground mr-1">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <h2 className="text-lg font-semibold">
+              {loading ? 'Loading…' : (invoice?.invoice_number || 'Invoice')}
+            </h2>
+            {invoice && (
+              <Badge variant={STATUS_BADGE[invoice.status]?.variant || 'secondary'}>
+                {STATUS_BADGE[invoice.status]?.label || invoice.status}
+              </Badge>
+            )}
+          </div>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 p-5 space-y-5">
+          {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+          {loading ? (
+            <div className="flex justify-center py-12"><Spinner /></div>
+          ) : invoice ? (
+            <>
+              {/* Meta */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm border rounded-md p-4 bg-muted/20">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Business</p>
+                  <p className="font-semibold">{invoice.business_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Issue Date</p>
+                  <p className="font-medium">{fmtDate(invoice.issue_date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Due Date</p>
+                  <p className="font-medium">{fmtDate(invoice.due_date)}</p>
+                </div>
+                {invoice.paid_at && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Paid On</p>
+                    <p className="font-medium text-green-600">{fmtDate(invoice.paid_at)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Line items */}
+              {items.length > 0 ? (
+                <div className="rounded-md border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 font-medium">Service</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Description</th>
+                        <th className="text-right px-4 py-2.5 font-medium w-12">Qty</th>
+                        <th className="text-right px-4 py-2.5 font-medium w-28">Unit Price</th>
+                        <th className="text-right px-4 py-2.5 font-medium w-24">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {items.map((item, i) => (
+                        <tr key={i}>
+                          <td className="px-4 py-3 font-medium">
+                            {item.label || item.service_type}
+                            {item.description && (
+                              <p className="text-xs text-muted-foreground font-normal mt-0.5 sm:hidden">{item.description}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">{item.description}</td>
+                          <td className="px-4 py-3 text-right">{item.months ?? item.qty ?? 1}</td>
+                          <td className="px-4 py-3 text-right">{fmt(item.unit_price)}</td>
+                          <td className="px-4 py-3 text-right font-medium">{fmt(item.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-muted/20 border-t">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-2 text-right text-xs text-muted-foreground">Subtotal</td>
+                        <td className="px-4 py-2 text-right text-sm">{fmt(invoice.subtotal)}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="px-4 py-2 text-right text-xs text-muted-foreground">VAT (16%)</td>
+                        <td className="px-4 py-2 text-right text-sm">{fmt(invoice.vat_amount)}</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td colSpan={4} className="px-4 py-3 text-right font-semibold">Total Due</td>
+                        <td className="px-4 py-3 text-right font-bold text-base">{fmt(invoice.total_amount)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No line items on this invoice.</p>
+              )}
+
+              {/* Notes */}
+              {invoice.notes && (
+                <div className="rounded-md bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground text-xs mb-1">Notes</p>
+                  {invoice.notes}
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
+
+        {/* Footer actions */}
+        {invoice && (
+          <div className="flex items-center justify-between gap-2 p-4 border-t shrink-0 flex-wrap">
+            <Button variant="outline" size="sm" onClick={downloadPdf} disabled={downloading}>
+              {downloading ? <Spinner className="h-4 w-4 mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+              Download PDF
+            </Button>
+            <div className="flex gap-2">
+              {invoice.status === 'draft' && (
+                <Button size="sm" variant="outline"
+                  onClick={() => updateStatus('sent')} disabled={!!updating}
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                  {updating === 'sent' ? <Spinner className="h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                  Mark Sent
+                </Button>
+              )}
+              {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+                <Button size="sm" variant="outline"
+                  onClick={() => updateStatus('paid')} disabled={!!updating}
+                  className="text-green-600 border-green-200 hover:bg-green-50">
+                  {updating === 'paid' ? <Spinner className="h-4 w-4 mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                  Mark Paid
+                </Button>
+              )}
+              {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                <Button size="sm" variant="outline"
+                  onClick={() => updateStatus('cancelled')} disabled={!!updating}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/5">
+                  {updating === 'cancelled' ? <Spinner className="h-4 w-4 mr-2" /> : <X className="h-4 w-4 mr-2" />}
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Create Invoice Modal ──────────────────────────────────────────────────────
 
 const VAT_RATE = 0.16;
@@ -36,10 +240,10 @@ function CreateInvoiceModal({ onClose, onCreated }) {
   const [bizSearching, setBizSearching] = useState(false);
   const [selectedBiz, setSelectedBiz] = useState(null);
   const [loading, setLoading] = useState(false);
-  // line items keyed by service_type: { checked, label, description, qty, unit_price, billing_type }
   const [lines, setLines] = useState({});
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [sendNow, setSendNow] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -62,7 +266,6 @@ function CreateInvoiceModal({ onClose, onCreated }) {
     setLoading(true);
     setErr('');
     try {
-      // Load all service types + active subscriptions in parallel
       const [typesRes, previewRes] = await Promise.all([
         adminAPI.getServiceTypes(),
         adminAPI.previewInvoiceItems(biz.business_id).catch(() => ({ data: { data: { items: [] } } })),
@@ -71,7 +274,6 @@ function CreateInvoiceModal({ onClose, onCreated }) {
       const activeItems = previewRes.data.data?.items || [];
       const activeMap = Object.fromEntries(activeItems.map(i => [i.service_type, i]));
 
-      // Build line map: all services available, pre-check subscription-active ones
       const initialLines = {};
       serviceTypes.forEach(st => {
         const active = activeMap[st.id];
@@ -118,6 +320,7 @@ function CreateInvoiceModal({ onClose, onCreated }) {
         items,
         due_date: dueDate || undefined,
         notes: notes || undefined,
+        status: sendNow ? 'sent' : 'draft',
       });
       onCreated(res.data.data);
     } catch (e) {
@@ -167,7 +370,7 @@ function CreateInvoiceModal({ onClose, onCreated }) {
           {step === 'pick' && selectedBiz && (
             <>
               <div className="text-sm font-semibold">{selectedBiz.business_name}</div>
-              <p className="text-xs text-muted-foreground">Select services to include. Active subscriptions are pre-checked. Prices and quantities are editable.</p>
+              <p className="text-xs text-muted-foreground">Select services to include. Active subscriptions are pre-checked.</p>
 
               {loading ? (
                 <div className="flex justify-center py-8"><Spinner /></div>
@@ -258,6 +461,24 @@ function CreateInvoiceModal({ onClose, onCreated }) {
                       <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Pay via M-Pesa..." />
                     </div>
                   </div>
+
+                  {/* Send immediately toggle */}
+                  <label className="flex items-start gap-3 p-3 rounded-md border cursor-pointer hover:bg-accent/30 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={sendNow}
+                      onChange={e => setSendNow(e.target.checked)}
+                      className="mt-0.5 rounded border-border cursor-pointer"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">Send to client immediately</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {sendNow
+                          ? 'Invoice will be created with status "Sent" and visible to the client.'
+                          : 'Invoice will be saved as a draft. You can send it later.'}
+                      </p>
+                    </div>
+                  </label>
                 </>
               )}
             </>
@@ -274,8 +495,8 @@ function CreateInvoiceModal({ onClose, onCreated }) {
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           {step === 'pick' && (
             <Button type="button" onClick={handleCreate} disabled={saving || loading || checkedLines.length === 0}>
-              {saving ? <Spinner className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              Create Invoice
+              {saving ? <Spinner className="h-4 w-4 mr-2" /> : (sendNow ? <Send className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />)}
+              {sendNow ? 'Create & Send' : 'Save as Draft'}
             </Button>
           )}
         </div>
@@ -294,7 +515,7 @@ export default function Invoices() {
   const [statusFilter, setStatusFilter] = useState('');
   const [q, setQ] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [updating, setUpdating] = useState(null);
+  const [detailId, setDetailId] = useState(null);
   const [downloading, setDownloading] = useState(null);
   const [error, setError] = useState('');
   const LIMIT = 20;
@@ -316,18 +537,6 @@ export default function Invoices() {
 
   useEffect(() => { load(1); }, [load]);
 
-  const updateStatus = async (invoiceId, status) => {
-    setUpdating(invoiceId + status);
-    try {
-      const res = await adminAPI.updateInvoice(invoiceId, { status });
-      setInvoices(prev => prev.map(i => i.invoice_id === invoiceId ? { ...i, ...res.data.data } : i));
-    } catch {
-      setError('Failed to update invoice.');
-    } finally {
-      setUpdating(null);
-    }
-  };
-
   const downloadPdf = async (invoice) => {
     setDownloading(invoice.invoice_id);
     try {
@@ -343,6 +552,10 @@ export default function Invoices() {
     } finally {
       setDownloading(null);
     }
+  };
+
+  const handleStatusChange = (updated) => {
+    setInvoices(prev => prev.map(i => i.invoice_id === updated.invoice_id ? { ...i, ...updated } : i));
   };
 
   return (
@@ -404,10 +617,17 @@ export default function Invoices() {
                 <tbody className="divide-y">
                   {invoices.map(inv => {
                     const badge = STATUS_BADGE[inv.status] || { label: inv.status, variant: 'secondary' };
-                    const isUpdating = updating?.startsWith(inv.invoice_id);
                     return (
                       <tr key={inv.invoice_id} className="hover:bg-accent/20">
-                        <td className="px-4 py-3 font-mono text-xs font-medium">{inv.invoice_number || '—'}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setDetailId(inv.invoice_id)}
+                            className="font-mono text-xs font-medium text-primary hover:underline"
+                          >
+                            {inv.invoice_number || '—'}
+                          </button>
+                        </td>
                         <td className="px-4 py-3 font-medium">{inv.business_name}</td>
                         <td className="px-4 py-3"><Badge variant={badge.variant}>{badge.label}</Badge></td>
                         <td className="px-4 py-3 text-muted-foreground">{fmtDate(inv.issue_date)}</td>
@@ -415,7 +635,13 @@ export default function Invoices() {
                         <td className="px-4 py-3 text-right font-medium">{fmt(inv.total_amount)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
-                            {/* Download PDF */}
+                            <button
+                              type="button" title="View details"
+                              onClick={() => setDetailId(inv.invoice_id)}
+                              className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
                             <button
                               type="button" title="Download PDF"
                               onClick={() => downloadPdf(inv)}
@@ -424,39 +650,6 @@ export default function Invoices() {
                             >
                               {downloading === inv.invoice_id ? <Spinner className="h-4 w-4" /> : <Download className="h-4 w-4" />}
                             </button>
-
-                            {/* Mark as Sent */}
-                            {inv.status === 'draft' && (
-                              <button type="button" title="Mark as Sent"
-                                onClick={() => updateStatus(inv.invoice_id, 'sent')}
-                                disabled={!!isUpdating}
-                                className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-blue-600"
-                              >
-                                {isUpdating ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-                              </button>
-                            )}
-
-                            {/* Mark as Paid */}
-                            {(inv.status === 'sent' || inv.status === 'overdue') && (
-                              <button type="button" title="Mark as Paid"
-                                onClick={() => updateStatus(inv.invoice_id, 'paid')}
-                                disabled={!!isUpdating}
-                                className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-green-600"
-                              >
-                                {isUpdating ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                              </button>
-                            )}
-
-                            {/* Cancel */}
-                            {inv.status !== 'paid' && inv.status !== 'cancelled' && (
-                              <button type="button" title="Cancel"
-                                onClick={() => updateStatus(inv.invoice_id, 'cancelled')}
-                                disabled={!!isUpdating}
-                                className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-destructive"
-                              >
-                                {isUpdating ? <Spinner className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -483,7 +676,15 @@ export default function Invoices() {
       {showCreate && (
         <CreateInvoiceModal
           onClose={() => setShowCreate(false)}
-          onCreated={(inv) => { setShowCreate(false); load(1); }}
+          onCreated={() => { setShowCreate(false); load(1); }}
+        />
+      )}
+
+      {detailId && (
+        <InvoiceDetailModal
+          invoiceId={detailId}
+          onClose={() => setDetailId(null)}
+          onStatusChange={handleStatusChange}
         />
       )}
     </div>

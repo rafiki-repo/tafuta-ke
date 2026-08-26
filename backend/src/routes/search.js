@@ -288,33 +288,44 @@ router.get('/categories/:slug', async (req, res, next) => {
       return res.status(404).json(error('Category not found', 'NOT_FOUND'));
     }
 
-    // Run all three queries in parallel
-    const [businessResult, countResult, adsResult] = await Promise.all([
+    // Run queries in parallel
+    const [countResult, adsResult, featuredConfigResult] = await Promise.all([
       pool.query(
-        `SELECT b.business_id, b.business_name, b.business_tag, b.category, b.region,
+        `SELECT COUNT(*) as total FROM businesses WHERE status = 'active' AND LOWER(category) = LOWER($1)`,
+        [category]
+      ),
+      pool.query(`SELECT value FROM system_config WHERE key = 'category_ads'`),
+      pool.query(`SELECT value FROM system_config WHERE key = 'category_featured'`),
+    ]);
+
+    const featuredMap = featuredConfigResult.rows[0]?.value || {};
+    const featuredIds = (featuredMap[category] || []).filter(Boolean);
+
+    const businessFields = `b.business_id, b.business_name, b.business_tag, b.category, b.region,
                 b.subdomain, b.logo_url, b.verification_tier, b.content_json,
                 CASE WHEN EXISTS (
                   SELECT 1 FROM service_subscriptions ss
                   WHERE ss.business_id = b.business_id AND ss.service_type = 'ads'
                     AND ss.status = 'active'
                     AND (ss.expiration_date IS NULL OR ss.expiration_date > CURRENT_DATE)
-                ) THEN true ELSE false END as has_active_ads
-         FROM businesses b
-         WHERE b.status = 'active' AND LOWER(b.category) = LOWER($1)
-         ORDER BY
-           CASE b.verification_tier WHEN 'premium' THEN 1 WHEN 'verified' THEN 2 ELSE 3 END,
-           b.updated_at DESC
-         LIMIT 3`,
-        [category]
-      ),
-      pool.query(
-        `SELECT COUNT(*) as total FROM businesses WHERE status = 'active' AND LOWER(category) = LOWER($1)`,
-        [category]
-      ),
-      pool.query(`SELECT value FROM system_config WHERE key = 'category_ads'`),
-    ]);
+                ) THEN true ELSE false END as has_active_ads`;
 
-    const businesses = businessResult.rows.map(b => ({
+    let businesses = [];
+
+    // Only show admin-pinned businesses (in pinned order)
+    if (featuredIds.length > 0) {
+      const pinnedResult = await pool.query(
+        `SELECT ${businessFields}
+         FROM businesses b
+         WHERE b.business_id = ANY($1) AND b.status = 'active'
+           AND LOWER(b.category) = LOWER($2)`,
+        [featuredIds, category]
+      );
+      const byId = Object.fromEntries(pinnedResult.rows.map(r => [r.business_id, r]));
+      businesses = featuredIds.map(id => byId[id]).filter(Boolean);
+    }
+
+    const mapBusiness = b => ({
       business_id: b.business_id,
       business_name: b.business_name,
       business_tag: b.business_tag,
@@ -327,7 +338,10 @@ router.get('/categories/:slug', async (req, res, next) => {
       media: b.content_json?.media || null,
       description: b.content_json?.profile?.en?.description || '',
       phone: b.content_json?.contact?.phone || '',
-    }));
+      is_featured: featuredIds.includes(b.business_id),
+    });
+
+    const businessesMapped = businesses.map(mapBusiness);
 
     const allAds = Array.isArray(adsResult.rows[0]?.value) ? adsResult.rows[0].value : [];
     const ads = allAds.filter(
@@ -338,7 +352,7 @@ router.get('/categories/:slug', async (req, res, next) => {
       category,
       slug,
       total: parseInt(countResult.rows[0].total, 10),
-      businesses,
+      businesses: businessesMapped,
       ads,
     }));
   } catch (err) {

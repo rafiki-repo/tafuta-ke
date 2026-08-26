@@ -10,33 +10,33 @@ import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-const VALID_SERVICE_TYPES = ['website_hosting', 'ads', 'search_promotion', 'image_gallery'];
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-async function getPricing() {
-  const [pricingRow, vatRow] = await Promise.all([
-    pool.query(`SELECT value FROM system_config WHERE key = 'service_pricing'`),
+async function getServiceTypeDefs() {
+  const [typesRow, vatRow] = await Promise.all([
+    pool.query(`SELECT value FROM system_config WHERE key = 'service_types'`),
     pool.query(`SELECT value FROM system_config WHERE key = 'vat_rate'`),
   ]);
+  const types = Array.isArray(typesRow.rows[0]?.value) ? typesRow.rows[0].value : [];
   return {
-    pricing: pricingRow.rows[0]?.value || {
-      website_hosting: 200, ads: 200, search_promotion: 150, image_gallery: 100,
-    },
+    serviceTypes: types,
     vatRate: parseFloat(vatRow.rows[0]?.value || '0.16'),
   };
 }
 
-async function calculateOrder(items) {
-  const { pricing, vatRate } = await getPricing();
-
+async function calculateOrder(items, serviceTypes, vatRate) {
+  const typeMap = Object.fromEntries(serviceTypes.map(t => [t.id, t]));
   let subtotal = 0;
   const itemsWithPricing = items.map((item) => {
-    const pricePerMonth = pricing[item.service_type] || 200;
-    const itemTotal = pricePerMonth * item.months;
-    subtotal += itemTotal;
-    return { ...item, price_per_month: pricePerMonth, total: itemTotal };
+    const def = typeMap[item.service_type] || {};
+    const price = Number(def.price ?? def.price_per_month ?? 200);
+    const isOneTime = def.billing_type === 'one_time';
+    const months = isOneTime ? 1 : (item.months || 1);
+    const total = isOneTime ? price : price * months;
+    subtotal += total;
+    return { ...item, months, price, total };
   });
 
   const vatAmount = parseFloat((subtotal * vatRate).toFixed(2));
@@ -80,23 +80,48 @@ async function processCompletedPayment(trackingId, paymentMethod) {
 
     const tx = result.rows[0];
 
+    // Fetch service type definitions to determine billing_type per item
+    const typesRow = await client.query(`SELECT value FROM system_config WHERE key = 'service_types'`);
+    const typeMap = Object.fromEntries(
+      (Array.isArray(typesRow.rows[0]?.value) ? typesRow.rows[0].value : []).map(t => [t.id, t])
+    );
+
     for (const item of tx.items) {
-      await client.query(
-        `INSERT INTO service_subscriptions
-           (business_id, service_type, months_paid, expiration_date, status)
-         VALUES ($1, $2, $3::int, CURRENT_DATE + ($3::int * INTERVAL '1 month'), 'active')
-         ON CONFLICT (business_id, service_type) DO UPDATE SET
-           months_paid     = service_subscriptions.months_paid + $3::int,
-           expiration_date = CASE
-             WHEN service_subscriptions.expiration_date > CURRENT_DATE
-             THEN service_subscriptions.expiration_date + ($3::int * INTERVAL '1 month')
-             ELSE CURRENT_DATE + ($3::int * INTERVAL '1 month')
-           END,
-           status     = 'active',
-           updated_at = NOW()`,
-        [tx.business_id, item.service_type, item.months]
-      );
+      const isOneTime = typeMap[item.service_type]?.billing_type === 'one_time';
+      if (isOneTime) {
+        await client.query(
+          `INSERT INTO service_subscriptions (business_id, service_type, months_paid, expiration_date, status)
+           VALUES ($1, $2, 1, NULL, 'active')
+           ON CONFLICT (business_id, service_type) DO UPDATE SET
+             status = 'active', updated_at = NOW()`,
+          [tx.business_id, item.service_type]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO service_subscriptions
+             (business_id, service_type, months_paid, expiration_date, status)
+           VALUES ($1, $2, $3::int, CURRENT_DATE + ($3::int * INTERVAL '1 month'), 'active')
+           ON CONFLICT (business_id, service_type) DO UPDATE SET
+             months_paid     = service_subscriptions.months_paid + $3::int,
+             expiration_date = CASE
+               WHEN service_subscriptions.expiration_date > CURRENT_DATE
+               THEN service_subscriptions.expiration_date + ($3::int * INTERVAL '1 month')
+               ELSE CURRENT_DATE + ($3::int * INTERVAL '1 month')
+             END,
+             status     = 'active',
+             updated_at = NOW()`,
+          [tx.business_id, item.service_type, item.months]
+        );
+      }
     }
+
+    // Mark any linked invoice as paid
+    await client.query(
+      `UPDATE invoices
+       SET status = 'paid', paid_at = NOW(), transaction_id = $1, updated_at = NOW()
+       WHERE transaction_id = $1 AND status != 'paid'`,
+      [tx.transaction_id]
+    );
 
     await client.query('COMMIT');
     logger.info('Payment completed', {
@@ -118,8 +143,12 @@ async function processCompletedPayment(trackingId, paymentMethod) {
 // GET /api/payments/pricing
 router.get('/pricing', async (_req, res, next) => {
   try {
-    const { pricing, vatRate } = await getPricing();
-    res.json(success({ pricing, vat_rate: vatRate }));
+    const { serviceTypes, vatRate } = await getServiceTypeDefs();
+    // Return both the full service type list and a legacy pricing map for backward compatibility
+    const pricing = Object.fromEntries(
+      serviceTypes.map(t => [t.id, Number(t.price ?? t.price_per_month ?? 0)])
+    );
+    res.json(success({ service_types: serviceTypes, pricing, vat_rate: vatRate }));
   } catch (err) {
     next(err);
   }
@@ -169,15 +198,26 @@ router.post('/initiate', requireAuth, async (req, res, next) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json(error('Items must be a non-empty array', 'INVALID_ITEMS'));
     }
+    const { serviceTypes, vatRate } = await getServiceTypeDefs();
+    const typeMap = Object.fromEntries(serviceTypes.map(t => [t.id, t]));
+
     for (const item of items) {
-      if (!item.service_type || !VALID_SERVICE_TYPES.includes(item.service_type)) {
+      const def = typeMap[item.service_type];
+      if (!item.service_type || !def) {
         return res.status(400).json(error(`Invalid service type: ${item.service_type}`, 'INVALID_SERVICE_TYPE'));
       }
-      const months = parseInt(item.months, 10);
-      if (!months || months < 1 || months > 12) {
-        return res.status(400).json(error('Months must be between 1 and 12', 'INVALID_MONTHS'));
+      if (!def.enabled) {
+        return res.status(400).json(error(`Service not available: ${item.service_type}`, 'SERVICE_UNAVAILABLE'));
       }
-      item.months = months;
+      if (def.billing_type !== 'one_time') {
+        const months = parseInt(item.months, 10);
+        if (!months || months < 1 || months > 12) {
+          return res.status(400).json(error('Months must be between 1 and 12', 'INVALID_MONTHS'));
+        }
+        item.months = months;
+      } else {
+        item.months = 1;
+      }
     }
 
     const { hasPermission, role } = await checkBusinessPermission(req.user.userId, business_id, 'owner');
@@ -187,7 +227,7 @@ router.post('/initiate', requireAuth, async (req, res, next) => {
 
     const [userResult, orderCalc] = await Promise.all([
       pool.query(`SELECT full_name, phone, email FROM users WHERE user_id = $1`, [req.user.userId]),
-      calculateOrder(items),
+      calculateOrder(items, serviceTypes, vatRate),
     ]);
     const user = userResult.rows[0];
 
@@ -286,7 +326,17 @@ router.get('/callback', async (req, res) => {
       status.status_code === 1;
 
     if (isCompleted) {
-      await processCompletedPayment(OrderTrackingId, status.payment_method);
+      const tx = await processCompletedPayment(OrderTrackingId, status.payment_method);
+      // If the payment was for an invoice, redirect straight to the invoice detail page
+      if (tx) {
+        const invRow = await pool.query(
+          `SELECT invoice_id FROM invoices WHERE transaction_id = $1 LIMIT 1`,
+          [tx.transaction_id]
+        );
+        if (invRow.rows.length > 0) {
+          return res.redirect(`${FRONTEND_URL}/dashboard/invoices/${invRow.rows[0].invoice_id}?paid=1`);
+        }
+      }
       return res.redirect(`${FRONTEND_URL}/payment/success?ref=${OrderMerchantReference}`);
     }
 

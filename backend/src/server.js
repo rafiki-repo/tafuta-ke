@@ -22,6 +22,8 @@ import paymentRoutes from "./routes/payments.js";
 import searchRoutes from "./routes/search.js";
 import adminRoutes from "./routes/admin.js";
 import photoRoutes from "./routes/photos.js";
+import siteRoutes from "./routes/site.js";
+import { adminInvoiceRoutes, userInvoiceRoutes } from "./routes/invoices.js";
 
 const app = express();
 const PgStore = pgSession(session);
@@ -51,7 +53,7 @@ app.use(
         ? ["https://tafuta.ke", /\.tafuta\.ke$/]
         : ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
-    methods: ["GET", "POST", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
@@ -106,9 +108,12 @@ app.use("/api/businesses", businessRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/invoices", adminInvoiceRoutes);
+app.use("/api/payments/invoices", userInvoiceRoutes);
 // Photos: mounted at /api so it can serve both /api/photos/config and
 // /api/businesses/:id/photos* (falls through from businessRoutes when no route matches)
 app.use("/api", photoRoutes);
+app.use("/api/site", siteRoutes);
 
 // 404 handler
 app.use((req, res) => {
