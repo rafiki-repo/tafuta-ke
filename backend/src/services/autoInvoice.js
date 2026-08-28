@@ -27,7 +27,7 @@ export async function generateDueInvoices() {
         AND NOT EXISTS (
           SELECT 1 FROM invoices i
           WHERE i.business_id = ss.business_id
-            AND i.status IN ('draft', 'sent', 'overdue')
+            AND i.status IN ('pending', 'overdue')
             AND i.created_at >= CURRENT_DATE - INTERVAL '14 days'
         )
     `);
@@ -81,7 +81,7 @@ export async function generateDueInvoices() {
             (invoice_number, business_id, created_by, status, issue_date, due_date, items, subtotal, vat_amount, total_amount, notes)
           VALUES (
             'INV-' || EXTRACT(YEAR FROM NOW())::text || '-' || LPAD(nextval('invoice_number_seq')::text, 5, '0'),
-            $1, NULL, 'sent', CURRENT_DATE, $2, $3, $4, $5, $6,
+            $1, NULL, 'pending', CURRENT_DATE, $2, $3, $4, $5, $6,
             'Auto-generated renewal invoice. Please pay before the due date to avoid service interruption.'
           )
         `, [biz.business_id, dueDate, JSON.stringify(items), subtotal, vat_amount, total_amount]);

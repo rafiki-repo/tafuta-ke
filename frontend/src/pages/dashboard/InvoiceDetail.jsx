@@ -8,8 +8,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { paymentAPI } from '@/lib/api';
 
 const STATUS = {
-  draft:     { label: 'Draft',     variant: 'secondary' },
-  sent:      { label: 'Sent',      variant: 'warning' },
+  pending:   { label: 'Pending',   variant: 'warning' },
   paid:      { label: 'Paid',      variant: 'success' },
   overdue:   { label: 'Overdue',   variant: 'destructive' },
   cancelled: { label: 'Cancelled', variant: 'secondary' },
@@ -86,7 +85,7 @@ export default function InvoiceDetail() {
   const items = Array.isArray(invoice.items) ? invoice.items : [];
   const s = STATUS[invoice.status] || { label: invoice.status, variant: 'secondary' };
   const canPay = !['paid', 'cancelled'].includes(invoice.status);
-  const isOverdue = invoice.status === 'sent' && invoice.due_date && new Date(invoice.due_date) < new Date();
+  const isOverdue = invoice.status === 'pending' && invoice.due_date && new Date(invoice.due_date) < new Date();
 
   return (
     <div className="space-y-6 max-w-2xl">

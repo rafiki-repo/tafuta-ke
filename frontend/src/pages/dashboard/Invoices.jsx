@@ -8,8 +8,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { paymentAPI } from '@/lib/api';
 
 const STATUS = {
-  draft:     { label: 'Draft',     variant: 'secondary' },
-  sent:      { label: 'Sent',      variant: 'warning' },
+  pending:   { label: 'Pending',   variant: 'warning' },
   paid:      { label: 'Paid',      variant: 'success' },
   overdue:   { label: 'Overdue',   variant: 'destructive' },
   cancelled: { label: 'Cancelled', variant: 'secondary' },
@@ -74,7 +73,7 @@ export default function Invoices() {
               <div className="divide-y sm:hidden">
                 {invoices.map(inv => {
                   const s = STATUS[inv.status] || { label: inv.status, variant: 'secondary' };
-                  const overdue = inv.status === 'sent' && inv.due_date && new Date(inv.due_date) < new Date();
+                  const overdue = inv.status === 'pending' && inv.due_date && new Date(inv.due_date) < new Date();
                   return (
                     <Link key={inv.invoice_id} to={`/dashboard/invoices/${inv.invoice_id}`}
                       className="flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors">
@@ -112,7 +111,7 @@ export default function Invoices() {
                   <tbody className="divide-y">
                     {invoices.map(inv => {
                       const s = STATUS[inv.status] || { label: inv.status, variant: 'secondary' };
-                      const overdue = inv.status === 'sent' && inv.due_date && new Date(inv.due_date) < new Date();
+                      const overdue = inv.status === 'pending' && inv.due_date && new Date(inv.due_date) < new Date();
                       return (
                         <tr key={inv.invoice_id}
                           className="hover:bg-accent/20 cursor-pointer transition-colors">
