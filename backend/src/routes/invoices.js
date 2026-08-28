@@ -7,7 +7,7 @@ import { generateInvoicePdf } from '../services/invoice.js';
 import pesapalService from '../services/pesapal.js';
 import logger from '../utils/logger.js';
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tafuta.ke';
 
 const router = express.Router();
 
@@ -119,7 +119,7 @@ admin.post('/', async (req, res, next) => {
     if (!business_id || !isValidUUID(business_id)) {
       return res.status(400).json(error('business_id is required and must be a UUID', 'INVALID_INPUT'));
     }
-    const initialStatus = reqStatus === 'sent' ? 'sent' : 'draft';
+    const initialStatus = 'pending';
 
     // Check business exists
     const biz = await pool.query('SELECT business_id, business_name FROM businesses WHERE business_id = $1', [business_id]);
@@ -177,7 +177,7 @@ admin.get('/:id', async (req, res, next) => {
 admin.patch('/:id', async (req, res, next) => {
   try {
     const { status, notes, due_date } = req.body;
-    const allowed = ['draft', 'sent', 'paid', 'overdue', 'cancelled'];
+    const allowed = ['pending', 'paid', 'overdue', 'cancelled'];
     if (status && !allowed.includes(status)) {
       return res.status(400).json(error('Invalid status', 'INVALID_INPUT'));
     }

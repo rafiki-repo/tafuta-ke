@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { FileText, Plus, Download, RefreshCw, Search, Check, Send, X, ArrowLeft, Eye } from 'lucide-react';
+import { FileText, Plus, Download, RefreshCw, Search, Check, X, ArrowLeft, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -10,8 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { adminAPI } from '@/lib/api';
 
 const STATUS_BADGE = {
-  draft:     { label: 'Draft',     variant: 'secondary' },
-  sent:      { label: 'Sent',      variant: 'warning' },
+  pending:   { label: 'Pending',   variant: 'warning' },
   paid:      { label: 'Paid',      variant: 'success' },
   overdue:   { label: 'Overdue',   variant: 'destructive' },
   cancelled: { label: 'Cancelled', variant: 'secondary' },
@@ -197,15 +196,7 @@ function InvoiceDetailModal({ invoiceId, onClose, onStatusChange }) {
               Download PDF
             </Button>
             <div className="flex gap-2">
-              {invoice.status === 'draft' && (
-                <Button size="sm" variant="outline"
-                  onClick={() => updateStatus('sent')} disabled={!!updating}
-                  className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                  {updating === 'sent' ? <Spinner className="h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                  Mark Sent
-                </Button>
-              )}
-              {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+              {(invoice.status === 'pending' || invoice.status === 'overdue') && (
                 <Button size="sm" variant="outline"
                   onClick={() => updateStatus('paid')} disabled={!!updating}
                   className="text-green-600 border-green-200 hover:bg-green-50">
@@ -243,7 +234,6 @@ function CreateInvoiceModal({ onClose, onCreated }) {
   const [lines, setLines] = useState({});
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [sendNow, setSendNow] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -320,7 +310,7 @@ function CreateInvoiceModal({ onClose, onCreated }) {
         items,
         due_date: dueDate || undefined,
         notes: notes || undefined,
-        status: sendNow ? 'sent' : 'draft',
+        status: 'pending',
       });
       onCreated(res.data.data);
     } catch (e) {
@@ -462,23 +452,6 @@ function CreateInvoiceModal({ onClose, onCreated }) {
                     </div>
                   </div>
 
-                  {/* Send immediately toggle */}
-                  <label className="flex items-start gap-3 p-3 rounded-md border cursor-pointer hover:bg-accent/30 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={sendNow}
-                      onChange={e => setSendNow(e.target.checked)}
-                      className="mt-0.5 rounded border-border cursor-pointer"
-                    />
-                    <div>
-                      <p className="text-sm font-medium">Send to client immediately</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {sendNow
-                          ? 'Invoice will be created with status "Sent" and visible to the client.'
-                          : 'Invoice will be saved as a draft. You can send it later.'}
-                      </p>
-                    </div>
-                  </label>
                 </>
               )}
             </>
@@ -495,8 +468,8 @@ function CreateInvoiceModal({ onClose, onCreated }) {
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           {step === 'pick' && (
             <Button type="button" onClick={handleCreate} disabled={saving || loading || checkedLines.length === 0}>
-              {saving ? <Spinner className="h-4 w-4 mr-2" /> : (sendNow ? <Send className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />)}
-              {sendNow ? 'Create & Send' : 'Save as Draft'}
+              {saving ? <Spinner className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              Create Invoice
             </Button>
           )}
         </div>
@@ -580,8 +553,7 @@ export default function Invoices() {
         </div>
         <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-40">
           <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="sent">Sent</option>
+          <option value="pending">Pending</option>
           <option value="paid">Paid</option>
           <option value="overdue">Overdue</option>
           <option value="cancelled">Cancelled</option>

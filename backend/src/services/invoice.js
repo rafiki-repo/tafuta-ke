@@ -29,7 +29,7 @@ export async function generateInvoicePdf(invoiceId) {
     const fmt = (n) => `KES ${parseFloat(n || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
     const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-KE', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
 
-    const STATUS_LABELS = { draft: 'DRAFT', sent: 'SENT', paid: 'PAID', overdue: 'OVERDUE', cancelled: 'CANCELLED' };
+    const STATUS_LABELS = { pending: 'PENDING', paid: 'PAID', overdue: 'OVERDUE', cancelled: 'CANCELLED' };
     const statusLabel = STATUS_LABELS[inv.status] || inv.status.toUpperCase();
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -52,7 +52,7 @@ export async function generateInvoicePdf(invoiceId) {
 
       // ── Title + status watermark ─────────────────────────────────────────
       doc.fontSize(16).font('Helvetica-Bold').fillColor('#1a1a1a').text('INVOICE', { align: 'center' });
-      if (inv.status !== 'draft') {
+      if (inv.status !== 'paid') {
         const stampColor = inv.status === 'paid' ? '#16a34a' : inv.status === 'overdue' ? '#dc2626' : '#6b7280';
         doc.fontSize(11).font('Helvetica-Bold').fillColor(stampColor).text(`[${statusLabel}]`, { align: 'center' });
       }

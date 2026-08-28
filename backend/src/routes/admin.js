@@ -4,6 +4,7 @@ import { success, error, paginated } from '../utils/response.js';
 import { formatCategoryName, isValidUUID } from '../utils/validation.js';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
+import pesapalService from '../services/pesapal.js';
 
 const router = express.Router();
 
@@ -1328,6 +1329,113 @@ router.put('/category-featured/:category', requireRole('admin'), async (req, res
       [JSON.stringify(featuredMap)]
     );
     res.json(success(featuredMap, 'Featured list updated'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/payments/retry-pending
+// Dev/admin utility: check PesaPal status for all pending transactions and
+// complete any that PesaPal says are already paid. Useful when the ngrok
+// tunnel was down during a real payment so the callback never fired.
+router.post('/payments/retry-pending', async (req, res, next) => {
+  try {
+    const rows = await pool.query(
+      `SELECT transaction_id, pesapal_tracking_id, pesapal_merchant_reference
+       FROM transactions
+       WHERE status = 'pending' AND pesapal_tracking_id IS NOT NULL
+       ORDER BY created_at DESC
+       LIMIT 50`
+    );
+
+    const results = [];
+    for (const tx of rows.rows) {
+      try {
+        const status = await pesapalService.getTransactionStatus(tx.pesapal_tracking_id);
+        const isCompleted =
+          status.payment_status_description?.toLowerCase() === 'completed' ||
+          status.payment_status_code === '1' ||
+          status.status_code === 1;
+
+        if (isCompleted) {
+          // Inline the same logic as processCompletedPayment from payments.js
+          const client = await pool.connect();
+          try {
+            await client.query('BEGIN');
+            const upd = await client.query(
+              `UPDATE transactions
+               SET status = 'completed', payment_method = $1, completed_at = NOW(),
+                   updated_at = NOW(),
+                   receipt_number = 'TFT-' || EXTRACT(YEAR FROM NOW())::text
+                     || '-' || LPAD(nextval('receipt_number_seq')::text, 5, '0')
+               WHERE pesapal_tracking_id = $2 AND status != 'completed'
+               RETURNING transaction_id, business_id, items, receipt_number`,
+              [status.payment_method || 'PesaPal', tx.pesapal_tracking_id]
+            );
+
+            if (upd.rows.length > 0) {
+              const t = upd.rows[0];
+              const typesRow = await client.query(`SELECT value FROM system_config WHERE key = 'service_types'`);
+              const typeMap = Object.fromEntries(
+                (Array.isArray(typesRow.rows[0]?.value) ? typesRow.rows[0].value : []).map(st => [st.id, st])
+              );
+              for (const item of t.items) {
+                const isOneTime = typeMap[item.service_type]?.billing_type === 'one_time';
+                if (isOneTime) {
+                  await client.query(
+                    `INSERT INTO service_subscriptions (business_id, service_type, months_paid, expiration_date, status)
+                     VALUES ($1, $2, 1, NULL, 'active')
+                     ON CONFLICT (business_id, service_type) DO UPDATE SET status = 'active', updated_at = NOW()`,
+                    [t.business_id, item.service_type]
+                  );
+                } else {
+                  await client.query(
+                    `INSERT INTO service_subscriptions (business_id, service_type, months_paid, expiration_date, status)
+                     VALUES ($1, $2, $3::int, CURRENT_DATE + ($3::int * INTERVAL '1 month'), 'active')
+                     ON CONFLICT (business_id, service_type) DO UPDATE SET
+                       months_paid = service_subscriptions.months_paid + $3::int,
+                       expiration_date = CASE
+                         WHEN service_subscriptions.expiration_date > CURRENT_DATE
+                         THEN service_subscriptions.expiration_date + ($3::int * INTERVAL '1 month')
+                         ELSE CURRENT_DATE + ($3::int * INTERVAL '1 month')
+                       END,
+                       status = 'active', updated_at = NOW()`,
+                    [t.business_id, item.service_type, item.months]
+                  );
+                }
+              }
+              await client.query(
+                `UPDATE invoices SET status = 'paid', paid_at = NOW(), updated_at = NOW()
+                 WHERE transaction_id = $1 AND status != 'paid'`,
+                [t.transaction_id]
+              );
+              await client.query('COMMIT');
+              results.push({ transaction_id: tx.transaction_id, result: 'completed', receipt_number: t.receipt_number });
+              logger.info('Admin retry completed payment', { transactionId: t.transaction_id });
+            } else {
+              await client.query('ROLLBACK');
+              results.push({ transaction_id: tx.transaction_id, result: 'already_completed' });
+            }
+          } catch (err) {
+            await client.query('ROLLBACK');
+            results.push({ transaction_id: tx.transaction_id, result: 'error', message: err.message });
+          } finally {
+            client.release();
+          }
+        } else {
+          results.push({
+            transaction_id: tx.transaction_id,
+            result: 'still_pending',
+            pesapal_status: status.payment_status_description,
+          });
+        }
+      } catch (err) {
+        results.push({ transaction_id: tx.transaction_id, result: 'error', message: err.message });
+      }
+    }
+
+    const completed = results.filter(r => r.result === 'completed').length;
+    res.json(success(results, `Checked ${results.length} pending transactions; ${completed} newly completed`));
   } catch (err) {
     next(err);
   }

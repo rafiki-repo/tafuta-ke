@@ -10,7 +10,7 @@ import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tafuta.ke';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -326,17 +326,22 @@ router.get('/callback', async (req, res) => {
       status.status_code === 1;
 
     if (isCompleted) {
-      const tx = await processCompletedPayment(OrderTrackingId, status.payment_method);
-      // If the payment was for an invoice, redirect straight to the invoice detail page
-      if (tx) {
-        const invRow = await pool.query(
-          `SELECT invoice_id FROM invoices WHERE transaction_id = $1 LIMIT 1`,
-          [tx.transaction_id]
-        );
-        if (invRow.rows.length > 0) {
-          return res.redirect(`${FRONTEND_URL}/dashboard/invoices/${invRow.rows[0].invoice_id}?paid=1`);
-        }
+      await processCompletedPayment(OrderTrackingId, status.payment_method);
+
+      // Always check for a linked invoice via tracking ID — works whether
+      // processCompletedPayment ran now or was already done by the webhook.
+      const invRow = await pool.query(
+        `SELECT i.invoice_id
+         FROM invoices i
+         JOIN transactions t ON i.transaction_id = t.transaction_id
+         WHERE t.pesapal_tracking_id = $1
+         LIMIT 1`,
+        [OrderTrackingId]
+      );
+      if (invRow.rows.length > 0) {
+        return res.redirect(`${FRONTEND_URL}/dashboard/invoices/${invRow.rows[0].invoice_id}?paid=1`);
       }
+
       return res.redirect(`${FRONTEND_URL}/payment/success?ref=${OrderMerchantReference}`);
     }
 
