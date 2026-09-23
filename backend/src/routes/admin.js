@@ -1113,14 +1113,19 @@ router.patch('/system/config/:key', requireRole('super_admin'), async (req, res,
 
 async function getServiceTypes() {
   const result = await pool.query(`SELECT value FROM system_config WHERE key = 'service_types'`);
-  return Array.isArray(result.rows[0]?.value) ? result.rows[0].value : [];
+  const raw = Array.isArray(result.rows[0]?.value) ? result.rows[0].value : [];
+  // Normalize price field: some older records used price_per_month
+  return raw.map(st => ({
+    ...st,
+    price: Number(st.price ?? st.price_per_month ?? 0),
+  }));
 }
 
 function validateServiceType(st) {
   if (!st.id || !/^[a-z][a-z0-9_]*$/.test(st.id)) return 'id must be lowercase letters/numbers/underscores';
   if (!st.label || st.label.trim().length < 2) return 'label is required (min 2 chars)';
   if (st.description !== undefined && typeof st.description !== 'string') return 'description must be a string';
-  if (st.billing_type && !['monthly', 'one_time'].includes(st.billing_type)) return 'billing_type must be monthly or one_time';
+  if (st.billing_type && !['weekly', 'monthly', 'annual', 'one_time'].includes(st.billing_type)) return 'billing_type must be weekly, monthly, annual, or one_time';
   const price = Number(st.price ?? st.price_per_month ?? 0);
   if (isNaN(price) || price < 0) return 'price must be a non-negative number';
   return null;
@@ -1257,6 +1262,16 @@ router.post('/businesses/:id/subscriptions', requireRole('admin'), async (req, r
       );
     }
 
+    // Auto-enable website when website_hosting is granted
+    if (service_type === 'website_hosting') {
+      await pool.query(
+        `UPDATE businesses
+         SET content_json = jsonb_set(COALESCE(content_json, '{}'), '{website_enabled}', 'true'), updated_at = NOW()
+         WHERE business_id = $1`,
+        [id]
+      );
+    }
+
     logger.info('Admin granted subscription', { businessId: id, service_type, isOneTime, adminId: req.user.userId });
     res.json(success(result.rows[0], 'Subscription granted'));
   } catch (err) {
@@ -1287,8 +1302,40 @@ router.patch('/businesses/:id/subscriptions/:serviceType/deactivate', requireRol
       return res.status(404).json(error('Subscription not found', 'NOT_FOUND'));
     }
 
+    // Auto-disable website when website_hosting is revoked
+    if (serviceType === 'website_hosting') {
+      await pool.query(
+        `UPDATE businesses
+         SET content_json = jsonb_set(COALESCE(content_json, '{}'), '{website_enabled}', 'false'), updated_at = NOW()
+         WHERE business_id = $1`,
+        [id]
+      );
+    }
+
     logger.info('Admin deactivated subscription', { businessId: id, serviceType, adminId: req.user.userId });
     res.json(success(result.rows[0], 'Subscription deactivated'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/businesses/:id/toggle-website — manually enable/disable website
+router.patch('/businesses/:id/toggle-website', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body;
+    if (!isValidUUID(id)) return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    if (typeof enabled !== 'boolean') return res.status(400).json(error('enabled must be a boolean', 'VALIDATION_ERROR'));
+
+    await pool.query(
+      `UPDATE businesses
+       SET content_json = jsonb_set(COALESCE(content_json, '{}'), '{website_enabled}', $2::jsonb), updated_at = NOW()
+       WHERE business_id = $1`,
+      [id, JSON.stringify(enabled)]
+    );
+
+    logger.info('Admin toggled website', { businessId: id, enabled, adminId: req.user.userId });
+    res.json(success({ enabled }, `Website ${enabled ? 'enabled' : 'disabled'}`));
   } catch (err) {
     next(err);
   }

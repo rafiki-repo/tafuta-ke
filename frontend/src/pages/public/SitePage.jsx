@@ -42,10 +42,18 @@ export default function SitePage() {
 
   if (notFound || !business) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
-        <h1 className="text-2xl font-bold">Page not found</h1>
-        <p className="text-muted-foreground">No active business with the address <strong>/site/{tag}</strong>.</p>
-        <Link to="/search" className="text-primary underline text-sm">Browse businesses</Link>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3 text-center px-4 bg-gray-50">
+        <div className="text-6xl font-black text-gray-200">404</div>
+        <h1 className="text-xl font-bold text-gray-800">This website is not available</h1>
+        <p className="text-sm text-gray-500 max-w-xs">
+          The business website at <strong>/site/{tag}</strong> is either not active or has not been set up yet.
+        </p>
+        <Link
+          to="/search"
+          className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-gray-900 px-4 py-2 rounded-full hover:bg-gray-700 transition-colors"
+        >
+          Browse businesses
+        </Link>
       </div>
     );
   }

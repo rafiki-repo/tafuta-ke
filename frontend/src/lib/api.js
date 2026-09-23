@@ -156,6 +156,7 @@ export const adminAPI = {
   getBusinessSubscriptions: (id) => api.get(`/admin/businesses/${id}/subscriptions`),
   grantSubscription: (id, data) => api.post(`/admin/businesses/${id}/subscriptions`, data),
   deactivateSubscription: (id, serviceType) => api.patch(`/admin/businesses/${id}/subscriptions/${serviceType}/deactivate`),
+  toggleWebsite: (id, enabled) => api.patch(`/admin/businesses/${id}/toggle-website`, { enabled }),
   // Service type definitions
   getServiceTypes: () => api.get('/admin/service-types'),
   updateServiceTypes: (service_types) => api.patch('/admin/service-types', { service_types }),

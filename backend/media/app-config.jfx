@@ -50,6 +50,15 @@
         thumb:  { width: 150, height: 150 },
         medium: { width: 600, height: 450 }
       }
+    },
+
+    product: {
+      label: "Product / Service Image",
+      max_images: 100,
+      sizes: {
+        thumb:  { width: 300, height: 300 },
+        medium: { width: 600, height: 600 }
+      }
     }
   }
 }

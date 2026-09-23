@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 
 const BLANK = { id: '', label: '', billing_type: 'monthly', description: '', price: '', enabled: true };
-const BILLING_LABELS = { monthly: 'Monthly', one_time: 'One-time' };
+const BILLING_LABELS = { weekly: 'Weekly', monthly: 'Monthly', annual: 'Annual', one_time: 'One-time' };
 
 function slugify(str) {
   return String(str).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -167,13 +167,15 @@ export default function Services() {
                     onChange={(e) => setNewType(prev => ({ ...prev, billing_type: e.target.value }))}
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
+                    <option value="weekly">Weekly subscription</option>
                     <option value="monthly">Monthly subscription</option>
+                    <option value="annual">Annual subscription</option>
                     <option value="one_time">One-time purchase</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">
-                    Price (KES){newType.billing_type === 'monthly' ? ' / month' : ''}
+                    Price (KES){newType.billing_type === 'weekly' ? ' / week' : newType.billing_type === 'monthly' ? ' / month' : newType.billing_type === 'annual' ? ' / year' : ''}
                   </label>
                   <Input
                     type="number"
@@ -224,13 +226,15 @@ export default function Services() {
                         onChange={(e) => setEditingValues(p => ({ ...p, billing_type: e.target.value }))}
                         className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                       >
+                        <option value="weekly">Weekly subscription</option>
                         <option value="monthly">Monthly subscription</option>
+                        <option value="annual">Annual subscription</option>
                         <option value="one_time">One-time purchase</option>
                       </select>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground block mb-1">
-                        Price (KES){(editingValues.billing_type || 'monthly') === 'monthly' ? ' / month' : ''}
+                        {(() => { const bt = editingValues.billing_type || 'monthly'; return `Price (KES)${bt === 'weekly' ? ' / week' : bt === 'monthly' ? ' / month' : bt === 'annual' ? ' / year' : ''}`; })()}
                       </label>
                       <Input type="number" min="0" value={editingValues.price ?? editingValues.price_per_month ?? ''} onChange={(e) => setEditingValues(p => ({ ...p, price: e.target.value }))} className="h-8 text-sm" />
                     </div>
@@ -260,8 +264,11 @@ export default function Services() {
                     </div>
                     {st.description && <p className="text-xs text-muted-foreground mt-0.5">{st.description}</p>}
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      KES {Number(st.price ?? st.price_per_month ?? 0).toLocaleString()}
-                      {(st.billing_type || 'monthly') === 'monthly' ? ' / month' : ' (one-time)'}
+                      {(() => {
+                        const bt = st.billing_type || 'monthly';
+                        const suffix = bt === 'weekly' ? ' / week' : bt === 'monthly' ? ' / month' : bt === 'annual' ? ' / year' : ' (one-time)';
+                        return `KES ${Number(st.price ?? st.price_per_month ?? 0).toLocaleString()}${suffix}`;
+                      })()}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

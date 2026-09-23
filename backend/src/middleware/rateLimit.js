@@ -4,6 +4,7 @@ import config from '../config/index.js';
 export const generalLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.maxRequests,
+  skip: () => process.env.NODE_ENV !== 'production',
   message: {
     success: false,
     error: {

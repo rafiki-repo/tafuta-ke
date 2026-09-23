@@ -97,22 +97,46 @@ async function processCompletedPayment(trackingId, paymentMethod) {
           [tx.business_id, item.service_type]
         );
       } else {
+        const billingType = typeMap[item.service_type]?.billing_type || 'monthly';
         await client.query(
           `INSERT INTO service_subscriptions
              (business_id, service_type, months_paid, expiration_date, status)
-           VALUES ($1, $2, $3::int, CURRENT_DATE + ($3::int * INTERVAL '1 month'), 'active')
+           VALUES ($1, $2, $3::int, CURRENT_DATE + ($3::int * CASE $4::text
+               WHEN 'weekly' THEN INTERVAL '1 week'
+               WHEN 'annual' THEN INTERVAL '1 year'
+               ELSE INTERVAL '1 month'
+             END), 'active')
            ON CONFLICT (business_id, service_type) DO UPDATE SET
              months_paid     = service_subscriptions.months_paid + $3::int,
              expiration_date = CASE
                WHEN service_subscriptions.expiration_date > CURRENT_DATE
-               THEN service_subscriptions.expiration_date + ($3::int * INTERVAL '1 month')
-               ELSE CURRENT_DATE + ($3::int * INTERVAL '1 month')
+               THEN service_subscriptions.expiration_date + ($3::int * CASE $4::text
+                 WHEN 'weekly' THEN INTERVAL '1 week'
+                 WHEN 'annual' THEN INTERVAL '1 year'
+                 ELSE INTERVAL '1 month'
+               END)
+               ELSE CURRENT_DATE + ($3::int * CASE $4::text
+                 WHEN 'weekly' THEN INTERVAL '1 week'
+                 WHEN 'annual' THEN INTERVAL '1 year'
+                 ELSE INTERVAL '1 month'
+               END)
              END,
              status     = 'active',
              updated_at = NOW()`,
-          [tx.business_id, item.service_type, item.months]
+          [tx.business_id, item.service_type, item.months, billingType]
         );
       }
+    }
+
+    // Auto-enable website if website_hosting was purchased
+    const hasWebsiteHosting = tx.items.some(i => i.service_type === 'website_hosting');
+    if (hasWebsiteHosting) {
+      await client.query(
+        `UPDATE businesses
+         SET content_json = jsonb_set(COALESCE(content_json, '{}'), '{website_enabled}', 'true'), updated_at = NOW()
+         WHERE business_id = $1`,
+        [tx.business_id]
+      );
     }
 
     // Mark any linked invoice as paid
