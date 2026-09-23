@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, Globe, MapPin, Clock, X, ExternalLink } from "lucide-react";
+import { Phone, Mail, MessageCircle, Globe, MapPin, Clock, X, ExternalLink, Wrench, ShoppingBag, CalendarPlus, ShoppingCart } from "lucide-react";
+import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_SHORT = { monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun" };
@@ -27,15 +28,17 @@ function SectionTitle({ children }) {
   );
 }
 
-function ServiceCard({ product }) {
+function ServiceCard({ product, onAddToCart }) {
   const imgUrl = product.image_url || product.image || null;
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow mt-2">
       {imgUrl ? (
-        <img src={imgUrl} alt={product.name} className="w-full aspect-[4/3] object-cover" loading="lazy" />
+        <div className="w-full aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden">
+          <img src={imgUrl} alt={product.name} className="w-full h-full object-contain" loading="lazy" />
+        </div>
       ) : (
         <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-          <span className="text-3xl text-gray-300">✂</span>
+          <ShoppingBag className="h-8 w-8 text-gray-300" />
         </div>
       )}
       <div className="p-3">
@@ -49,6 +52,16 @@ function ServiceCard({ product }) {
         </div>
         {product.description && (
           <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{product.description}</p>
+        )}
+        {onAddToCart && (
+          <button
+            type="button"
+            onClick={() => onAddToCart(product)}
+            className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-200 hover:bg-gray-900 hover:text-white hover:border-gray-900 py-1.5 rounded-lg transition-colors"
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            Add to Cart
+          </button>
         )}
       </div>
     </div>
@@ -71,6 +84,12 @@ export default function SiteClassic({ business }) {
   } = business;
 
   const [lightbox, setLightbox] = useState(null);
+  const [bookingService, setBookingService] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const cart = useCart();
+
+  const services = products.filter(p => (p.type || "service") === "service");
+  const productItems = products.filter(p => p.type === "product");
 
   const bannerUrl =
     primaryImage(images, "banner", media_primary, "1200x400") ||
@@ -177,12 +196,57 @@ export default function SiteClassic({ business }) {
           </section>
         )}
 
-        {/* Products & Services */}
-        {products.length > 0 && (
-          <section>
+        {/* Services */}
+        {services.length > 0 && (
+          <section className="mt-8">
             <SectionTitle>Our Services</SectionTitle>
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+              {services.map(p => (
+                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-gray-50 border shrink-0" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                      <Wrench className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
+                    {p.description && (
+                      <p className="text-xs text-gray-500 truncate">{p.description}</p>
+                    )}
+                  </div>
+                  {p.price && (
+                    <span className="text-sm font-bold text-gray-700 shrink-0">KES {p.price}</span>
+                  )}
+                  {waNumber && (
+                    <button
+                      type="button"
+                      onClick={() => setBookingService(p)}
+                      className="shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-gray-800 hover:bg-gray-700 px-2.5 py-1.5 rounded-lg transition-colors"
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5" />
+                      Book
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Products */}
+        {productItems.length > 0 && (
+          <section className="mt-8">
+            <SectionTitle>Products</SectionTitle>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-              {products.map(p => <ServiceCard key={p.id} product={p} />)}
+              {productItems.map(p => (
+                <ServiceCard
+                  key={p.id}
+                  product={p}
+                  onAddToCart={waNumber ? cart.addItem : null}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -282,7 +346,67 @@ export default function SiteClassic({ business }) {
             </p>
           </section>
         )}
+
+        {/* Contact */}
+        {(contact.phone || contact.whatsapp || contact.email || contact.website) && (
+          <section>
+            <SectionTitle>Contact Us</SectionTitle>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+              {contact.phone && (
+                <a href={`tel:${contact.phone}`}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-800 bg-gray-50 border rounded-lg px-4 py-2.5 hover:bg-gray-100 transition-colors">
+                  <Phone className="h-4 w-4 text-gray-500" />
+                  {contact.phone}
+                </a>
+              )}
+              {(contact.whatsapp || contact.phone) && (
+                <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm font-semibold text-white bg-green-500 rounded-lg px-4 py-2.5 hover:bg-green-600 transition-colors">
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+              )}
+              {contact.email && (
+                <a href={`mailto:${contact.email}`}
+                  className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 border rounded-lg px-4 py-2.5 hover:bg-gray-100 transition-colors">
+                  <Mail className="h-4 w-4 text-gray-500" />
+                  {contact.email}
+                </a>
+              )}
+              {contact.website && (
+                <a href={contact.website} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 border rounded-lg px-4 py-2.5 hover:bg-gray-100 transition-colors">
+                  <Globe className="h-4 w-4 text-gray-500" />
+                  {contact.website.replace(/^https?:\/\//, "")}
+                </a>
+              )}
+            </div>
+          </section>
+        )}
       </main>
+
+      {/* ── CART FAB ────────────────────────────────────────────────────────── */}
+      <CartFab itemCount={cart.itemCount} onClick={() => setCartOpen(true)} />
+
+      {/* ── BOOKING MODAL ───────────────────────────────────────────────────── */}
+      {bookingService && waNumber && (
+        <BookingModal
+          service={bookingService}
+          businessName={business_name}
+          waNumber={waNumber}
+          onClose={() => setBookingService(null)}
+        />
+      )}
+
+      {/* ── CART DRAWER ─────────────────────────────────────────────────────── */}
+      {cartOpen && (
+        <CartDrawer
+          cart={cart}
+          businessName={business_name}
+          waNumber={waNumber}
+          onClose={() => setCartOpen(false)}
+        />
+      )}
 
       {/* ── MOBILE STICKY CTA ───────────────────────────────────────────────── */}
       {(contact.phone || waNumber) && (

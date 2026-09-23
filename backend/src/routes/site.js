@@ -12,17 +12,24 @@ router.get('/:tag', async (req, res, next) => {
 
     const result = await pool.query(
       `SELECT
-         business_id,
-         business_name,
-         business_tag,
-         category,
-         region,
-         subdomain,
-         logo_url,
-         verification_tier,
-         content_json
-       FROM businesses
-       WHERE business_tag = $1 AND status = 'active'`,
+         b.business_id,
+         b.business_name,
+         b.business_tag,
+         b.category,
+         b.region,
+         b.subdomain,
+         b.logo_url,
+         b.verification_tier,
+         b.content_json,
+         EXISTS (
+           SELECT 1 FROM service_subscriptions ss
+           WHERE ss.business_id = b.business_id
+             AND ss.service_type = 'website_hosting'
+             AND ss.status = 'active'
+             AND (ss.expiration_date IS NULL OR ss.expiration_date > CURRENT_DATE)
+         ) AS has_website_hosting
+       FROM businesses b
+       WHERE b.business_tag = $1 AND b.status = 'active'`,
       [tag]
     );
 
@@ -32,6 +39,13 @@ router.get('/:tag', async (req, res, next) => {
 
     const b = result.rows[0];
     const c = b.content_json || {};
+
+    // Access control: explicit false → always blocked.
+    // Not set → require active website_hosting subscription.
+    const websiteEnabled = c.website_enabled;
+    if (websiteEnabled === false || (websiteEnabled === undefined && !b.has_website_hosting)) {
+      return res.status(404).json(error('Website not available', 'WEBSITE_DISABLED'));
+    }
     const mediaPrimary = c.media || {};
 
     // Load photos from the filesystem (best-effort — empty if folder missing)
@@ -60,6 +74,7 @@ router.get('/:tag', async (req, res, next) => {
       logo_url: b.logo_url,
       verification_tier: b.verification_tier,
       site_template: c.site_template || 'classic',
+      website_enabled: websiteEnabled === true || b.has_website_hosting,
       profile: c.profile?.en || {},
       contact: c.contact || {},
       location: c.location || {},

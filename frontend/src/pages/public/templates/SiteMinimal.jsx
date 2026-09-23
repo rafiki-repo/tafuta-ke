@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, MapPin, Globe, X } from "lucide-react";
+import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, CalendarPlus, ShoppingCart } from "lucide-react";
+import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_SHORT = { monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun" };
@@ -28,20 +29,17 @@ function SecHead({ children, light = false }) {
 }
 
 // ── Individual service block ─────────────────────────────────────────────────
-function ServiceBlock({ product }) {
+function ServiceBlock({ product, onAddToCart }) {
   const imgUrl = product.image_url || product.image || null;
   return (
     <div className="border-b border-gray-100 pb-8 last:border-0 last:pb-0">
       {imgUrl ? (
-        <img
-          src={imgUrl}
-          alt={product.name}
-          className="w-full aspect-[4/3] object-cover"
-          loading="lazy"
-        />
+        <div className="w-full aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden">
+          <img src={imgUrl} alt={product.name} className="w-full h-full object-contain" loading="lazy" />
+        </div>
       ) : (
         <div className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center">
-          <span className="text-5xl text-gray-300 select-none">✂</span>
+          <ShoppingBag className="h-10 w-10 text-gray-300" />
         </div>
       )}
       <div className="px-4 pt-4">
@@ -57,6 +55,16 @@ function ServiceBlock({ product }) {
         </div>
         {product.description && (
           <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{product.description}</p>
+        )}
+        {onAddToCart && (
+          <button
+            type="button"
+            onClick={() => onAddToCart(product)}
+            className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white bg-[#111111] px-4 py-2 hover:bg-black transition-colors"
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            Add to Cart
+          </button>
         )}
       </div>
     </div>
@@ -94,6 +102,12 @@ export default function SiteMinimal({ business }) {
   } = business;
 
   const [lightbox, setLightbox] = useState(null);
+  const [bookingService, setBookingService] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const cart = useCart();
+
+  const services = products.filter(p => (p.type || "service") === "service");
+  const productItems = products.filter(p => p.type === "product");
 
   const bannerUrl =
     primaryImage(images, "banner", media_primary, "1200x400") ||
@@ -180,14 +194,57 @@ export default function SiteMinimal({ business }) {
       )}
 
       {/* ── SERVICES ────────────────────────────────────────────────────── */}
-      {products.length > 0 && (
+      {services.length > 0 && (
         <section className="bg-white py-10">
+          <div className="max-w-sm mx-auto px-5">
+            <SecHead>Our Services</SecHead>
+            <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+              {services.map(p => (
+                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-white">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-gray-50 border shrink-0" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                      <Wrench className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black uppercase tracking-wide text-gray-900 truncate">{p.name}</p>
+                    {p.description && (
+                      <p className="text-xs text-gray-500 truncate">{p.description}</p>
+                    )}
+                  </div>
+                  {p.price && (
+                    <span className="text-sm font-bold text-gray-700 shrink-0">KES {p.price}</span>
+                  )}
+                  {waNumber && (
+                    <button
+                      type="button"
+                      onClick={() => setBookingService(p)}
+                      className="shrink-0 flex items-center gap-1 text-xs font-bold uppercase text-white bg-[#111111] px-2.5 py-1.5 transition-colors"
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5" />
+                      Book
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── PRODUCTS ────────────────────────────────────────────────────── */}
+      {productItems.length > 0 && (
+        <section className="bg-[#f5f5f5] py-10">
           <div className="max-w-sm mx-auto px-0">
             <div className="px-5 mb-6">
-              <SecHead>Our Services</SecHead>
+              <SecHead>Products</SecHead>
             </div>
             <div className="space-y-8">
-              {products.map(p => <ServiceBlock key={p.id} product={p} />)}
+              {productItems.map(p => (
+                <ServiceBlock key={p.id} product={p} onAddToCart={waNumber ? cart.addItem : null} />
+              ))}
             </div>
           </div>
         </section>
@@ -326,6 +383,29 @@ export default function SiteMinimal({ business }) {
             onClick={e => e.stopPropagation()}
           />
         </div>
+      )}
+
+      {/* ── CART FAB ────────────────────────────────────────────────────── */}
+      <CartFab itemCount={cart.itemCount} onClick={() => setCartOpen(true)} />
+
+      {/* ── BOOKING MODAL ───────────────────────────────────────────────── */}
+      {bookingService && waNumber && (
+        <BookingModal
+          service={bookingService}
+          businessName={business_name}
+          waNumber={waNumber}
+          onClose={() => setBookingService(null)}
+        />
+      )}
+
+      {/* ── CART DRAWER ─────────────────────────────────────────────────── */}
+      {cartOpen && (
+        <CartDrawer
+          cart={cart}
+          businessName={business_name}
+          waNumber={waNumber}
+          onClose={() => setCartOpen(false)}
+        />
       )}
 
       {/* ── MOBILE STICKY CTA ───────────────────────────────────────────── */}

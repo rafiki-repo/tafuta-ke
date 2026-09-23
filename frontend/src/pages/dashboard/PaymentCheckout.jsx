@@ -165,7 +165,7 @@ export default function PaymentCheckout() {
                   <div className="text-right shrink-0">
                     <p className="text-sm font-medium">KES {fmt(price)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {isOneTime ? 'one-time' : '/month'}
+                      {isOneTime ? 'one-time' : svc.billing_type === 'weekly' ? '/week' : svc.billing_type === 'annual' ? '/year' : '/month'}
                     </p>
                   </div>
                 </div>
@@ -175,7 +175,9 @@ export default function PaymentCheckout() {
                     className="flex items-center gap-3 mt-3 pt-3 border-t border-primary/20"
                     onClick={e => e.stopPropagation()}
                   >
-                    <label className="text-sm text-muted-foreground shrink-0">Months:</label>
+                    <label className="text-sm text-muted-foreground shrink-0">
+                      {svc.billing_type === 'weekly' ? 'Weeks:' : svc.billing_type === 'annual' ? 'Years:' : 'Months:'}
+                    </label>
                     <div className="flex items-center gap-2">
                       <button
                         className="w-7 h-7 rounded border text-sm font-bold hover:bg-accent"
@@ -217,7 +219,11 @@ export default function PaymentCheckout() {
               <div key={item.service_type} className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
                   {svcMap[item.service_type]?.label || item.service_type}
-                  {!item.isOneTime && ` × ${item.months} month${item.months > 1 ? 's' : ''}`}
+                  {!item.isOneTime && (() => {
+                    const bt = svcMap[item.service_type]?.billing_type;
+                    const unit = bt === 'weekly' ? 'week' : bt === 'annual' ? 'year' : 'month';
+                    return ` × ${item.months} ${unit}${item.months > 1 ? 's' : ''}`;
+                  })()}
                 </span>
                 <span>KES {fmt(item.total)}</span>
               </div>
