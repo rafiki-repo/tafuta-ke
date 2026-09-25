@@ -66,6 +66,19 @@ async function checkSubscriptionExpiry() {
     );
     if (expired.rowCount > 0) {
       logger.info(`[cron] Marked ${expired.rowCount} subscription(s) as expired`);
+
+      // Disable websites for any business whose website_hosting just expired
+      const expiredHosting = expired.rows.filter(r => r.service_type === 'website_hosting');
+      for (const r of expiredHosting) {
+        await pool.query(
+          `UPDATE businesses
+           SET content_json = jsonb_set(COALESCE(content_json, '{}'), '{website_enabled}', 'false'),
+               updated_at = NOW()
+           WHERE business_id = $1`,
+          [r.business_id]
+        );
+        logger.info(`[cron] Website disabled for business ${r.business_id} (hosting expired)`);
+      }
     }
 
     // Find subscriptions expiring in 7, 3, or 1 days for reminders
