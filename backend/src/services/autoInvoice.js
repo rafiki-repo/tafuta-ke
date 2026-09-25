@@ -55,12 +55,14 @@ export async function generateDueInvoices() {
           .map(s => {
             const def = typeMap[s.service_type] || {};
             const label = def.label || s.service_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            const price = Number(def.price ?? 0);
+            const price = Number(def.price ?? def.price_per_month ?? 0);
+            const bt = def.billing_type || 'monthly';
+            const periodWord = bt === 'weekly' ? 'Weekly' : bt === 'annual' ? 'Annual' : 'Monthly';
             const expiry = new Date(s.expiration_date).toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' });
             return {
               service_type: s.service_type,
               label,
-              description: `Monthly renewal — expires ${expiry}`,
+              description: `${periodWord} renewal — expires ${expiry}`,
               months: 1,
               unit_price: price,
               total: price,

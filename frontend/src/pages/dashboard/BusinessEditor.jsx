@@ -218,11 +218,13 @@ export default function BusinessEditor() {
           paymentAPI.getPricing(),
           paymentAPI.getSubscriptions(id),
         ]);
-        const serviceTypes = pricingRes.data.data.service_types || [];
+        const pricingData = pricingRes.data.data;
+        const serviceTypes = (pricingData.service_types || []).filter(s => s.enabled !== false);
+        const vatRate = pricingData.vat_rate || 0.16;
         const subsMap = Object.fromEntries(
           (subsRes.data.data || []).map(s => [s.service_type, s])
         );
-        setSubscriptions({ service_types: serviceTypes, subscriptions: subsMap });
+        setSubscriptions({ service_types: serviceTypes, subscriptions: subsMap, vat_rate: vatRate });
       }
     } catch {
       setSubsError("Failed to load services.");
@@ -1211,7 +1213,12 @@ export default function BusinessEditor() {
         {activeTab === "services" && isEditMode && (
           <Card>
             <CardHeader>
-              <CardTitle>Paid Services</CardTitle>
+              <CardTitle>{isAdminContext ? "Subscription Management" : "Your Services"}</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {isAdminContext
+                  ? "Grant, extend, or revoke paid services for this business."
+                  : "Active services you have purchased. Purchase a service to unlock its features."}
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               {subsError && (
@@ -1222,7 +1229,7 @@ export default function BusinessEditor() {
               {subsLoading && <Spinner size="sm" />}
               {subscriptions && (
                 <div className="divide-y">
-                  {subscriptions.service_types.map((stDef) => {
+                  {subscriptions.service_types.filter(stDef => isAdminContext || stDef.enabled !== false).map((stDef) => {
                     const type = stDef.id ?? stDef;
                     const label = stDef.label ?? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
                     const billingType = stDef.billing_type || 'monthly';
@@ -1269,7 +1276,9 @@ export default function BusinessEditor() {
                                   onChange={(e) => setGrantMonths(prev => ({ ...prev, [type]: e.target.value }))}
                                   className="w-16 h-8 text-sm text-center"
                                 />
-                                <span className="text-xs text-muted-foreground">mo</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {billingType === 'weekly' ? 'wk' : billingType === 'annual' ? 'yr' : 'mo'}
+                                </span>
                               </>
                             )}
                             <Button
@@ -1296,7 +1305,7 @@ export default function BusinessEditor() {
                             type="button"
                             size="sm"
                             variant="outline"
-                            onClick={() => navigate(`/checkout/${id}`)}
+                            onClick={() => navigate(`/dashboard/payments/checkout/${id}`)}
                           >
                             Purchase
                           </Button>
@@ -1395,8 +1404,9 @@ export default function BusinessEditor() {
                 const wsBt = wsDef.billing_type || 'monthly';
                 const wsIsOneTime = wsBt === 'one_time';
                 const wsUnit = wsBt === 'weekly' ? 'week' : wsBt === 'annual' ? 'year' : 'month';
+                const vatRate = subscriptions?.vat_rate || 0.16;
                 const wsTotal = wsIsOneTime ? wsPrice : wsPrice * hostingPeriods;
-                const wsVat = wsTotal * 0.16;
+                const wsVat = wsTotal * vatRate;
                 const wsTotalVat = wsTotal + wsVat;
                 return (
                   <>
@@ -1435,7 +1445,7 @@ export default function BusinessEditor() {
                         </div>
                       )}
                       <div className="flex justify-between px-4 py-2">
-                        <span className="text-muted-foreground">VAT (16%)</span>
+                        <span className="text-muted-foreground">VAT ({(vatRate * 100).toFixed(0)}%)</span>
                         <span>KES {wsVat.toLocaleString('en-KE', { maximumFractionDigits: 0 })}</span>
                       </div>
                       <div className="flex justify-between px-4 py-2 font-semibold">
