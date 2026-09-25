@@ -235,6 +235,7 @@ export default function BusinessEditor() {
 
   const handleToggleWebsite = async (enabled) => {
     setTogglingWebsite(true);
+    setSubsError(null);
     try {
       await adminAPI.toggleWebsite(id, enabled);
       setWebsiteEnabled(enabled);
@@ -993,6 +994,9 @@ export default function BusinessEditor() {
               </p>
 
               {/* Website live status / purchase */}
+              {isAdminContext && subsError && (
+                <p className="text-sm text-destructive">{subsError}</p>
+              )}
               {isAdminContext ? (
                 <div className={`flex items-center justify-between rounded-lg px-4 py-3 border ${websiteEnabled ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
                   <div>
