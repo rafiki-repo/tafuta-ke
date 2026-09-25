@@ -333,6 +333,11 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
         content_json.media = currentBusiness.content_json.media;
       }
 
+      // Preserve website_enabled — managed by the toggle endpoint, never by the form.
+      if (content_json.website_enabled === undefined && currentBusiness.content_json?.website_enabled !== undefined) {
+        content_json.website_enabled = currentBusiness.content_json.website_enabled;
+      }
+
       // Extract indexed fields from content_json
       const businessName = content_json.profile?.en?.business_name || currentBusiness.business_name;
       const category = content_json.profile?.en?.category || currentBusiness.category;
