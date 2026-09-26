@@ -20,11 +20,6 @@ const config = {
     expiry: process.env.JWT_EXPIRY || '60m',
   },
   
-  session: {
-    secret: process.env.SESSION_SECRET,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-  },
-  
   pesapal: {
     consumerKey: process.env.PESAPAL_CONSUMER_KEY,
     consumerSecret: process.env.PESAPAL_CONSUMER_SECRET,

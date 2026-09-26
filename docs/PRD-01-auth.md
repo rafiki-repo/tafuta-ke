@@ -297,26 +297,33 @@ All login methods accept a single **identifier** field that is either a phone nu
 
 ## Session Management
 
-### Session Table Schema
-
-```
-sessions:
-  - session_id (UUID, primary key)
-  - user_id (UUID, foreign key)
-  - token (string, JWT)
-  - expires_at (timestamp)
-  - created_at (timestamp)
-```
+Auth is a single, stateless mechanism — a JWT sent via `Authorization: Bearer`. There is no server-side session store. (An earlier `express-session` + `connect-pg-simple` mechanism existed alongside this from the project's first commit but was never actually used for authorization — it was leftover scaffolding from an incomplete initial implementation of a cookie-based design that was never finished. It has since been removed; see "History" below.)
 
 ### Session Rules
 
-- **Token type**: JWT stored in HTTP-only cookie
-- **Storage**: PostgreSQL `sessions` table (connect-pg-simple)
+- **Token type**: JWT (`jsonwebtoken`), signed with `JWT_SECRET`, expiry from `JWT_EXPIRY` env var (default `60m`)
+- **Token delivery**: returned in the JSON response body on `/login` and `/verify-otp`, or as a `?token=` query param on the Google OAuth callback redirect — never set as a cookie
+- **Frontend storage**: the frontend stores the JWT in `localStorage` and sends it as `Authorization: Bearer <token>` on every API request (`frontend/src/lib/api.js`)
+- **Authorization check**: `requireAuth`/`optionalAuth` middleware (`backend/src/middleware/auth.js`) reads the `Authorization` header and does a stateless `jwt.verify()` (signature + expiry) — no database lookup
 - **Expiry**: 60 minutes
-- **Refresh**: Not implemented in MVP; user re-authenticates after expiry
-- **Logout**: Delete session record; clear cookie
+- **Refresh**: Not implemented in MVP; user re-authenticates after expiry. See [Post-Login Redirect](#post-login-redirect) below — the frontend preserves the page the user was trying to reach before bouncing them to `/login`.
+- **Logout**: `POST /api/auth/logout` (requires auth) logs a `logout` event to `auth_logs`. The frontend's `useAuthStore.logout()` calls this endpoint (best-effort) before clearing the token from `localStorage`. **Known limitation**: since the JWT is stateless and not blacklisted, a token already in a client's possession remains valid until natural expiry even after logout — logout clears local storage and logs the event, but does not revoke server-side access. True revocation (e.g. a token blocklist) is unimplemented and would be a separate feature.
 
-**MVP Simplification**: No refresh tokens; no "remember me"; no max session duration.
+**MVP Simplification**: No refresh tokens; no "remember me"; no max session duration; no JWT revocation/blacklist on logout.
+
+### History: removed server-side session mechanism
+
+The original scaffold (first commit) included `express-session` + `connect-pg-simple`, writing a copy of `{ token, userId }` to a `sessions` table (the generic connect-pg-simple `sid/sess/expire` schema) on every login, and Passport/Google OAuth was added later configured with `session: false` (i.e. explicitly independent of it). Nothing in the codebase ever read from that table for authorization or any other feature — `requireAuth` only used it as a fallback ahead of the `Authorization` header, and no request in practice relied on that fallback since the frontend never sent session cookies. It was removed (migration `024_drop_sessions_table.sql`, dependencies dropped from `backend/package.json`) since it added a DB write per login with no functional benefit. Login history and auditing were never dependent on it — see [Authentication & Security Logging](#authentication--security-logging) — so removal had no effect on audit capability.
+
+### Post-Login Redirect
+
+When an unauthenticated or expired request hits a protected/admin route — via the `ProtectedRoute`/`AdminRoute` guards, or a `401` from any API call while a session has expired mid-use — the frontend stores the originally-requested path (`pathname + search`) in `sessionStorage` under the key `postLoginRedirect` before sending the user to `/login`.
+
+On successful login — password, OTP, or Google OAuth (including after the optional phone-capture step) — the app reads and clears that value, then navigates there; it falls back to `/dashboard` if nothing was stored.
+
+`sessionStorage` (not React Router location state) is used deliberately: the Google OAuth flow does a full-page redirect out to Google and back, which router state does not survive.
+
+Implementation: `frontend/src/lib/redirect.js`, invoked from `App.jsx` (route guards), `lib/api.js` (401 interceptor), `LoginPage.jsx`, and `GoogleCallbackPage.jsx`.
 
 ---
 
@@ -343,6 +350,8 @@ sessions:
 | Deleted | Admin | No | No |
 
 **Deactivation Prompt**: When Owner deactivates business, system prompts for reason: "Going out of business", "Temporary closure", "Other".
+
+**Note on Suspended/Deleted**: an admin at `admin` level or higher can move a business between any of `pending`/`active`/`suspended`/`deleted` from a single "Change Status" control — a reason is required and every change is logged to the audit trail (see [PRD-14](PRD-14-business-status-management.md)). So in practice these two states are admin-reversible, not permanent: the table above records who can set each state on the happy path, not a hard restriction on reversal. `Deactivated` and `Out of business` remain unimplemented (no owner self-service exists yet for any business status change).
 
 ---
 
@@ -390,7 +399,7 @@ sessions:
 
 **Non-editable:**
 - verification_tier (admin only)
-- status (owner can deactivate; admin can suspend/delete)
+- status (owner can deactivate; admin can set to any status — pending/active/suspended/deleted — see [PRD-14](PRD-14-business-status-management.md))
 
 ---
 
@@ -408,6 +417,8 @@ sessions:
 | Add/remove Owners | ✓ | ✗ | ✗ |
 | Deactivate business | ✓ | ✗ | ✗ |
 | View user list | ✓ | ✓ | ✓ (read-only) |
+
+**Platform admin override:** the columns above are business-level roles (`user_business_roles`), distinct from platform admin levels (`admin_users.role`; see [PRD-05](PRD-05-admin.md)). A platform admin at `admin` level or higher can reassign a business's owner via the Admin Console regardless of the business-level table above — see [PRD-13](PRD-13-business-owner-transfer.md). This removes the previous owner's access to the business entirely, since there is currently no UI to manage a demoted owner's continued staff access. The same `admin`-level bar also gates changing a business's status (including soft-delete) to any other status — see [PRD-14](PRD-14-business-status-management.md).
 
 ---
 

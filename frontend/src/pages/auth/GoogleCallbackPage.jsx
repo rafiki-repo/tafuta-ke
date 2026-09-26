@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import { authAPI, userAPI } from '@/lib/api';
+import { consumePostLoginRedirect } from '@/lib/redirect';
 import useAuthStore from '@/store/useAuthStore';
 
 export default function GoogleCallbackPage() {
@@ -39,7 +40,7 @@ export default function GoogleCallbackPage() {
         if (isNew && !user.phone) {
           setStatus('phone');
         } else {
-          navigate('/dashboard', { replace: true });
+          navigate(consumePostLoginRedirect() || '/dashboard', { replace: true });
         }
       } catch {
         localStorage.removeItem('token');
@@ -60,7 +61,7 @@ export default function GoogleCallbackPage() {
     setSaving(true);
     try {
       await authAPI.saveGooglePhone(phone.trim());
-      navigate('/dashboard', { replace: true });
+      navigate(consumePostLoginRedirect() || '/dashboard', { replace: true });
     } catch (err) {
       setPhoneError(err.response?.data?.error?.message || 'Failed to save phone number.');
       setSaving(false);
@@ -68,7 +69,7 @@ export default function GoogleCallbackPage() {
   };
 
   const handleSkip = () => {
-    navigate('/dashboard', { replace: true });
+    navigate(consumePostLoginRedirect() || '/dashboard', { replace: true });
   };
 
   if (status === 'loading') {

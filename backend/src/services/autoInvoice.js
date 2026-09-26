@@ -21,6 +21,7 @@ export async function generateDueInvoices() {
       FROM service_subscriptions ss
       JOIN businesses b ON ss.business_id = b.business_id
       WHERE ss.status = 'active'
+        AND b.status != 'deleted'
         AND ss.expiration_date IS NOT NULL
         AND ss.expiration_date BETWEEN CURRENT_DATE + INTERVAL '1 day'
                                    AND CURRENT_DATE + INTERVAL '7 days'

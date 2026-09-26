@@ -3,7 +3,7 @@ import config from '../config/index.js';
 import { error } from '../utils/response.js';
 
 export function requireAuth(req, res, next) {
-  const token = req.session?.token || req.headers.authorization?.replace('Bearer ', '');
+  const token = req.headers.authorization?.replace('Bearer ', '');
 
   if (!token) {
     return res.status(401).json(error('Authentication required', 'UNAUTHORIZED', 401));
@@ -19,7 +19,7 @@ export function requireAuth(req, res, next) {
 }
 
 export function optionalAuth(req, res, next) {
-  const token = req.session?.token || req.headers.authorization?.replace('Bearer ', '');
+  const token = req.headers.authorization?.replace('Bearer ', '');
 
   if (token) {
     try {

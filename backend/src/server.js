@@ -2,8 +2,6 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import compression from "compression";
-import session from "express-session";
-import pgSession from "connect-pg-simple";
 import passport from "passport";
 import "./config/passport.js"; // registers the Google OAuth strategy
 import config from "./config/index.js";
@@ -26,7 +24,6 @@ import siteRoutes from "./routes/site.js";
 import { adminInvoiceRoutes, userInvoiceRoutes } from "./routes/invoices.js";
 
 const app = express();
-const PgStore = pgSession(session);
 
 // Trust proxy for rate limiting behind reverse proxy (Caddy)
 app.set("trust proxy", "loopback");
@@ -52,7 +49,6 @@ app.use(
       config.env === "production"
         ? ["https://tafuta.ke", /\.tafuta\.ke$/]
         : ["http://localhost:3000", "http://localhost:5173"],
-    credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
@@ -70,25 +66,6 @@ if (config.env !== "production") {
   const mediaPath = path.resolve(config.media.path);
   app.use("/media", express.static(mediaPath));
 }
-
-// Session management
-app.use(
-  session({
-    store: new PgStore({
-      pool,
-      tableName: "sessions",
-    }),
-    secret: config.session.secret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: config.env === "production",
-      httpOnly: true,
-      maxAge: config.session.maxAge,
-      sameSite: "lax",
-    },
-  }),
-);
 
 // Passport (stateless — session: false in each OAuth route)
 app.use(passport.initialize());

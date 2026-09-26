@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { setPostLoginRedirect } from './redirect';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -7,7 +8,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true,
 });
 
 // Request interceptor to add auth token
@@ -31,6 +31,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      setPostLoginRedirect(window.location.pathname + window.location.search);
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -152,6 +153,8 @@ export const adminAPI = {
   getAllBusinesses: (params) => api.get('/admin/businesses', { params }),
   updateBusinessVerification: (id, data) => api.patch(`/admin/businesses/${id}/verification`, data),
   updateBusinessCategory: (id, category) => api.patch(`/admin/businesses/${id}/category`, { category }),
+  updateBusinessOwner: (id, data) => api.patch(`/admin/businesses/${id}/owner`, data),
+  updateBusinessStatus: (id, data) => api.patch(`/admin/businesses/${id}/status`, data),
   // Subscription management per business
   getBusinessSubscriptions: (id) => api.get(`/admin/businesses/${id}/subscriptions`),
   grantSubscription: (id, data) => api.post(`/admin/businesses/${id}/subscriptions`, data),

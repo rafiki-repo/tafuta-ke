@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { authAPI } from "@/lib/api";
 
 const useAuthStore = create(
   persist(
@@ -34,7 +35,12 @@ const useAuthStore = create(
         set({ user: normalized });
       },
 
-      logout: () => {
+      logout: async () => {
+        try {
+          await authAPI.logout();
+        } catch {
+          // best-effort — proceed with local logout even if the call fails (e.g. token already expired)
+        }
         localStorage.removeItem("token");
         set({ user: null, token: null, isAuthenticated: false });
       },

@@ -249,6 +249,12 @@ router.post('/initiate', requireAuth, async (req, res, next) => {
       return res.status(403).json(error('Only business owners can make payments', 'FORBIDDEN'));
     }
 
+    const bizCheck = await pool.query(`SELECT status FROM businesses WHERE business_id = $1`, [business_id]);
+    if (bizCheck.rows.length === 0) return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+    if (bizCheck.rows[0].status === 'deleted') {
+      return res.status(409).json(error('This business listing has been deleted', 'BUSINESS_DELETED'));
+    }
+
     const [userResult, orderCalc] = await Promise.all([
       pool.query(`SELECT full_name, phone, email FROM users WHERE user_id = $1`, [req.user.userId]),
       calculateOrder(items, serviceTypes, vatRate),

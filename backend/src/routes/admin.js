@@ -182,13 +182,15 @@ router.get('/businesses', async (req, res, next) => {
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = ["b.status != 'deleted'"];
+    const conditions = [];
     const conditionParams = [];
     let paramCount = 1;
 
     if (status) {
       conditions.push(`b.status = $${paramCount++}`);
       conditionParams.push(status);
+    } else {
+      conditions.push(`b.status != 'deleted'`);
     }
 
     if (category) {
@@ -1055,6 +1057,188 @@ router.patch('/businesses/:id/category', requireRole('admin'), async (req, res, 
   }
 });
 
+// PATCH /api/admin/businesses/:id/owner - Transfer business ownership to another user
+router.patch('/businesses/:id/owner', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { new_owner_user_id, reason } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    }
+    if (!new_owner_user_id || !isValidUUID(new_owner_user_id)) {
+      return res.status(400).json(error('new_owner_user_id is required', 'VALIDATION_ERROR'));
+    }
+    if (!reason || !reason.trim()) {
+      return res.status(400).json(error('reason is required', 'VALIDATION_ERROR'));
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const businessResult = await client.query(
+        `SELECT business_id FROM businesses WHERE business_id = $1`,
+        [id]
+      );
+      if (businessResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+      }
+
+      const newOwnerResult = await client.query(
+        `SELECT user_id, full_name, email FROM users WHERE user_id = $1`,
+        [new_owner_user_id]
+      );
+      if (newOwnerResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json(error('User not found', 'NOT_FOUND'));
+      }
+      const newOwner = newOwnerResult.rows[0];
+
+      const currentOwnerResult = await client.query(
+        `SELECT user_id FROM user_business_roles
+         WHERE business_id = $1 AND role = 'owner' AND is_deleted = false
+         LIMIT 1`,
+        [id]
+      );
+      const currentOwnerUserId = currentOwnerResult.rows[0]?.user_id || null;
+
+      if (currentOwnerUserId === new_owner_user_id) {
+        await client.query('ROLLBACK');
+        return res.status(400).json(error('User is already the owner of this business', 'VALIDATION_ERROR'));
+      }
+
+      // Soft-delete the new owner's existing role on this business, if any, to avoid a
+      // stray duplicate row once they're inserted as owner below.
+      await client.query(
+        `UPDATE user_business_roles
+         SET is_deleted = true, updated_at = NOW()
+         WHERE business_id = $1 AND user_id = $2 AND is_deleted = false`,
+        [id, new_owner_user_id]
+      );
+
+      // Fully remove the previous owner's access — there is no staff-management UI
+      // today to keep them around in a demoted role.
+      if (currentOwnerUserId) {
+        await client.query(
+          `UPDATE user_business_roles
+           SET is_deleted = true, updated_at = NOW()
+           WHERE business_id = $1 AND role = 'owner' AND is_deleted = false`,
+          [id]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO user_business_roles (user_id, business_id, role)
+         VALUES ($1, $2, 'owner')`,
+        [new_owner_user_id, id]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_value, new_value, reason)
+         VALUES ($1, 'business_owner_transferred', 'business', $2, $3, $4, $5)`,
+        [
+          req.user.userId,
+          id,
+          JSON.stringify({ user_id: currentOwnerUserId }),
+          JSON.stringify({ user_id: newOwner.user_id }),
+          reason,
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      logger.info('Business owner transferred', { businessId: id, adminId: req.user.userId, newOwnerUserId: new_owner_user_id });
+
+      res.json(success({
+        owner: { user_id: newOwner.user_id, full_name: newOwner.full_name, email: newOwner.email },
+      }, 'Business owner updated'));
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/businesses/:id/status - Change business status (any valid status to any other)
+const BUSINESS_STATUSES = ['pending', 'active', 'suspended', 'deleted'];
+router.patch('/businesses/:id/status', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, reason } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    }
+    if (!BUSINESS_STATUSES.includes(status)) {
+      return res.status(400).json(error('Invalid status', 'VALIDATION_ERROR'));
+    }
+    if (!reason || !reason.trim()) {
+      return res.status(400).json(error('reason is required', 'VALIDATION_ERROR'));
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const current = await client.query(
+        `SELECT status FROM businesses WHERE business_id = $1 FOR UPDATE`,
+        [id]
+      );
+      if (current.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+      }
+      const oldStatus = current.rows[0].status;
+
+      if (oldStatus === status) {
+        await client.query('ROLLBACK');
+        return res.status(400).json(error('Business already has this status', 'VALIDATION_ERROR'));
+      }
+
+      const result = await client.query(
+        `UPDATE businesses
+         SET status = $1, status_changed_at = NOW(), updated_at = NOW()
+         WHERE business_id = $2
+         RETURNING business_id, business_name, status`,
+        [status, id]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_value, new_value, reason)
+         VALUES ($1, 'business_status_changed', 'business', $2, $3, $4, $5)`,
+        [
+          req.user.userId,
+          id,
+          JSON.stringify({ status: oldStatus }),
+          JSON.stringify({ status }),
+          reason,
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      logger.info('Business status changed', { businessId: id, adminId: req.user.userId, oldStatus, newStatus: status });
+
+      res.json(success(result.rows[0], 'Business status updated'));
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/system/config - Get system config
 router.get('/system/config', requireRole('super_admin'), async (req, res, next) => {
   try {
@@ -1221,6 +1405,13 @@ router.post('/businesses/:id/subscriptions', requireRole('admin'), async (req, r
     const { service_type, months = 1 } = req.body;
 
     if (!isValidUUID(id)) return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+
+    const bizCheck = await pool.query(`SELECT status FROM businesses WHERE business_id = $1`, [id]);
+    if (bizCheck.rows.length === 0) return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+    if (bizCheck.rows[0].status === 'deleted') {
+      return res.status(409).json(error('Cannot grant services to a deleted business', 'BUSINESS_DELETED'));
+    }
+
     const serviceTypes = await getServiceTypes();
     const serviceTypeDef = serviceTypes.find(st => st.id === service_type);
     if (!serviceTypeDef) {
@@ -1326,6 +1517,14 @@ router.patch('/businesses/:id/toggle-website', requireRole('admin'), async (req,
     const { enabled } = req.body;
     if (!isValidUUID(id)) return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
     if (typeof enabled !== 'boolean') return res.status(400).json(error('enabled must be a boolean', 'VALIDATION_ERROR'));
+
+    if (enabled) {
+      const bizCheck = await pool.query(`SELECT status FROM businesses WHERE business_id = $1`, [id]);
+      if (bizCheck.rows.length === 0) return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+      if (bizCheck.rows[0].status === 'deleted') {
+        return res.status(409).json(error('Cannot enable the website for a deleted business', 'BUSINESS_DELETED'));
+      }
+    }
 
     await pool.query(
       `UPDATE businesses

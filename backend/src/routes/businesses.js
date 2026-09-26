@@ -167,8 +167,14 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
                   AND ss.service_type = 'website_hosting'
                   AND ss.status = 'active'
                   AND (ss.expiration_date IS NULL OR ss.expiration_date > CURRENT_DATE)
-              ) AS has_website_hosting
+              ) AS has_website_hosting,
+              owner.user_id AS owner_user_id,
+              owner.full_name AS owner_full_name,
+              owner.email AS owner_email
        FROM businesses b
+       LEFT JOIN user_business_roles ubr_owner
+         ON ubr_owner.business_id = b.business_id AND ubr_owner.role = 'owner' AND ubr_owner.is_deleted = false
+       LEFT JOIN users owner ON owner.user_id = ubr_owner.user_id
        WHERE b.business_id = $1`,
       [id]
     );
@@ -177,7 +183,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
       return res.status(404).json(error('Business not found', 'NOT_FOUND'));
     }
 
-    const business = result.rows[0];
+    const { owner_user_id, owner_full_name, owner_email, ...business } = result.rows[0];
 
     // Only show active businesses to non-authenticated users
     if (!req.user && business.status !== 'active') {
@@ -205,9 +211,17 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
       }
     }
 
+    // Owner identity is only exposed to authorized viewers (staff on the business, or platform admins) —
+    // this endpoint also serves the public storefront page and must not leak owner PII there.
+    const canViewOwner = userRole !== null || Boolean(req.user?.isAdmin);
+    const owner = canViewOwner && owner_user_id
+      ? { user_id: owner_user_id, full_name: owner_full_name, email: owner_email }
+      : null;
+
     res.json(success({
       ...business,
       user_role: userRole,
+      owner,
     }));
 
   } catch (err) {
@@ -263,7 +277,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
 
       const currentBusiness = currentResult.rows[0];
 
-      if (currentBusiness.status === 'deleted') {
+      if (currentBusiness.status === 'deleted' && !req.user.isAdmin) {
         await client.query('ROLLBACK');
         return res.status(403).json(error('Cannot edit deleted business', 'BUSINESS_DELETED'));
       }

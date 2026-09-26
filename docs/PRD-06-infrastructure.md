@@ -23,8 +23,7 @@ This PRD defines the infrastructure, deployment, testing, and DevOps requirement
 - **Framework**: Express.js 4.x
 - **Language**: JavaScript (ES6+)
 - **Database**: PostgreSQL 15+
-- **Session management**: express-session with connect-pg-simple (PostgreSQL session storage)
-- **Authentication**: jsonwebtoken (JWT), bcryptjs (cost factor 10), crypto module for OTP
+- **Authentication**: stateless JWT (jsonwebtoken) via `Authorization: Bearer` — no server-side session store; bcryptjs (cost factor 10), crypto module for OTP
 - **Image processing**: sharp (server-side transform and WebP output)
 - **File uploads**: multer (multipart/form-data handling)
 - **Config files**: flex-json (read/write `.jfx` transform specs and `app-config.jfx`)
@@ -378,7 +377,7 @@ When vertical scaling is insufficient, move to a multi-server architecture:
                   [Database Server]
 ```
 
-**Components needed:** Load balancer (Nginx or HAProxy); PostgreSQL with read replicas; S3-compatible object storage for uploaded files; Redis for session storage (replacing connect-pg-simple).
+**Components needed:** Load balancer (Nginx or HAProxy); PostgreSQL with read replicas; S3-compatible object storage for uploaded files; Redis for distributed rate limiting (the in-memory rate limiter store doesn't work across multiple app servers). Auth itself is stateless JWT, so no shared session store is needed to scale horizontally.
 
 ---
 
