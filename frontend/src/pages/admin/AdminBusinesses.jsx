@@ -14,13 +14,17 @@ const STATUS_TABS = [
   { id: 'pending', label: 'Pending' },
   { id: 'active', label: 'Active' },
   { id: 'suspended', label: 'Suspended' },
+  { id: 'deleted', label: 'Deleted' },
   { id: 'all', label: 'All' },
 ];
+
+const BUSINESS_STATUSES = ['pending', 'active', 'suspended', 'deleted'];
 
 const statusVariant = {
   pending: 'warning',
   active: 'success',
   suspended: 'destructive',
+  deleted: 'secondary',
   deactivated: 'secondary',
   out_of_business: 'secondary',
 };
@@ -55,6 +59,8 @@ export default function AdminBusinesses() {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState(null);
+  const [statusValue, setStatusValue] = useState('pending');
+  const [statusReason, setStatusReason] = useState('');
 
   // Debounce search input
   useEffect(() => {
@@ -91,6 +97,8 @@ export default function AdminBusinesses() {
     setTierValue(business.verification_tier || 'basic');
     setRejectReason('');
     setShowRejectInput(false);
+    setStatusValue(business.status);
+    setStatusReason('');
     setModalError(null);
   };
 
@@ -147,6 +155,36 @@ export default function AdminBusinesses() {
       setSelected(prev => ({ ...prev, verification_tier: tierValue }));
     } catch (err) {
       setModalError(err.response?.data?.message || 'Failed to update tier.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!statusReason.trim()) {
+      setModalError('A reason is required.');
+      return;
+    }
+    setSaving(true);
+    setModalError(null);
+    try {
+      await adminAPI.updateBusinessStatus(selected.business_id, {
+        status: statusValue,
+        reason: statusReason.trim(),
+      });
+      if (activeTab !== 'all' && statusValue !== activeTab) {
+        setBusinesses(prev => prev.filter(b => b.business_id !== selected.business_id));
+        setTotal(prev => prev - 1);
+        closeModal();
+      } else {
+        setBusinesses(prev =>
+          prev.map(b => (b.business_id === selected.business_id ? { ...b, status: statusValue } : b))
+        );
+        setSelected(prev => ({ ...prev, status: statusValue }));
+        setStatusReason('');
+      }
+    } catch (err) {
+      setModalError(err.response?.data?.message || 'Failed to update status.');
     } finally {
       setSaving(false);
     }
@@ -421,6 +459,41 @@ export default function AdminBusinesses() {
                     Edit Business
                   </Button>
                 </Link>
+              </div>
+
+              <div className="border-t" />
+
+              {/* Change Status (any status to any status) */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Change Status</p>
+                <Select
+                  value={statusValue}
+                  onChange={e => setStatusValue(e.target.value)}
+                  className="w-full"
+                >
+                  {BUSINESS_STATUSES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </Select>
+                {statusValue !== selected.status && (
+                  <>
+                    <Textarea
+                      value={statusReason}
+                      onChange={e => setStatusReason(e.target.value)}
+                      placeholder="Reason for this status change (required)"
+                      rows={2}
+                    />
+                    <Button
+                      variant={statusValue === 'deleted' ? 'destructive' : 'outline'}
+                      onClick={handleUpdateStatus}
+                      disabled={saving || !statusReason.trim()}
+                      className="w-full"
+                    >
+                      {saving ? <Spinner size="sm" className="mr-2" /> : null}
+                      Set status to "{statusValue}"
+                    </Button>
+                  </>
+                )}
               </div>
 
               {/* Modal errors */}

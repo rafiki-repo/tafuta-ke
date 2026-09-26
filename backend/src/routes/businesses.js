@@ -277,7 +277,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
 
       const currentBusiness = currentResult.rows[0];
 
-      if (currentBusiness.status === 'deleted') {
+      if (currentBusiness.status === 'deleted' && !req.user.isAdmin) {
         await client.query('ROLLBACK');
         return res.status(403).json(error('Cannot edit deleted business', 'BUSINESS_DELETED'));
       }

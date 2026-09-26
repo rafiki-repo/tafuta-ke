@@ -43,7 +43,7 @@ export async function getUserBusinesses(userId) {
     `SELECT b.*, ubr.role
      FROM businesses b
      JOIN user_business_roles ubr ON b.business_id = ubr.business_id
-     WHERE ubr.user_id = $1 AND ubr.is_deleted = false
+     WHERE ubr.user_id = $1 AND ubr.is_deleted = false AND b.status != 'deleted'
      ORDER BY b.created_at DESC`,
     [userId]
   );

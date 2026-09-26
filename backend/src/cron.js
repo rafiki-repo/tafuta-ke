@@ -74,7 +74,7 @@ async function checkSubscriptionExpiry() {
           `UPDATE businesses
            SET content_json = jsonb_set(COALESCE(content_json, '{}'), '{website_enabled}', 'false'),
                updated_at = NOW()
-           WHERE business_id = $1`,
+           WHERE business_id = $1 AND status != 'deleted'`,
           [r.business_id]
         );
         logger.info(`[cron] Website disabled for business ${r.business_id} (hosting expired)`);
@@ -93,6 +93,7 @@ async function checkSubscriptionExpiry() {
        JOIN businesses b ON ss.business_id = b.business_id
        JOIN users u ON ubr.user_id = u.user_id
        WHERE ss.status = 'active'
+         AND b.status != 'deleted'
          AND (ss.expiration_date - CURRENT_DATE) IN (7, 3, 1)`
     );
 

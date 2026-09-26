@@ -351,6 +351,8 @@ Implementation: `frontend/src/lib/redirect.js`, invoked from `App.jsx` (route gu
 
 **Deactivation Prompt**: When Owner deactivates business, system prompts for reason: "Going out of business", "Temporary closure", "Other".
 
+**Note on Suspended/Deleted**: an admin at `admin` level or higher can move a business between any of `pending`/`active`/`suspended`/`deleted` from a single "Change Status" control — a reason is required and every change is logged to the audit trail (see [PRD-14](PRD-14-business-status-management.md)). So in practice these two states are admin-reversible, not permanent: the table above records who can set each state on the happy path, not a hard restriction on reversal. `Deactivated` and `Out of business` remain unimplemented (no owner self-service exists yet for any business status change).
+
 ---
 
 ## Password Recovery
@@ -397,7 +399,7 @@ Implementation: `frontend/src/lib/redirect.js`, invoked from `App.jsx` (route gu
 
 **Non-editable:**
 - verification_tier (admin only)
-- status (owner can deactivate; admin can suspend/delete)
+- status (owner can deactivate; admin can set to any status — pending/active/suspended/deleted — see [PRD-14](PRD-14-business-status-management.md))
 
 ---
 
@@ -416,7 +418,7 @@ Implementation: `frontend/src/lib/redirect.js`, invoked from `App.jsx` (route gu
 | Deactivate business | ✓ | ✗ | ✗ |
 | View user list | ✓ | ✓ | ✓ (read-only) |
 
-**Platform admin override:** the columns above are business-level roles (`user_business_roles`), distinct from platform admin levels (`admin_users.role`; see [PRD-05](PRD-05-admin.md)). A platform admin at `admin` level or higher can reassign a business's owner via the Admin Console regardless of the business-level table above — see [PRD-13](PRD-13-business-owner-transfer.md). This removes the previous owner's access to the business entirely, since there is currently no UI to manage a demoted owner's continued staff access.
+**Platform admin override:** the columns above are business-level roles (`user_business_roles`), distinct from platform admin levels (`admin_users.role`; see [PRD-05](PRD-05-admin.md)). A platform admin at `admin` level or higher can reassign a business's owner via the Admin Console regardless of the business-level table above — see [PRD-13](PRD-13-business-owner-transfer.md). This removes the previous owner's access to the business entirely, since there is currently no UI to manage a demoted owner's continued staff access. The same `admin`-level bar also gates changing a business's status (including soft-delete) to any other status — see [PRD-14](PRD-14-business-status-management.md).
 
 ---
 

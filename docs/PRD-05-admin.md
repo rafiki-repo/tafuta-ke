@@ -34,7 +34,7 @@ admin_users:
 | Feature | Super Admin | Admin | Support Staff |
 |---------|-------------|-------|---------------|
 | Approve/reject businesses | ✓ | ✓ | ✓ |
-| Suspend/delete businesses | ✓ | ✓ | ✗ |
+| Change business status (suspend/delete/restore — [PRD-14](PRD-14-business-status-management.md)) | ✓ | ✓ | ✗ |
 | Manage admin users | ✓ | ✗ | ✗ |
 | Adjust subscriptions | ✓ | ✓ | ✗ |
 | Process refunds | ✓ | ✓ | ✗ |
@@ -105,7 +105,8 @@ Dashboard
 Businesses
   ├── Pending Approval
   ├── All Businesses
-  └── Suspended
+  ├── Suspended
+  └── Deleted
 Users
   ├── All Users
   └── Suspended Users
@@ -226,14 +227,14 @@ Analytics
 │ All Businesses (456)                                     │
 ├─────────────────────────────────────────────────────────┤
 │ Search: [Business name, phone, email...]                 │
-│ Status: [All ▼]  Region: [All ▼]  Category: [All ▼]     │
+│ Tabs: Pending | Active | Suspended | Deleted | All        │
 │                                                          │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ Doreen Beauty Parlour          Status: Active      │  │
 │ │ Owner: John Doe (+254712345678)                    │  │
 │ │ Salon  •  Machakos  •  Verified                    │  │
 │ │ Services: Website Hosting (expires Aug 21, 2026)   │  │
-│ │ [View]  [Edit]  [Suspend]  [More ▼]                │  │
+│ │ [Manage]                                           │  │
 │ └────────────────────────────────────────────────────┘  │
 │                                                          │
 │ Page 1 of 23  [Previous]  [Next]                        │
@@ -242,9 +243,9 @@ Analytics
 
 **Key Features:**
 - Search by business name, owner name, phone, email
-- Filters: Status, region, category, verification tier
-- Actions: View details, edit, suspend, delete
-- Bulk actions: Export to CSV, bulk suspend
+- Status tabs: Pending, Active, Suspended, Deleted, All (All excludes Deleted unless the Deleted tab itself is selected)
+- The "Manage" slide-over exposes approve/reject (pending only), verification tier, a "Change Status" control (any status → any status, reason required — see [PRD-14](PRD-14-business-status-management.md)), and a link to the shared Edit page
+- A business with status `deleted` remains reachable and editable from its own tab; it is otherwise hidden from public search, the storefront, and the owner's "My Businesses" list
 
 **Business Detail View:**
 
@@ -282,7 +283,7 @@ Analytics
 │ • Last Updated: Feb 22, 2026 by John Doe                 │
 │ [View Content History]                                   │
 │                                                          │
-│ [Edit Profile]  [Adjust Services]  [Suspend]  [Delete]  │
+│ [Edit Profile]  [Adjust Services]  [Change Status]      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -321,50 +322,33 @@ Analytics
 
 **Transfer Ownership:** An admin at `admin` level or higher can reassign a business's recorded owner to any other user in the system from the business's Basic Info tab. A reason is required and logged to the audit trail along with the old and new owner. This fully removes the previous owner's access to the business (see [PRD-13](PRD-13-business-owner-transfer.md) for the full design and rationale).
 
-**Suspend Business:**
-```
-┌─────────────────────────────────────┐
-│ Suspend Business?                   │
-├─────────────────────────────────────┤
-│ Doreen Beauty Parlour               │
-│                                     │
-│ Reason for suspension: *            │
-│ ┌─────────────────────────────────┐ │
-│ │ Violation of terms              │ │
-│ └─────────────────────────────────┘ │
-│                                     │
-│ This will:                          │
-│ • Hide business from public search  │
-│ • Disable website                   │
-│ • Notify owner via SMS/email        │
-│ • Log action in audit trail         │
-│                                     │
-│ [Cancel]  [Suspend Business]        │
-└─────────────────────────────────────┘
-```
+**Change Status:** An admin at `admin` level or higher can set a business's status to any of `pending`/`active`/`suspended`/`deleted` from one control (in the list's "Manage" slide-over, or inline on the shared Basic Info tab). Every change requires a reason and is logged to the audit trail with the old and new status — including moving a business back out of `suspended` or `deleted`, which is a normal status change, not a separate "restore" action. See [PRD-14](PRD-14-business-status-management.md) for the full design and the ripple-effect audit of what setting `deleted` does and doesn't affect.
 
-**Delete Business (Soft Delete):**
 ```
 ┌─────────────────────────────────────┐
-│ Delete Business?                    │
+│ Change Status                       │
 ├─────────────────────────────────────┤
 │ Doreen Beauty Parlour               │
+│ Current status: Active              │
 │                                     │
-│ This action cannot be undone.       │
+│ New status:                         │
+│ [Deleted ▼]                         │
 │                                     │
-│ Reason for deletion: *              │
+│ Reason: *                           │
 │ ┌─────────────────────────────────┐ │
 │ │ Owner requested deletion        │ │
 │ └─────────────────────────────────┘ │
 │                                     │
-│ Type business name to confirm:      │
-│ ┌─────────────────────────────────┐ │
-│ │                                 │ │
-│ └─────────────────────────────────┘ │
-│                                     │
-│ [Cancel]  [Delete Business]         │
+│ [Cancel]  [Set status to "deleted"] │
 └─────────────────────────────────────┘
 ```
+
+Setting status to `deleted`:
+- Hides the business from public search, the storefront, and the owner's "My Businesses" list
+- Excludes it from auto-invoicing and subscription-expiry reminders
+- Blocks granting new paid services or re-enabling the website until it is moved to another status
+- Does **not** notify the owner (no live SMS/email provider is wired to this event yet) and does **not** free up its `subdomain`/`business_tag` for reuse
+- Remains fully visible and editable to admins via the "Deleted" tab
 
 ---
 
@@ -677,7 +661,7 @@ All manual adjustments are logged in the audit trail with actor, old values, new
 
 **Logged Actions:**
 - Business approvals/rejections
-- Business suspensions/deletions
+- Business status changes, including suspensions/deletions/restores (`business_status_changed` — see [PRD-14](PRD-14-business-status-management.md))
 - User suspensions/deletions
 - Subscription adjustments
 - Refund processing
@@ -897,10 +881,9 @@ System config changes are logged in audit trail and require Super Admin role.
 - `GET /api/admin/businesses/pending` - List pending businesses
 - `POST /api/admin/businesses/:id/approve` - Approve business
 - `POST /api/admin/businesses/:id/reject` - Reject business with reason
-- `POST /api/admin/businesses/:id/suspend` - Suspend business
-- `DELETE /api/admin/businesses/:id` - Soft delete business
+- `PATCH /api/admin/businesses/:id/status` - Change business status to any of pending/active/suspended/deleted (requires reason; see [PRD-14](PRD-14-business-status-management.md))
 - `PATCH /api/admin/businesses/:id/owner` - Transfer business ownership to another user (requires reason)
-- `GET /api/admin/businesses` - List all businesses with filters
+- `GET /api/admin/businesses` - List all businesses with filters (including `?status=deleted`)
 
 ### User Management
 - `GET /api/admin/users` - List all users with filters
@@ -910,6 +893,8 @@ System config changes are logged in audit trail and require Super Admin role.
 ### Service Management
 - `PATCH /api/subscriptions/:id/adjust` - Manually adjust subscription
 - `GET /api/admin/services/expiring` - List expiring services
+
+Granting/extending a service or re-enabling a website (`enabled: true`) returns `409 BUSINESS_DELETED` if the target business's status is `deleted` — see [PRD-14](PRD-14-business-status-management.md).
 
 ### Refund Management
 - `POST /api/refunds/request` - Create refund request
