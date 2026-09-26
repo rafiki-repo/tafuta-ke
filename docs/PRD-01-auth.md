@@ -209,6 +209,8 @@ user_business_roles:
 
 **Email Verification**: Email is optional and does not require verification in MVP. If provided, email is saved without verification.
 
+**Admin Override**: Admin can manage "verified" phone/email status without the OTP process (e.g., to assist a user who does not have SMS). Audit log tracks which verifications were performed by an admin and not OTP.
+
 **MVP Simplification**: No password required for initial registration; passwordless login via OTP.
 
 ### Business Registration

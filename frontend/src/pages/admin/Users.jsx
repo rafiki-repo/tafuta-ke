@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
@@ -34,6 +35,17 @@ export default function Users() {
   const [saveErr, setSaveErr] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const [verifyField, setVerifyField] = useState(null); // 'phone' | 'email' | null
+  const [verifyReason, setVerifyReason] = useState('');
+  const [verifySaving, setVerifySaving] = useState(false);
+  const [verifyErr, setVerifyErr] = useState('');
+
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwNewPassword, setPwNewPassword] = useState('');
+  const [pwReason, setPwReason] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwErr, setPwErr] = useState('');
+
   const search = async () => {
     if (!q.trim()) return;
     setLoading(true);
@@ -62,6 +74,67 @@ export default function Users() {
     });
     setSaveErr('');
     setSuccessMsg('');
+    setVerifyField(null);
+    setVerifyReason('');
+    setVerifyErr('');
+    setPwOpen(false);
+    setPwNewPassword('');
+    setPwReason('');
+    setPwErr('');
+  };
+
+  const startVerifyToggle = (field) => {
+    setVerifyField(field);
+    setVerifyReason('');
+    setVerifyErr('');
+  };
+
+  const confirmVerifyToggle = async () => {
+    if (!verifyReason.trim()) return;
+    const key = verifyField === 'phone' ? 'phone_verified' : 'email_verified';
+    const newValue = !selected[key];
+    setVerifySaving(true);
+    setVerifyErr('');
+    try {
+      await adminAPI.updateUserVerification(selected.user_id, {
+        [key]: newValue,
+        reason: verifyReason.trim(),
+      });
+      const updatedUser = { ...selected, [key]: newValue };
+      setUsers((prev) =>
+        prev.map((u) => (u.user_id === selected.user_id ? { ...u, [key]: newValue } : u))
+      );
+      setSelected(updatedUser);
+      setVerifyField(null);
+      setVerifyReason('');
+      setSuccessMsg('Verification status updated.');
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (e) {
+      setVerifyErr(e.response?.data?.error?.message || 'Failed to update verification status.');
+    } finally {
+      setVerifySaving(false);
+    }
+  };
+
+  const confirmPasswordReset = async () => {
+    if (pwNewPassword.length < 8 || !pwReason.trim()) return;
+    setPwSaving(true);
+    setPwErr('');
+    try {
+      await adminAPI.resetUserPassword(selected.user_id, {
+        newPassword: pwNewPassword,
+        reason: pwReason.trim(),
+      });
+      setPwOpen(false);
+      setPwNewPassword('');
+      setPwReason('');
+      setSuccessMsg('Password reset successfully.');
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (e) {
+      setPwErr(e.response?.data?.error?.message || 'Failed to reset password.');
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   const save = async () => {
@@ -245,6 +318,122 @@ export default function Users() {
                       <p className="text-xs text-amber-600 mt-1">
                         You cannot grant this role — it exceeds your own level.
                       </p>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-3 space-y-3">
+                    <p className="text-sm font-medium">Verification</p>
+
+                    {verifyErr && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{verifyErr}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {[
+                      { field: 'phone', label: 'Phone', key: 'phone_verified' },
+                      { field: 'email', label: 'Email', key: 'email_verified' },
+                    ].map(({ field, label, key }) => (
+                      <div key={field} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">{label}</span>
+                            <Badge variant={selected[key] ? 'success' : 'outline'}>
+                              {selected[key] ? 'Verified' : 'Not Verified'}
+                            </Badge>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => startVerifyToggle(field)}
+                            disabled={verifySaving}
+                          >
+                            Mark {selected[key] ? 'Unverified' : 'Verified'}
+                          </Button>
+                        </div>
+
+                        {verifyField === field && (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={verifyReason}
+                              onChange={(e) => setVerifyReason(e.target.value)}
+                              placeholder={`Reason for marking ${label.toLowerCase()} as ${selected[key] ? 'unverified' : 'verified'} (required)`}
+                              rows={2}
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={confirmVerifyToggle}
+                                disabled={verifySaving || !verifyReason.trim()}
+                              >
+                                {verifySaving && <Spinner size="sm" className="mr-2" />}
+                                Confirm
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setVerifyField(null)}
+                                disabled={verifySaving}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t pt-3 space-y-2">
+                    <p className="text-sm font-medium">Password</p>
+
+                    {pwErr && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{pwErr}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {!pwOpen ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setPwOpen(true); setPwNewPassword(''); setPwReason(''); setPwErr(''); }}
+                      >
+                        Reset Password
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <Input
+                          type="password"
+                          placeholder="New password (min 8 characters)"
+                          value={pwNewPassword}
+                          onChange={(e) => setPwNewPassword(e.target.value)}
+                        />
+                        <Textarea
+                          value={pwReason}
+                          onChange={(e) => setPwReason(e.target.value)}
+                          placeholder="Reason for resetting this password (required)"
+                          rows={2}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={confirmPasswordReset}
+                            disabled={pwSaving || pwNewPassword.length < 8 || !pwReason.trim()}
+                          >
+                            {pwSaving && <Spinner size="sm" className="mr-2" />}
+                            Confirm
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setPwOpen(false)}
+                            disabled={pwSaving}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
 
