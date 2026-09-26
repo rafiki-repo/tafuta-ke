@@ -921,6 +921,82 @@ router.patch('/users/:id/password', requireRole('admin'), async (req, res, next)
   }
 });
 
+// PATCH /api/admin/users/:id/status - Soft-delete/restore a user (any valid status to any other)
+const USER_STATUSES = ['active', 'deactivated', 'suspended', 'deleted'];
+router.patch('/users/:id/status', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, reason } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid user ID', 'INVALID_ID'));
+    }
+    if (!USER_STATUSES.includes(status)) {
+      return res.status(400).json(error('Invalid status', 'VALIDATION_ERROR'));
+    }
+    if (!reason || !reason.trim()) {
+      return res.status(400).json(error('reason is required', 'VALIDATION_ERROR'));
+    }
+    if (id === req.user.userId) {
+      return res.status(400).json(error('You cannot change your own account status', 'VALIDATION_ERROR'));
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const current = await client.query(
+        `SELECT status FROM users WHERE user_id = $1 FOR UPDATE`,
+        [id]
+      );
+      if (current.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json(error('User not found', 'NOT_FOUND'));
+      }
+      const oldStatus = current.rows[0].status;
+
+      if (oldStatus === status) {
+        await client.query('ROLLBACK');
+        return res.status(400).json(error('User already has this status', 'VALIDATION_ERROR'));
+      }
+
+      const result = await client.query(
+        `UPDATE users
+         SET status = $1, status_changed_at = NOW(), updated_at = NOW()
+         WHERE user_id = $2
+         RETURNING user_id, full_name, status`,
+        [status, id]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_value, new_value, reason)
+         VALUES ($1, 'user_status_changed', 'user', $2, $3, $4, $5)`,
+        [
+          req.user.userId,
+          id,
+          JSON.stringify({ status: oldStatus }),
+          JSON.stringify({ status }),
+          reason,
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      logger.info('User status changed', { targetUserId: id, adminId: req.user.userId, oldStatus, newStatus: status });
+
+      res.json(success(result.rows[0], 'User status updated'));
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 const CATEGORY_NAME_MAX_LENGTH = 80;
 const CATEGORY_LIST_MAX_LENGTH = 100;
 const CATEGORY_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 &/()+'.-]*$/;

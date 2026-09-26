@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { X, Search, CheckCircle, XCircle, Edit2, ShieldCheck } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { X, Search, CheckCircle, XCircle, Edit2, ShieldCheck, FileText, FileEdit } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -43,8 +43,14 @@ function daysAgo(dateStr) {
   return `${days} days ago`;
 }
 
+const VALID_TABS = STATUS_TABS.map(t => t.id);
+
 export default function AdminBusinesses() {
-  const [activeTab, setActiveTab] = useState('pending');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'pending'
+  );
   const [businesses, setBusinesses] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -67,6 +73,20 @@ export default function AdminBusinesses() {
     const timer = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Keep the URL in sync with the active tab so browser/in-app "Back" from the
+  // edit page returns to the same tab instead of resetting to the default.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (activeTab === 'pending') {
+      params.delete('tab');
+    } else {
+      params.set('tab', activeTab);
+    }
+    setSearchParams(params, { replace: true });
+    // Intentionally omits searchParams from deps — including it would re-run this
+    // on every navigation and fight with the tab state.
+  }, [activeTab]);
 
   const loadBusinesses = useCallback(async () => {
     setLoading(true);
@@ -277,9 +297,20 @@ export default function AdminBusinesses() {
                     {b.verification_tier}
                   </Badge>
                 )}
-                <Button size="sm" variant="outline" onClick={() => openModal(b)}>
-                  {b.status === 'pending' ? 'Review' : 'Manage'}
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => openModal(b)}
+                  aria-label={b.status === 'pending' ? 'Review' : 'Manage'}
+                  title={b.status === 'pending' ? 'Review' : 'Manage'}
+                >
+                  <FileText className="h-4 w-4" />
                 </Button>
+                <Link to={`/admin/businesses/${b.business_id}/edit`}>
+                  <Button size="icon" variant="outline" aria-label="Edit Business" title="Edit Business">
+                    <FileEdit className="h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             </div>
           ))}
