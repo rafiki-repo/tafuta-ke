@@ -153,6 +153,7 @@ export const adminAPI = {
   getAllBusinesses: (params) => api.get('/admin/businesses', { params }),
   updateBusinessVerification: (id, data) => api.patch(`/admin/businesses/${id}/verification`, data),
   updateBusinessCategory: (id, category) => api.patch(`/admin/businesses/${id}/category`, { category }),
+  updateBusinessOwner: (id, data) => api.patch(`/admin/businesses/${id}/owner`, data),
   // Subscription management per business
   getBusinessSubscriptions: (id) => api.get(`/admin/businesses/${id}/subscriptions`),
   grantSubscription: (id, data) => api.post(`/admin/businesses/${id}/subscriptions`, data),

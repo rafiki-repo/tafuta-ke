@@ -416,6 +416,8 @@ Implementation: `frontend/src/lib/redirect.js`, invoked from `App.jsx` (route gu
 | Deactivate business | ✓ | ✗ | ✗ |
 | View user list | ✓ | ✓ | ✓ (read-only) |
 
+**Platform admin override:** the columns above are business-level roles (`user_business_roles`), distinct from platform admin levels (`admin_users.role`; see [PRD-05](PRD-05-admin.md)). A platform admin at `admin` level or higher can reassign a business's owner via the Admin Console regardless of the business-level table above — see [PRD-13](PRD-13-business-owner-transfer.md). This removes the previous owner's access to the business entirely, since there is currently no UI to manage a demoted owner's continued staff access.
+
 ---
 
 ## Data Retention & Deletion

@@ -38,6 +38,7 @@ admin_users:
 | Manage admin users | ✓ | ✗ | ✗ |
 | Adjust subscriptions | ✓ | ✓ | ✗ |
 | Process refunds | ✓ | ✓ | ✗ |
+| Transfer business ownership | ✓ | ✓ | ✗ |
 | View auth logs | ✓ | ✓ | ✓ |
 | View audit logs | ✓ | ✓ | ✓ |
 | Edit system config | ✓ | ✗ | ✗ |
@@ -317,6 +318,8 @@ Analytics
 - Business owner notified of admin rollback
 
 ### Business Actions
+
+**Transfer Ownership:** An admin at `admin` level or higher can reassign a business's recorded owner to any other user in the system from the business's Basic Info tab. A reason is required and logged to the audit trail along with the old and new owner. This fully removes the previous owner's access to the business (see [PRD-13](PRD-13-business-owner-transfer.md) for the full design and rationale).
 
 **Suspend Business:**
 ```
@@ -896,6 +899,7 @@ System config changes are logged in audit trail and require Super Admin role.
 - `POST /api/admin/businesses/:id/reject` - Reject business with reason
 - `POST /api/admin/businesses/:id/suspend` - Suspend business
 - `DELETE /api/admin/businesses/:id` - Soft delete business
+- `PATCH /api/admin/businesses/:id/owner` - Transfer business ownership to another user (requires reason)
 - `GET /api/admin/businesses` - List all businesses with filters
 
 ### User Management
