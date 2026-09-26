@@ -306,6 +306,8 @@ See PRD-01 and PRD-02 for detailed schema.
     - **Suspend user or business** (admin-initiated): blocks login and all transactions; user sees message to contact Tafuta; only admin can lift suspension
     - **Reinstate suspended account**: admin restores access
     - **Process deletion request**: admin anonymizes PII and sets `is_deleted`; financial records retained
+- **Add User (admin-assisted registration)**: admin clicks "Add User" from the user list and is taken to the public `/register` page to fill it out together with the person they're helping
+    - **[Future improvement needed]** Completing registration this way logs the admin's browser session out of their own admin account and into the newly created user's account (the register flow ends by authenticating as the new user and redirecting to `/dashboard`). The admin must log back in afterward to return to the admin panel. A dedicated admin-created-user flow that doesn't hijack the admin's session should be built instead.
 - Refund request queue — records the cash disbursement amount and date
 - Transaction reports and CSV export
 - Fee schedule management — add, update, deactivate fee entries; configure service_type fee table

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -18,16 +19,25 @@ const ROLE_LABELS = {
 };
 
 const ROLE_HIERARCHY = { super_admin: 3, admin: 2, support_staff: 1 };
+const USER_STATUSES = ['active', 'deactivated', 'suspended', 'deleted'];
 
 export default function Users() {
+  const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
   const actorLevel = ROLE_HIERARCHY[currentUser?.admin_role] || 0;
 
   const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [includeDeleted, setIncludeDeleted] = useState(false);
   const [users, setUsers] = useState([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchErr, setSearchErr] = useState('');
+
+  const [statusValue, setStatusValue] = useState('active');
+  const [statusReason, setStatusReason] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusErr, setStatusErr] = useState('');
 
   const [selected, setSelected] = useState(null);
   const [editData, setEditData] = useState({});
@@ -46,13 +56,27 @@ export default function Users() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwErr, setPwErr] = useState('');
 
-  const search = async () => {
-    if (!q.trim()) return;
+  // Debounce search input — mirrors the business listing's auto-search behavior
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQ(q), 400);
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  const runSearch = useCallback(async () => {
+    const trimmed = debouncedQ.trim();
+    setSelected(null);
+    if (!trimmed) {
+      setUsers([]);
+      setSearched(false);
+      setSearchErr('');
+      return;
+    }
     setLoading(true);
     setSearchErr('');
-    setSelected(null);
     try {
-      const r = await adminAPI.getUsers({ q: q.trim() });
+      const params = { q: trimmed };
+      if (includeDeleted) params.status = 'deleted';
+      const r = await adminAPI.getUsers(params);
       setUsers(r.data.data || []);
       setSearched(true);
     } catch {
@@ -60,7 +84,11 @@ export default function Users() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedQ, includeDeleted]);
+
+  useEffect(() => {
+    runSearch();
+  }, [runSearch]);
 
   const selectUser = (u) => {
     setSelected(u);
@@ -81,6 +109,9 @@ export default function Users() {
     setPwNewPassword('');
     setPwReason('');
     setPwErr('');
+    setStatusValue(u.status || 'active');
+    setStatusReason('');
+    setStatusErr('');
   };
 
   const startVerifyToggle = (field) => {
@@ -137,6 +168,34 @@ export default function Users() {
     }
   };
 
+  const confirmStatusChange = async () => {
+    if (!statusReason.trim()) return;
+    setStatusSaving(true);
+    setStatusErr('');
+    try {
+      await adminAPI.updateUserStatus(selected.user_id, {
+        status: statusValue,
+        reason: statusReason.trim(),
+      });
+      const updatedUser = { ...selected, status: statusValue };
+      setUsers((prev) => {
+        const next = prev.map((u) => (u.user_id === selected.user_id ? updatedUser : u));
+        // Drop from the current list if it no longer matches the active filter
+        return includeDeleted === (statusValue === 'deleted')
+          ? next
+          : next.filter((u) => u.user_id !== selected.user_id);
+      });
+      setSelected(updatedUser);
+      setStatusReason('');
+      setSuccessMsg('User status updated.');
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (e) {
+      setStatusErr(e.response?.data?.error?.message || 'Failed to update status.');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     setSaveErr('');
@@ -166,21 +225,34 @@ export default function Users() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">User Management</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-3xl font-bold">User Management</h1>
+        <Button variant="outline" onClick={() => navigate('/register')}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add User
+        </Button>
+      </div>
 
       {/* Search bar */}
-      <div className="flex gap-2">
-        <Input
-          placeholder="Search by name, nickname, email, or phone..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && search()}
-          className="max-w-md"
-        />
-        <Button onClick={search} disabled={loading || !q.trim()}>
-          {loading ? <Spinner size="sm" className="mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-          Search
-        </Button>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, nickname, email, or phone..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {loading && <Spinner size="sm" />}
+        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={includeDeleted}
+            onChange={(e) => setIncludeDeleted(e.target.checked)}
+          />
+          Search deleted users
+        </label>
       </div>
 
       {searchErr && (
@@ -318,6 +390,53 @@ export default function Users() {
                       <p className="text-xs text-amber-600 mt-1">
                         You cannot grant this role — it exceeds your own level.
                       </p>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-3 space-y-2">
+                    <p className="text-sm font-medium">Delete / Restore User</p>
+
+                    {statusErr && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{statusErr}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {selected.user_id === currentUser?.user_id ? (
+                      <p className="text-xs text-muted-foreground">
+                        You cannot change your own account status.
+                      </p>
+                    ) : (
+                      <>
+                        <Select
+                          value={statusValue}
+                          onChange={(e) => setStatusValue(e.target.value)}
+                        >
+                          {USER_STATUSES.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </Select>
+                        {statusValue !== selected.status && (
+                          <>
+                            <Textarea
+                              value={statusReason}
+                              onChange={(e) => setStatusReason(e.target.value)}
+                              placeholder="Reason for this status change (required)"
+                              rows={2}
+                            />
+                            <Button
+                              size="sm"
+                              variant={statusValue === 'deleted' ? 'destructive' : 'outline'}
+                              onClick={confirmStatusChange}
+                              disabled={statusSaving || !statusReason.trim()}
+                              className="w-full"
+                            >
+                              {statusSaving && <Spinner size="sm" className="mr-2" />}
+                              Set status to "{statusValue}"
+                            </Button>
+                          </>
+                        )}
+                      </>
                     )}
                   </div>
 
