@@ -122,6 +122,7 @@ Tafuta is a super simple low-cost business directory with single-page website ho
     - **Basic** — automatically assigned upon verification of phone number
     - **Verified** — admin has confirmed user identity using any method Tafuta staff deems necessary
     - **Premium** — admin has confirmed high-trust status
+- Admin can manage "verified" phone/email status without the OTP process. This enables them to assist a user who does not have SMS, for example. Audit tracks which verifications were performed by an admin and not OTP.
     - In v1.0: tiers are informational indicators for internal team use only; no functional difference in system behavior between tiers.
 - Generate UUID for each user
 - Business entity management — users have a many-to-many relationship with businesses; each relationship carries one of the following roles:

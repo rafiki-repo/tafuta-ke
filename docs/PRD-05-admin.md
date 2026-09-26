@@ -384,6 +384,7 @@ Setting status to `deleted`:
 - Filters: Status, verification tier
 - Actions: View details, suspend, delete
 - Export: CSV export of user list
+- Admin can manually mark phone/email as verified without the OTP process (e.g., to assist a user who does not have SMS); audit log records these as admin-performed, not OTP-performed
 
 **User Detail View:**
 

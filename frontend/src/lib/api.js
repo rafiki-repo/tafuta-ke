@@ -142,6 +142,7 @@ export const adminAPI = {
   getUser: (id) => api.get(`/admin/users/${id}`),
   updateUser: (id, data) => api.patch(`/admin/users/${id}`, data),
   updateUserVerification: (id, data) => api.patch(`/admin/users/${id}/verification`, data),
+  resetUserPassword: (id, data) => api.patch(`/admin/users/${id}/password`, data),
   getSystemConfig: () => api.get('/admin/system/config'),
   updateSystemConfig: (key, data) => api.patch(`/admin/system/config/${key}`, data),
   getCategories: () => api.get('/admin/categories'),

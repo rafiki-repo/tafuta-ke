@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { requireAuth, requireAdmin, requireRole } from '../middleware/auth.js';
 import { success, error, paginated } from '../utils/response.js';
 import { formatCategoryName, isValidUUID } from '../utils/validation.js';
@@ -590,7 +591,8 @@ router.get('/users', async (req, res, next) => {
 
     const result = await pool.query(
       `SELECT u.user_id, u.full_name, u.nickname, u.phone, u.email,
-              u.verification_tier, u.status, u.created_at, u.last_login_at,
+              u.verification_tier, u.status, u.phone_verified, u.email_verified,
+              u.created_at, u.last_login_at,
               a.role as admin_role
        FROM users u
        LEFT JOIN admin_users a ON u.user_id = a.user_id AND a.is_active = TRUE
@@ -768,42 +770,151 @@ router.patch('/users/:id', async (req, res, next) => {
   }
 });
 
-// PATCH /api/admin/users/:id/verification - Update user verification tier
+// PATCH /api/admin/users/:id/verification - Update user verification tier and/or manually override phone/email verified flags
 router.patch('/users/:id/verification', requireRole('admin'), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { verification_tier } = req.body;
+    const { verification_tier, phone_verified, email_verified, reason } = req.body;
 
     if (!isValidUUID(id)) {
       return res.status(400).json(error('Invalid user ID', 'INVALID_ID'));
     }
 
-    if (!['unverified', 'basic', 'verified', 'premium'].includes(verification_tier)) {
+    if (verification_tier === undefined && phone_verified === undefined && email_verified === undefined) {
+      return res.status(400).json(error('At least one of verification_tier, phone_verified, email_verified is required', 'VALIDATION_ERROR'));
+    }
+
+    if (verification_tier !== undefined && !['unverified', 'basic', 'verified', 'premium'].includes(verification_tier)) {
       return res.status(400).json(error('Invalid verification tier', 'INVALID_TIER'));
     }
 
-    const result = await pool.query(
-      `UPDATE users 
-       SET verification_tier = $1, updated_at = NOW()
-       WHERE user_id = $2
-       RETURNING user_id, full_name, verification_tier`,
-      [verification_tier, id]
-    );
+    if (phone_verified !== undefined && typeof phone_verified !== 'boolean') {
+      return res.status(400).json(error('phone_verified must be a boolean', 'VALIDATION_ERROR'));
+    }
 
-    if (result.rows.length === 0) {
+    if (email_verified !== undefined && typeof email_verified !== 'boolean') {
+      return res.status(400).json(error('email_verified must be a boolean', 'VALIDATION_ERROR'));
+    }
+
+    if ((phone_verified !== undefined || email_verified !== undefined) && (!reason || !reason.trim())) {
+      return res.status(400).json(error('reason is required', 'VALIDATION_ERROR'));
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const current = await client.query(
+        `SELECT phone_verified, email_verified, verification_tier
+         FROM users WHERE user_id = $1 FOR UPDATE`,
+        [id]
+      );
+
+      if (current.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json(error('User not found', 'NOT_FOUND'));
+      }
+
+      const before = current.rows[0];
+
+      const updates = [];
+      const values = [];
+      let paramCount = 1;
+      const oldValue = {};
+      const newValue = {};
+
+      if (verification_tier !== undefined) {
+        updates.push(`verification_tier = $${paramCount++}`);
+        values.push(verification_tier);
+        oldValue.verification_tier = before.verification_tier;
+        newValue.verification_tier = verification_tier;
+      }
+      if (phone_verified !== undefined) {
+        updates.push(`phone_verified = $${paramCount++}`);
+        values.push(phone_verified);
+        oldValue.phone_verified = before.phone_verified;
+        newValue.phone_verified = phone_verified;
+      }
+      if (email_verified !== undefined) {
+        updates.push(`email_verified = $${paramCount++}`);
+        values.push(email_verified);
+        oldValue.email_verified = before.email_verified;
+        newValue.email_verified = email_verified;
+      }
+
+      updates.push(`updated_at = NOW()`);
+      values.push(id);
+
+      const result = await client.query(
+        `UPDATE users
+         SET ${updates.join(', ')}
+         WHERE user_id = $${paramCount}
+         RETURNING user_id, full_name, verification_tier, phone_verified, email_verified`,
+        values
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_value, new_value, reason)
+         VALUES ($1, 'updated_user_verification', 'user', $2, $3, $4, $5)`,
+        [req.user.userId, id, JSON.stringify(oldValue), JSON.stringify(newValue), reason || null]
+      );
+
+      await client.query('COMMIT');
+
+      logger.info('User verification updated', { userId: id, adminId: req.user.userId, oldValue, newValue });
+
+      res.json(success(result.rows[0], 'User verification updated'));
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/users/:id/password - Admin sets/resets a user's password
+router.patch('/users/:id/password', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { newPassword, reason } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid user ID', 'INVALID_ID'));
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json(error('New password must be at least 8 characters', 'VALIDATION_ERROR'));
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json(error('reason is required', 'VALIDATION_ERROR'));
+    }
+
+    const existing = await pool.query(`SELECT user_id FROM users WHERE user_id = $1`, [id]);
+    if (existing.rows.length === 0) {
       return res.status(404).json(error('User not found', 'NOT_FOUND'));
     }
 
-    // Log audit trail
+    const newHash = await bcrypt.hash(newPassword, 10);
     await pool.query(
-      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_value)
-       VALUES ($1, 'updated_user_verification', 'user', $2, $3)`,
-      [req.user.userId, id, JSON.stringify({ verification_tier })]
+      `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2`,
+      [newHash, id]
     );
 
-    logger.info('User verification updated', { userId: id, adminId: req.user.userId, tier: verification_tier });
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_value, new_value, reason)
+       VALUES ($1, 'admin_reset_password', 'user', $2, NULL, $3, $4)`,
+      [req.user.userId, id, JSON.stringify({ password_reset: true }), reason.trim()]
+    );
 
-    res.json(success(result.rows[0], 'User verification tier updated'));
+    logger.info('Admin reset user password', { userId: id, adminId: req.user.userId });
+
+    res.json(success({ message: 'Password reset successfully' }));
 
   } catch (err) {
     next(err);
