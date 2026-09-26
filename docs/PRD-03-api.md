@@ -74,16 +74,14 @@ List endpoints accept `?page=1&limit=20` and return:
 
 ## Authentication
 
-### Session-Based Auth
+### Token-Based Auth
 
-- **JWT tokens** stored in HTTP-only cookies
-- **Cookie name**: `tafuta_session`
-- **Expiry**: 60 minutes
-- **Secure flag**: true (HTTPS only)
-- **SameSite**: Strict (CSRF protection)
-- **Storage**: PostgreSQL sessions table via connect-pg-simple
+- **JWT tokens**, signed with `JWT_SECRET`, **not** delivered as a cookie — returned in the JSON response body on `/login` and `/verify-otp`, or as a `?token=` query param on the Google OAuth redirect
+- **Frontend storage**: `localStorage`; sent on every request as `Authorization: Bearer <token>`
+- **Expiry**: 60 minutes (env-overridable via `JWT_EXPIRY`)
+- **Stateless authorization**: no server-side session store — `requireAuth`/`optionalAuth` verify the JWT (signature + expiry) directly from the `Authorization` header. (A parallel `express-session`/`connect-pg-simple` mechanism existed here previously; it was leftover from the initial scaffold, never used for authorization, and was removed — see PRD-01 Session Management for detail.)
 
-All endpoints except public search/listings require authentication via the session cookie. Unauthorized requests receive a 401 response. Requests with insufficient role permissions receive a 403 response.
+All endpoints except public search/listings require authentication via the `Authorization: Bearer` header. Unauthorized requests receive a 401 response. Requests with insufficient role permissions receive a 403 response.
 
 ### Permission Model
 
@@ -101,9 +99,9 @@ Endpoint permissions are validated based on:
 |--------|------|------|-------------|
 | POST | `/api/auth/register` | No | Create user account; sends OTP to verify phone |
 | POST | `/api/auth/request-otp` | No | Request OTP for passwordless login |
-| POST | `/api/auth/verify-otp` | No | Verify OTP; create session cookie |
+| POST | `/api/auth/verify-otp` | No | Verify OTP; returns JWT |
 | POST | `/api/auth/login/password` | No | Login with phone + password |
-| POST | `/api/auth/logout` | Yes | End session; clear cookie |
+| POST | `/api/auth/logout` | Yes | Logs a logout event; does not revoke the JWT itself (stateless — see PRD-01 known limitation) |
 | POST | `/api/auth/password/reset` | No | Request password reset OTP |
 | POST | `/api/auth/password/update` | No | Set new password after OTP verification |
 

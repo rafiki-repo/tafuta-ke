@@ -352,7 +352,7 @@ See PRD-01 and PRD-02 for detailed schema.
 
 - **Backend**: Node.js 22 with Express.js
 - **Database**: PostgreSQL 15+
-- **Session storage**: PostgreSQL (connect-pg-simple)
+- **Authentication**: stateless JWT via `Authorization: Bearer` (no server-side session store; see PRD-01)
 - **Frontend**: React 18+ SPA
 - **Build tool**: Vite
 - **Internationalization**: i18next / react-i18next

@@ -114,9 +114,6 @@ DATABASE_URL=postgresql://tafuta_user:your_secure_password@localhost:5432/tafuta
 JWT_SECRET=your-super-secret-jwt-key-min-32-chars
 JWT_EXPIRY=60m
 
-# Session
-SESSION_SECRET=your-super-secret-session-key-min-32-chars
-
 # PesaPal (production credentials)
 PESAPAL_CONSUMER_KEY=your-pesapal-consumer-key
 PESAPAL_CONSUMER_SECRET=your-pesapal-consumer-secret

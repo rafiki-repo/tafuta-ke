@@ -375,8 +375,6 @@ router.post('/verify-otp', authLimiter, async (req, res, next) => {
     }
 
     const token = createToken(user, user.admin_role);
-    req.session.token = token;
-    req.session.userId = user.user_id;
 
     await logAuthEvent('login_success', {
       userId: user.user_id,
@@ -459,8 +457,6 @@ router.post('/login', authLimiter, async (req, res, next) => {
     await pool.query('UPDATE users SET last_login_at = NOW() WHERE user_id = $1', [user.user_id]);
 
     const token = createToken(user, user.admin_role);
-    req.session.token = token;
-    req.session.userId = user.user_id;
 
     await logAuthEvent('login_success', {
       userId: user.user_id,
@@ -578,8 +574,6 @@ router.get(
       await pool.query('UPDATE users SET last_login_at = NOW() WHERE user_id = $1', [user.user_id]);
 
       const token = createToken(user, user.admin_role);
-      req.session.token = token;
-      req.session.userId = user.user_id;
 
       await logAuthEvent('login_success', {
         userId: user.user_id, email: googleEmail,
@@ -641,16 +635,10 @@ router.patch('/google/phone', requireAuth, async (req, res, next) => {
 // POST /api/auth/logout
 // ---------------------------------------------------------------------------
 
-router.post('/logout', async (req, res, next) => {
+router.post('/logout', requireAuth, async (req, res, next) => {
   try {
-    const userId = req.session?.userId;
-    if (userId) {
-      await logAuthEvent('logout', {
-        userId, ipAddress: req.ip, userAgent: req.get('user-agent'),
-      });
-    }
-    req.session.destroy((err) => {
-      if (err) logger.error('Session destruction failed', { error: err.message });
+    await logAuthEvent('logout', {
+      userId: req.user.userId, ipAddress: req.ip, userAgent: req.get('user-agent'),
     });
     res.json(success({ message: 'Logged out successfully' }));
   } catch (err) {

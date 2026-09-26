@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import useAuthStore from './store/useAuthStore';
+import { setPostLoginRedirect } from './lib/redirect';
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout';
@@ -52,20 +53,29 @@ import AdminInvoices from './pages/admin/Invoices';
 // Protected Route Components
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    setPostLoginRedirect(location.pathname + location.search);
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 }
 
 function AdminRoute({ children }) {
   const { isAuthenticated, isAdmin } = useAuthStore();
-  
+  const location = useLocation();
+
   if (!isAuthenticated) {
+    setPostLoginRedirect(location.pathname + location.search);
     return <Navigate to="/login" replace />;
   }
-  
+
   if (!isAdmin()) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return children;
 }
 

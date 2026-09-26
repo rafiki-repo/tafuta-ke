@@ -32,7 +32,7 @@ I've generated **PRD-06 (Infrastructure & Deployment)** - the final PRD in the s
 - Complete endpoint specifications (auth, users, businesses, payments, receipts, search, admin)
 - External integrations: PesaPal, VintEx SMS, Mailgun, Cloudflare DNS
 - Rate limiting, error codes, security requirements
-- Session-based authentication (JWT in HTTP-only cookies)
+- Token-based authentication (JWT via `Authorization: Bearer`, stored client-side; see PRD-01 for the parallel server-side session mechanism)
 
 ### `@c:\~Local\github\tafuta\docs\PRD-04-ui-ux.md` ✅
 **User Interface & Experience**

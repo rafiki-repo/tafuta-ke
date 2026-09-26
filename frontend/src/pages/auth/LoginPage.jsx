@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import { authAPI, userAPI } from '@/lib/api';
+import { consumePostLoginRedirect } from '@/lib/redirect';
 import useAuthStore from '@/store/useAuthStore';
 
 const TABS = ['google', 'password', 'otp'];
@@ -27,7 +28,7 @@ export default function LoginPage() {
     localStorage.setItem('token', token); // must be set before getProfile() so the request interceptor can attach it
     const userResponse = await userAPI.getProfile();
     setAuth(userResponse.data.data, token);
-    navigate('/dashboard');
+    navigate(consumePostLoginRedirect() || '/dashboard');
   };
 
   const switchTab = (newTab) => {
