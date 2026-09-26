@@ -566,13 +566,15 @@ router.get('/users', async (req, res, next) => {
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const limitNum = parseInt(limit, 10);
 
-    let whereClause = `WHERE u.status != 'deleted'`;
     const params = [];
     let paramCount = 1;
+    let whereClause;
 
     if (status) {
-      whereClause += ` AND u.status = $${paramCount++}`;
+      whereClause = `WHERE u.status = $${paramCount++}`;
       params.push(status);
+    } else {
+      whereClause = `WHERE u.status != 'deleted'`;
     }
 
     if (verification_tier) {
