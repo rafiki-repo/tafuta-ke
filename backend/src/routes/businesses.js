@@ -159,8 +159,8 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     }
 
     const result = await pool.query(
-      `SELECT business_id, business_name, business_tag, category, region, subdomain, logo_url,
-              verification_tier, status, content_json, content_version, created_at, updated_at,
+      `SELECT b.business_id, b.business_name, b.business_tag, b.category, b.region, b.subdomain, b.logo_url,
+              b.verification_tier, b.status, b.content_json, b.content_version, b.created_at, b.updated_at,
               EXISTS (
                 SELECT 1 FROM service_subscriptions ss
                 WHERE ss.business_id = b.business_id
