@@ -19,7 +19,8 @@
       sizes: {
         icon:   { width: 64,   height: 64  },
         small:  { width: 128,  height: 128 },
-        medium: { width: 256,  height: 256 }
+        medium: { width: 256,  height: 256 },
+        large:  { width: 512,  height: 512 }
       }
     },
 

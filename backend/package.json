@@ -11,6 +11,7 @@
     "migrate:rollback": "node src/db/rollback.js",
     "seed": "node src/db/seed.js",
     "promote-admin": "node scripts/promote-admin.js",
+    "regenerate-photo-sizes": "node scripts/regenerate-photo-sizes.js",
     "test": "node --test src/**/*.test.js"
   },
   "keywords": [

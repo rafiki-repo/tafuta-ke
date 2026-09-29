@@ -6,6 +6,7 @@ import { formatCategoryName, isValidUUID } from '../utils/validation.js';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 import pesapalService from '../services/pesapal.js';
+import { regeneratePhotoSizes } from '../services/media.js';
 
 const router = express.Router();
 
@@ -1474,6 +1475,33 @@ router.patch('/system/config/:key', requireRole('super_admin'), async (req, res,
     logger.info('System config updated', { key, adminId: req.user.userId });
 
     res.json(success(result.rows[0], 'System config updated'));
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/system/regenerate-photo-sizes - Backfill WebP outputs for
+// existing photos after a size is added/changed in app-config.jfx
+router.post('/system/regenerate-photo-sizes', requireRole('super_admin'), async (req, res, next) => {
+  try {
+    const { business_tag, image_type, force } = req.body || {};
+
+    const summary = await regeneratePhotoSizes({
+      businessTag: business_tag || undefined,
+      imageType: image_type || undefined,
+      force: Boolean(force),
+    });
+
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, new_value)
+       VALUES ($1, 'regenerated_photo_sizes', 'system_config', $2)`,
+      [req.user.userId, JSON.stringify({ business_tag, image_type, force: Boolean(force), ...summary })]
+    );
+
+    logger.info('Photo sizes regenerated', { adminId: req.user.userId, ...summary });
+
+    res.json(success(summary, 'Photo sizes regenerated'));
 
   } catch (err) {
     next(err);
