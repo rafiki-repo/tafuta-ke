@@ -5,11 +5,13 @@ import { siteAPI } from "@/lib/api";
 import SiteClassic from "./templates/SiteClassic";
 import SiteBold from "./templates/SiteBold";
 import SiteMinimal from "./templates/SiteMinimal";
+import SiteVibrant from "./templates/SiteVibrant";
 
 const TEMPLATES = {
   classic: SiteClassic,
   bold: SiteBold,
   minimal: SiteMinimal,
+  vibrant: SiteVibrant,
 };
 
 export default function SitePage() {

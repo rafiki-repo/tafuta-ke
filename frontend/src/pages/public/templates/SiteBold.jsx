@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ExternalLink, CalendarPlus, ShoppingCart } from "lucide-react";
+import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ExternalLink, CalendarPlus, ShoppingCart, Heart } from "lucide-react";
 import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -66,6 +66,7 @@ export default function SiteBold({ business }) {
     logo_url,
     category,
     region,
+    locally_owned,
     profile = {},
     contact = {},
     location = {},
@@ -110,8 +111,14 @@ export default function SiteBold({ business }) {
           )}
           <h1 className="text-4xl md:text-5xl font-black tracking-tight">{business_name}</h1>
           {profile.tagline && <p className="mt-3 text-lg text-white/80 max-w-lg mx-auto">{profile.tagline}</p>}
-          {(category || region) && (
+          {(category || region || locally_owned) && (
             <div className="mt-4 flex justify-center gap-3 flex-wrap">
+              {locally_owned && (
+                <span className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1 text-sm font-semibold">
+                  <Heart className="h-3.5 w-3.5 fill-current" />
+                  Locally Owned
+                </span>
+              )}
               {category && <span className="bg-white/20 rounded-full px-3 py-1 text-sm capitalize">{category}</span>}
               {region && <span className="bg-white/20 rounded-full px-3 py-1 text-sm">{region}</span>}
             </div>
