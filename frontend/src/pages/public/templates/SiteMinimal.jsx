@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, CalendarPlus, ShoppingCart } from "lucide-react";
+import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, CalendarPlus, ShoppingCart, Heart } from "lucide-react";
 import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -92,6 +92,7 @@ export default function SiteMinimal({ business }) {
     logo_url,
     category,
     region,
+    locally_owned,
     profile = {},
     contact = {},
     location = {},
@@ -142,6 +143,12 @@ export default function SiteMinimal({ business }) {
         {(category || region) && (
           <p className="mt-1.5 text-[11px] uppercase tracking-widest text-gray-600">
             {[category, region].filter(Boolean).join(" · ")}
+          </p>
+        )}
+        {locally_owned && (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white border border-white/30 rounded-full px-3 py-1">
+            <Heart className="h-3 w-3 fill-current" />
+            Locally Owned
           </p>
         )}
       </header>

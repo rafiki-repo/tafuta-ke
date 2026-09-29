@@ -417,6 +417,8 @@ Layout similar to search results, pre-filtered by region. Shows page title "Busi
 
 ### Website Content Editor
 
+> **Superseded.** The mockup below (single generic editor, no template choice, `[EN][SW][KK][KY]` language tabs) reflects the original design and was not what got built. See [PRD-15](PRD-15-business-website-templates.md) for the template picker system and content model actually implemented.
+
 **URL**: `https://tafuta.ke/config/business/:id/website`
 
 **Layout:**

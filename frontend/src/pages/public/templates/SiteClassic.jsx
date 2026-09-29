@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, Globe, MapPin, Clock, X, ExternalLink, Wrench, ShoppingBag, CalendarPlus, ShoppingCart } from "lucide-react";
+import { Phone, Mail, MessageCircle, Globe, MapPin, Clock, X, ExternalLink, Wrench, ShoppingBag, CalendarPlus, ShoppingCart, Heart } from "lucide-react";
 import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -74,6 +74,7 @@ export default function SiteClassic({ business }) {
     logo_url,
     category,
     region,
+    locally_owned,
     profile = {},
     contact = {},
     location = {},
@@ -126,8 +127,14 @@ export default function SiteClassic({ business }) {
               {profile.tagline && (
                 <p className="text-white/80 text-sm mt-0.5 line-clamp-1">{profile.tagline}</p>
               )}
-              {(category || region) && (
+              {(category || region || locally_owned) && (
                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  {locally_owned && (
+                    <span className="flex items-center gap-1 text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">
+                      <Heart className="h-3 w-3 fill-current" />
+                      Locally Owned
+                    </span>
+                  )}
                   {category && (
                     <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full capitalize">{category}</span>
                   )}

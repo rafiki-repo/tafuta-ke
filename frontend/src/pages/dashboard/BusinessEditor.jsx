@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Save, Building2, Globe, Monitor, Zap, Minus, Plus, Trash2, Package, Camera, ImageOff, X, CreditCard, Search } from "lucide-react";
+import { ArrowLeft, Save, Building2, Globe, Monitor, Zap, Minus, Sparkles, Plus, Trash2, Package, Camera, ImageOff, X, CreditCard, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -131,6 +131,7 @@ export default function BusinessEditor() {
     postalCode: "",
     hours: { ...defaultHours },
     siteTemplate: "classic",
+    locallyOwned: false,
     products: [],
   });
 
@@ -211,6 +212,7 @@ export default function BusinessEditor() {
         postalCode: c.location?.postal_code || "",
         hours: c.hours || { ...defaultHours },
         siteTemplate: c.site_template || "classic",
+        locallyOwned: c.locally_owned === true,
         products: Array.isArray(c.products) ? c.products : [],
       });
       setWebsiteEnabled(
@@ -453,6 +455,7 @@ export default function BusinessEditor() {
     },
     hours: formData.hours,
     site_template: formData.siteTemplate,
+    locally_owned: formData.locallyOwned,
     products: formData.products,
     metadata: { last_updated: new Date().toISOString() },
   });
@@ -724,6 +727,23 @@ export default function BusinessEditor() {
                     </span>
                   )}
                 </p>
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.locallyOwned}
+                    onChange={(e) => handleChange("locallyOwned", e.target.checked)}
+                    className="mt-0.5 h-4 w-4"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">Locally Owned Business</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Shown as a badge on your public website.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               {isEditMode && currentBusiness && (
@@ -1109,7 +1129,7 @@ export default function BusinessEditor() {
                 . The page is built from your business info, logo, and photos.
               </p>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   {
                     id: "classic",
@@ -1128,6 +1148,12 @@ export default function BusinessEditor() {
                     label: "Minimal",
                     icon: Minus,
                     description: "Clean single-column layout. Text-forward, loads fast.",
+                  },
+                  {
+                    id: "vibrant",
+                    label: "Vibrant",
+                    icon: Sparkles,
+                    description: "Playful pink card-stack layout with big rounded panels. Great for shops and boutiques.",
                   },
                 ].map((tpl) => {
                   const Icon = tpl.icon;
