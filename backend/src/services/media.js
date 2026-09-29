@@ -354,3 +354,105 @@ export async function listImagesForType(
     return [];
   }
 }
+
+// ---------------------------------------------------------------------------
+// Bulk regeneration — backfill WebP outputs after app-config.jfx sizes change
+// ---------------------------------------------------------------------------
+
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Re-renders WebP outputs for already-uploaded photos, from each image's
+ * original source file + its stored transform spec (never the raw file
+ * as-is). Used to backfill a newly added size tag in app-config.jfx across
+ * every existing business, without needing a re-upload or manual edit.
+ *
+ * @param {object} [options]
+ * @param {string} [options.businessTag] - limit to one business
+ * @param {string} [options.imageType]   - limit to one image type (e.g. "logo")
+ * @param {boolean} [options.force]      - regenerate sizes that already exist on disk
+ * @returns {Promise<{ generated: number, skipped: number, failed: number, errors: string[] }>}
+ */
+export async function regeneratePhotoSizes(options = {}) {
+  const { businessTag, imageType, force = false } = options;
+
+  const appConfig = await readAppConfig();
+  const mediaRoot = config.media.path;
+
+  let businessTags;
+  try {
+    const entries = await fs.readdir(mediaRoot, { withFileTypes: true });
+    businessTags = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch (err) {
+    throw new Error(`Could not read media root at ${mediaRoot}: ${err.message}`);
+  }
+
+  if (businessTag) businessTags = businessTags.filter((t) => t === businessTag);
+
+  const summary = { generated: 0, skipped: 0, failed: 0, errors: [] };
+
+  for (const tag of businessTags) {
+    const businessFolder = getBusinessFolder(tag);
+    const imageTypes = imageType ? [imageType] : Object.keys(appConfig.image_types);
+
+    for (const type of imageTypes) {
+      const typeConfig = appConfig.image_types[type];
+      if (!typeConfig) continue;
+
+      const typeFolder = path.join(businessFolder, type);
+      let files;
+      try {
+        files = await fs.readdir(typeFolder);
+      } catch {
+        continue; // this business has no images of this type
+      }
+
+      const slugs = files.filter((f) => f.endsWith(".jfx")).map((f) => f.slice(0, -4));
+
+      for (const slug of slugs) {
+        let spec;
+        try {
+          spec = await readTransformSpec(businessFolder, type, slug);
+        } catch (err) {
+          summary.failed++;
+          summary.errors.push(`${tag}/${type}/${slug}: could not read spec (${err.message})`);
+          continue;
+        }
+
+        let sourceBuffer;
+        try {
+          sourceBuffer = await fs.readFile(path.join(businessFolder, spec.source));
+        } catch (err) {
+          summary.failed++;
+          summary.errors.push(`${tag}/${type}/${slug}: source file missing (${spec.source})`);
+          continue;
+        }
+
+        for (const [sizeTag, sizeConfig] of Object.entries(typeConfig.sizes)) {
+          const outputPath = path.join(typeFolder, `${slug}_${sizeTag}.webp`);
+          if (!force && (await pathExists(outputPath))) {
+            summary.skipped++;
+            continue;
+          }
+          try {
+            const webpBuffer = await processImage(sourceBuffer, spec.transform, sizeConfig);
+            await fs.writeFile(outputPath, webpBuffer);
+            summary.generated++;
+          } catch (err) {
+            summary.failed++;
+            summary.errors.push(`${tag}/${type}/${slug}_${sizeTag}.webp: ${err.message}`);
+          }
+        }
+      }
+    }
+  }
+
+  return summary;
+}

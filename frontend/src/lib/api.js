@@ -146,6 +146,7 @@ export const adminAPI = {
   updateUserStatus: (id, data) => api.patch(`/admin/users/${id}/status`, data),
   getSystemConfig: () => api.get('/admin/system/config'),
   updateSystemConfig: (key, data) => api.patch(`/admin/system/config/${key}`, data),
+  regeneratePhotoSizes: (data) => api.post('/admin/system/regenerate-photo-sizes', data),
   getCategories: () => api.get('/admin/categories'),
   updateCategories: (categories) => api.patch('/admin/categories', { categories }),
   renameCategory: (oldCategory, newCategory) => api.patch('/admin/categories/rename', {

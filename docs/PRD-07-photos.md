@@ -2,7 +2,7 @@
 
 **Product Requirements Document**
 **Version**: 1.0
-**Last Updated**: Feb 28, 2026
+**Last Updated**: Sep 28, 2026
 **Status**: Draft — MVP
 
 ---
@@ -112,7 +112,8 @@ Managed by Tafuta staff only — not editable by business owners. Changes take e
       sizes: {
         icon:   { width: 64,   height: 64  },
         small:  { width: 128,  height: 128 },
-        medium: { width: 256,  height: 256 }
+        medium: { width: 256,  height: 256 },
+        large:  { width: 512,  height: 512 }
       }
     },
 
@@ -167,7 +168,8 @@ Size-tag keys (e.g., `icon`, `300x100`, `thumb`) appear in output filenames and 
     │   ├── my-logo.jfx                     ← transform spec
     │   ├── my-logo_icon.webp               ← generated outputs
     │   ├── my-logo_small.webp
-    │   └── my-logo_medium.webp
+    │   ├── my-logo_medium.webp
+    │   └── my-logo_large.webp
     │
     ├── banner/
     │   ├── cover-banner.jfx
@@ -493,7 +495,56 @@ business_tag  VARCHAR(64)  UNIQUE  NOT NULL
 
 ---
 
-## 17. MVP Scope
+## 17. Public Display: Click-to-Enlarge
+
+On the public business detail page, the logo thumbnail is clickable. Clicking it opens an overlay showing the same logo rendered at the largest configured size (`large`, 512×512 — see §2) rather than the `medium` (256×256) size used for the inline thumbnail.
+
+**Important:** the enlarged view is always a *rendered* WebP output — it goes through the same sharp pipeline and the same stored transform spec (§6) as every other size. It is never the raw uploaded source file. This keeps the enlarged image visually consistent with the thumbnail (same crop, zoom, brightness, etc.), just at higher resolution.
+
+**Fallback:** if a business's `large` output does not yet exist on disk (e.g., it was uploaded before the `large` size tier was added to `app-config.jfx` and hasn't been backfilled — see §18), the overlay falls back to the `medium` size via an `onerror` handler on the `<img>`, so the feature degrades gracefully instead of showing a broken image.
+
+This same click-to-enlarge pattern (thumbnail → largest configured size, rendered not raw) is the intended approach for other image types (banner, profile, gallery) as they get similar treatment.
+
+---
+
+## 18. Bulk Reprocessing (Regenerate Photo Sizes)
+
+When a size is added or changed for an image type in `app-config.jfx` (as happened when `large` was added to `logo` — see §2), only *new* uploads and *edited* images automatically get the new size, because size generation only runs on upload and on transform-update (§9, §10). Existing images need to be backfilled.
+
+A shared backend function, `regeneratePhotoSizes()`, re-renders WebP outputs for already-uploaded photos from each image's original source file + its stored `.jfx` transform spec — identical in principle to §10 ("Updating Transform Parameters Only"), but run in bulk across some or all businesses instead of one image at a time. It is exposed two ways:
+
+### CLI script
+
+```
+npm run regenerate-photo-sizes
+npm run regenerate-photo-sizes -- --tag=<business_tag>
+npm run regenerate-photo-sizes -- --type=<image_type>
+npm run regenerate-photo-sizes -- --force
+```
+
+- `--tag` limits the run to one business; `--type` limits it to one image type (e.g. `logo`).
+- By default, a size is only generated if it's missing on disk (fast, idempotent re-run after a partial failure). `--force` regenerates every size even if it already exists.
+
+### Admin panel action
+
+Tafuta Admin → **System Config** → **Maintenance** → **Regenerate Photo Sizes**, gated to `super_admin` (`POST /api/admin/system/regenerate-photo-sizes`). Runs the same function across the full catalog, logs an audit trail entry (`regenerated_photo_sizes`), and returns a summary (`generated`, `skipped`, `failed`, plus per-image error messages) that the admin UI displays once the run completes.
+
+### Response shape
+
+```json
+{
+  "generated": 42,
+  "skipped": 118,
+  "failed": 0,
+  "errors": []
+}
+```
+
+**Future consideration:** this action currently runs synchronously within the HTTP request — the admin's browser waits for the entire catalog to finish processing, matching how a single upload is already processed synchronously with sharp. This is fine at current catalog size, but as the number of businesses/photos grows, a full-catalog run risks hitting an HTTP or reverse-proxy request timeout. If that becomes a problem, this should move to an async background job (e.g., queued and processed off the request thread, with the admin UI polling a job-status endpoint) rather than blocking the request.
+
+---
+
+## 19. MVP Scope
 
 **In scope for MVP:**
 - Full upload, transform preview, and WebP generation pipeline
@@ -502,10 +553,12 @@ business_tag  VARCHAR(64)  UNIQUE  NOT NULL
 - `business_tag` field and media folder naming
 - Caddy-served media at `/media/...`
 - Per-image `.jfx` transform specs
+- Click-to-enlarge on the public business detail page (logo; §17)
+- Bulk reprocessing when `app-config.jfx` sizes change, via CLI script and admin panel action (§18)
 
 **Out of scope for MVP:**
 - Drag-to-pan directly on the preview canvas (sliders only for MVP)
-- Bulk reprocessing when `app-config.jfx` sizes change
+- Async/background bulk reprocessing — current implementation runs synchronously in the request (see the future-consideration note in §18)
 - CDN offloading of media files (VPS filesystem only in MVP)
 - Video uploads
 
