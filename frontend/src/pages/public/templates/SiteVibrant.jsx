@@ -129,7 +129,7 @@ export default function SiteVibrant({ business }) {
         </header>
 
         {/* ── HERO CARD: image + quick info ──────────────────────────────── */}
-        <section className="rounded-[2rem] border-2 border-white/30 bg-white/5 p-4 space-y-3">
+        <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-4 space-y-3">
           {heroUrl && (
             <button
               type="button"
@@ -153,7 +153,7 @@ export default function SiteVibrant({ business }) {
 
         {/* ── ABOUT / STORE ───────────────────────────────────────────────── */}
         {(profile.description || storeStrip.length > 0) && (
-          <section className="rounded-[2rem] border-2 border-white/30 bg-white/5 p-6 text-center space-y-3">
+          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 text-center space-y-3">
             <h2 className="text-xl font-black uppercase">Check Out Our Store!</h2>
             {storeStrip.length > 0 && (
               <div className="flex gap-1.5 rounded-2xl overflow-hidden border-4 border-white/20">
@@ -173,7 +173,7 @@ export default function SiteVibrant({ business }) {
 
         {/* ── SERVICES ────────────────────────────────────────────────────── */}
         {services.length > 0 && (
-          <section className="rounded-[2rem] border-2 border-white/30 bg-white/5 p-6 space-y-3">
+          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 space-y-3">
             <h2 className="text-xl font-black uppercase text-center">Our Services</h2>
             <div className="space-y-2">
               {services.map(p => (
@@ -208,7 +208,7 @@ export default function SiteVibrant({ business }) {
 
         {/* ── PRODUCTS / CATALOG (falls back to gallery) ─────────────────── */}
         {(productItems.length > 0 || (services.length === 0 && galleryItems.length > 0)) && (
-          <section className="rounded-[2rem] border-2 border-white/30 bg-white/5 p-6 space-y-3">
+          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 space-y-3">
             <h2 className="text-xl font-black uppercase text-center">
               {productItems.length > 0 ? "Our Products" : "Take A Look"}
             </h2>
@@ -228,7 +228,7 @@ export default function SiteVibrant({ business }) {
         )}
 
         {/* ── VISIT US ────────────────────────────────────────────────────── */}
-        <section className="rounded-[2rem] border-2 border-white/30 bg-white/5 p-6 space-y-4 text-center">
+        <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 space-y-4 text-center">
           <h2 className="text-xl font-black uppercase">Come Visit Us!</h2>
           {profile.how_to_find && (
             <p className="text-white/90 leading-relaxed whitespace-pre-line">{profile.how_to_find}</p>
@@ -306,7 +306,7 @@ export default function SiteVibrant({ business }) {
 
         {/* ── HOURS ───────────────────────────────────────────────────────── */}
         {hasHours && (
-          <section className="rounded-[2rem] border-2 border-white/30 bg-white/5 p-6">
+          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6">
             <h2 className="text-xl font-black uppercase text-center mb-3">Business Hours</h2>
             <div className="space-y-1.5">
               {DAYS.map(day => {
