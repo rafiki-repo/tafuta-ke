@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, BarChart3, CreditCard, Tags, Layers, FileText, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, BarChart3, CreditCard, Tags, Layers, FileText, Settings, Menu, X } from 'lucide-react';
 import { Header } from '@/components/Header';
 import useAuthStore from '@/store/useAuthStore';
 
@@ -18,6 +18,7 @@ export default function AdminLayout() {
     { name: 'Services', href: '/admin/services', icon: Layers },
     { name: 'Invoices', href: '/admin/invoices', icon: FileText },
     { name: 'Payments', href: '/admin/payments', icon: CreditCard },
+    { name: 'System Config', href: '/admin/config', icon: Settings },
   ];
 
   const isActive = (href) => {
