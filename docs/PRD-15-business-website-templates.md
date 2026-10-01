@@ -1,9 +1,9 @@
 # PRD-15: Business Website Templates & One-Page Site Builder
 
 **Product Requirements Document**
-**Version:** 1.0
-**Last Updated:** September 2026
-**Status:** Implemented
+**Version:** 1.2
+**Last Updated:** October 2026
+**Status:** Implemented — display-only mode active (cart/book suspended, see §4.7)
 
 ---
 
@@ -73,9 +73,55 @@ A boolean flag, editable by both the business owner and an admin from the same s
 
 All four use a `Heart` icon for visual consistency. The flag is exposed publicly via `GET /api/site/:tag` (`locally_owned: c.locally_owned === true`).
 
-### 4.5 Dashboard editing flow
+### 4.5 Dashboard editing flow — owner vs. admin differentiation
 
-Both the "Basic Info" tab (name, category, tagline, description, how-to-find, locally-owned checkbox) and the "Website" tab (template picker, live/offline toggle, products/services catalog) live in `BusinessEditor.jsx`. Saving submits the entire `content_json` object in one PUT — there's no per-field save endpoint. `site_template` and `locally_owned` are plain top-level keys in that payload, following the same pattern as every other field in this document.
+`BusinessEditor.jsx` is a single shared component used by two routes:
+
+- **Owner route** — `/dashboard/businesses/:id/edit`
+- **Admin route** — `/admin/businesses/:id/edit`
+
+Both routes render the same JSX, but the component switches behaviour based on `isAdminContext = pathname.startsWith('/admin/')` — a URL check, not a role check. This matters for the website tab:
+
+| Action | Admin (`/admin/`) | Owner (`/dashboard/`) |
+|---|---|---|
+| Website toggle | Toggle switch — flips `website_enabled` immediately via `PATCH /api/admin/businesses/:id/toggle-website` | Not shown if inactive. If inactive, shows "Activate Website" button that opens a payment modal. |
+| Toggle when no subscription | Allowed (admin override) | N/A — owner sees payment modal instead |
+| Website already live | Toggle switch visible | Green status badge + site link |
+
+The `PATCH` toggle endpoint updates only `website_enabled` inside `content_json` using `jsonb_set` — it does not touch any other key. The main form save (`businessAPI.update`) preserves `website_enabled` from the current DB value, so saving the form after toggling never overwrites the toggle state.
+
+Saving submits the entire `content_json` in one PUT with `website_enabled` preserved (see §4.6 for why this matters). `site_template` and `locally_owned` are plain top-level keys in that payload.
+
+### 4.6 Website subscription lifecycle
+
+The site is gated by an active `website_hosting` subscription. The full lifecycle:
+
+1. **Owner activates** — on the website tab (`/dashboard/`), an inactive business shows a payment modal with a period selector (weekly / monthly / annual, matching billing types configured in admin → Services). Submitting initiates a PesaPal payment. On successful payment callback, `processCompletedPayment` auto-sets `website_enabled = true` in `content_json` and inserts an active row in `service_subscriptions`.
+
+2. **Admin activates** — from `/admin/`, the toggle switch sets `website_enabled` directly via `PATCH /api/admin/businesses/:id/toggle-website` without requiring a payment. This is the override path for comped or manually arranged accounts.
+
+3. **Auto-expiry** — a daily cron job at 07:00 EAT (`backend/src/cron.js → checkSubscriptionExpiry`) marks expired subscriptions as `'expired'` and, for any business whose `website_hosting` just expired, sets `website_enabled = false`. The site becomes inaccessible to visitors until renewed.
+
+4. **Auto-invoicing** — a daily cron job at 08:00 EAT (`backend/src/services/autoInvoice.js → generateDueInvoices`) creates a pending invoice 7 days before any recurring subscription's expiry, giving the owner advance notice. The invoice description includes "Weekly renewal / Monthly renewal / Annual renewal — expires {date}" based on the subscription's billing type. SMS/email delivery is queued but delivery integration is pending (see §5).
+
+5. **Renewal** — the owner pays the auto-invoice or returns to the payment modal. On payment completion, `processCompletedPayment` extends the existing subscription's `expiration_date` rather than inserting a new row (idempotent upsert).
+
+Billing types supported: `weekly`, `monthly`, `annual`, `one_time`. All four are configurable in admin → Services. The "period selector" in the owner's payment modal adapts its label (Weeks / Months / Years) and summary text to the service's billing type.
+
+### 4.7 Display-only mode (cart/book suspended)
+
+As of October 2026, the WhatsApp ordering and booking layer has been **temporarily suspended** across all four templates. The site now serves as a display showcase only — contact buttons (Phone, WhatsApp, Email) remain active, but:
+
+- **Book button** (services) — commented out in all four template files. Search for `// BOOK:` to restore.
+- **Add to Cart button** (products) — `onAddToCart={null}` in all four templates; the card's button renders only when `onAddToCart` is non-null.
+- **Cart FAB** — commented out. Search for `// ── CART FAB` to restore.
+- **Booking modal** — commented out. Search for `// ── BOOKING MODAL` to restore.
+- **Cart drawer** — commented out. Search for `// ── CART DRAWER` to restore.
+- **`_booking.jsx` import** — commented out at the top of each template. Restore the import line alongside the UI elements above.
+
+The `_booking.jsx` module itself is unchanged. Re-enabling the full flow requires uncommenting the import and the six JSX blocks (one per template file × four templates). No DB changes are needed; the cart was always in-memory only.
+
+**Decision:** The commerce layer was suspended because the WhatsApp-redirect model needs UX review before going live with paying subscribers. No timeline for restoration has been committed. This section and the in-code comments are the record of where to resume.
 
 ## 5. Future / Not Yet Built
 
@@ -91,7 +137,7 @@ These were discussed and scoped at a high level but **not started**. Full detail
 Explicit boundaries, so future work on this feature doesn't quietly grow past what's needed:
 
 - **Owner-uploaded or marketplace templates.** The template set is a fixed, developer-maintained list. There is no plan for businesses to upload custom HTML/CSS or choose from a marketplace of third-party designs.
-- **Online payment/checkout.** The WhatsApp cart and booking flow (§4.3) is intentionally the entire extent of "commerce" here — a deep link to a pre-filled WhatsApp message. No payment gateway integration, no order persistence, no inventory management is planned as part of the site builder.
+- **Online payment/checkout.** The WhatsApp cart and booking flow (`_booking.jsx`) is intentionally the entire extent of "commerce" considered for the site builder — a deep link to a pre-filled WhatsApp message. No payment gateway integration, no order persistence, no inventory management is planned. The commerce layer is currently suspended (see §4.7) pending UX review, but the implementation is intact in `_booking.jsx` and will be restored when ready.
 - **A dedicated "owner profile" content type.** The legacy reference site (Vibrant's inspiration) had a named owner photo/bio section ("Joyce Mbole Mwendwa – Business Owner"). No such field exists in `content_json`, and none is planned — `profile.how_to_find` covers the equivalent "come visit us" copy without impersonating a specific unverified person.
 - **Geocoding or verified addresses.** `location.*` fields stay freeform text, exactly as the owner types them. No lat/lng capture, no address verification against a mapping API, and no guarantee that a Maps embed built from that text resolves to the correct pin — this was flagged explicitly as a risk on the Vibrant template's map embed, not solved.
 - **SEO tooling.** No per-business meta tags, structured data (JSON-LD), sitemap entries, or social share card editor. (Pregeneration, if built per §5, would incidentally help crawlability, but that's a side effect, not a goal.)

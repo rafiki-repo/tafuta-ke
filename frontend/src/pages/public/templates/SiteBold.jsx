@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ExternalLink, CalendarPlus, ShoppingCart, Heart } from "lucide-react";
-import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking";
+import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ExternalLink, ShoppingCart, Heart } from "lucide-react";
+// CalendarPlus — restore to lucide import above when re-enabling booking
+// import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_SHORT = { monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun" };
@@ -77,9 +78,9 @@ export default function SiteBold({ business }) {
   } = business;
 
   const [lightbox, setLightbox] = useState(null);
-  const [bookingService, setBookingService] = useState(null);
-  const [cartOpen, setCartOpen] = useState(false);
-  const cart = useCart();
+  // const [bookingService, setBookingService] = useState(null); // CART/BOOK
+  // const [cartOpen, setCartOpen] = useState(false);           // CART/BOOK
+  // const cart = useCart();                                     // CART/BOOK
 
   const services = products.filter(p => (p.type || "service") === "service");
   const productItems = products.filter(p => p.type === "product");
@@ -189,6 +190,7 @@ export default function SiteBold({ business }) {
                   {p.price && (
                     <span className="text-sm font-bold text-orange-400 shrink-0">KES {p.price}</span>
                   )}
+                  {/* BOOK: restore when ready:
                   {waNumber && (
                     <button
                       type="button"
@@ -199,6 +201,7 @@ export default function SiteBold({ business }) {
                       Book
                     </button>
                   )}
+                  */}
                 </div>
               ))}
             </div>
@@ -211,7 +214,7 @@ export default function SiteBold({ business }) {
             <h2 className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-4">Products</h2>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
               {productItems.map(p => (
-                <CatalogCard key={p.id} item={p} isProduct={true} onAddToCart={waNumber ? cart.addItem : null} />
+                <CatalogCard key={p.id} item={p} isProduct={true} onAddToCart={null} />
               ))}
             </div>
           </section>
@@ -337,10 +340,9 @@ export default function SiteBold({ business }) {
         )}
       </main>
 
-      {/* ── CART FAB ─────────────────────────────────────────────────────── */}
-      <CartFab itemCount={cart.itemCount} onClick={() => setCartOpen(true)} />
+      {/* ── CART FAB — restore when ready: <CartFab itemCount={cart.itemCount} onClick={() => setCartOpen(true)} /> */}
 
-      {/* ── BOOKING MODAL ────────────────────────────────────────────────── */}
+      {/* ── BOOKING MODAL — restore when ready:
       {bookingService && waNumber && (
         <BookingModal
           service={bookingService}
@@ -349,8 +351,9 @@ export default function SiteBold({ business }) {
           onClose={() => setBookingService(null)}
         />
       )}
+      */}
 
-      {/* ── CART DRAWER ──────────────────────────────────────────────────── */}
+      {/* ── CART DRAWER — restore when ready:
       {cartOpen && (
         <CartDrawer
           cart={cart}
@@ -359,6 +362,7 @@ export default function SiteBold({ business }) {
           onClose={() => setCartOpen(false)}
         />
       )}
+      */}
 
       {/* ── MOBILE STICKY CTA ────────────────────────────────────────────── */}
       {(contact.phone || waNumber) && (
