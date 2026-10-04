@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Phone, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ExternalLink, ShoppingCart, Heart } from "lucide-react";
+import { Phone, MessageCircle, MapPin, Globe, Wrench, ShoppingBag, ExternalLink, ShoppingCart, Heart } from "lucide-react";
 import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
+import { PhotoLightbox } from "./_lightbox";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
 
@@ -180,7 +181,9 @@ export default function SiteVibrant({ business }) {
               {services.map(p => (
                 <div key={p.id} className="flex items-center gap-3 rounded-2xl border-2 border-white/25 px-4 py-3">
                   {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-xl object-cover shrink-0" />
+                    <button type="button" onClick={() => setLightbox(p.image_url)} className="shrink-0">
+                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-xl object-cover" />
+                    </button>
                   ) : (
                     <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/25 flex items-center justify-center shrink-0">
                       <Wrench className="h-4 w-4 text-white/60" />
@@ -378,27 +381,8 @@ export default function SiteVibrant({ business }) {
         </div>
       )}
 
-      {/* ── LIGHTBOX ─────────────────────────────────────────────────────── */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 rounded-full p-2"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img
-            src={lightbox}
-            alt=""
-            className="max-h-[90vh] max-w-full object-contain rounded-lg"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {/* ── PHOTO LIGHTBOX ──────────────────────────────────────────────── */}
+      {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
       <footer className="text-center text-xs text-white/60 py-5 pb-24">
         Listed on{" "}

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ExternalLink, ShoppingCart, Heart } from "lucide-react";
+import { Phone, Mail, MessageCircle, MapPin, Globe, Wrench, ShoppingBag, ExternalLink, ShoppingCart, Heart } from "lucide-react";
 import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
+import { PhotoLightbox } from "./_lightbox";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
 
@@ -21,15 +22,19 @@ function primaryImage(images, type, primary, sizeTag) {
   return sizes[sizeTag] || Object.values(sizes)[0] || null;
 }
 
-function CatalogCard({ item, isProduct, onAddToCart }) {
+function CatalogCard({ item, isProduct, onAddToCart, onImageClick }) {
   const imgUrl = item.image_url || item.image || null;
   const PlaceholderIcon = isProduct ? ShoppingBag : Wrench;
   return (
     <div className="rounded-xl overflow-hidden bg-gray-900 border border-gray-800 hover:border-orange-500/40 transition-colors">
       {imgUrl ? (
-        <div className="w-full aspect-[4/3] bg-gray-800 flex items-center justify-center overflow-hidden">
+        <button
+          type="button"
+          onClick={() => onImageClick(imgUrl)}
+          className="w-full aspect-[4/3] bg-gray-800 flex items-center justify-center overflow-hidden"
+        >
           <img src={imgUrl} alt={item.name} className="w-full h-full object-contain" loading="lazy" />
-        </div>
+        </button>
       ) : (
         <div className="w-full aspect-[4/3] bg-gray-800 flex items-center justify-center">
           <PlaceholderIcon className="h-10 w-10 text-gray-600" />
@@ -176,7 +181,9 @@ export default function SiteBold({ business }) {
               {services.map(p => (
                 <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-gray-900 hover:bg-gray-800 transition-colors">
                   {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-cover shrink-0" />
+                    <button type="button" onClick={() => setLightbox(p.image_url)} className="shrink-0">
+                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-cover" />
+                    </button>
                   ) : (
                     <div className="h-10 w-10 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0">
                       <Wrench className="h-4 w-4 text-gray-500" />
@@ -215,7 +222,7 @@ export default function SiteBold({ business }) {
             <h2 className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-4">Products</h2>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
               {productItems.map(p => (
-                <CatalogCard key={p.id} item={p} isProduct={true} onAddToCart={null} />
+                <CatalogCard key={p.id} item={p} isProduct={true} onAddToCart={null} onImageClick={setLightbox} />
               ))}
             </div>
           </section>
@@ -397,27 +404,8 @@ export default function SiteBold({ business }) {
         </div>
       )}
 
-      {/* ── LIGHTBOX ─────────────────────────────────────────────────────── */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 rounded-full p-2"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img
-            src={lightbox}
-            alt=""
-            className="max-h-[90vh] max-w-full object-contain rounded-lg"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {/* ── PHOTO LIGHTBOX ──────────────────────────────────────────────── */}
+      {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
       <footer className="border-t border-gray-800 text-center text-xs text-gray-600 py-5 pb-20 md:pb-5">
         Listed on{" "}
