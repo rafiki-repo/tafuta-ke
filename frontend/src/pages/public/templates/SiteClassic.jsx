@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, Globe, MapPin, Clock, X, ExternalLink, Wrench, ShoppingBag, ShoppingCart, Heart } from "lucide-react";
+import { Phone, Mail, MessageCircle, Globe, MapPin, Clock, ExternalLink, Wrench, ShoppingBag, ShoppingCart, Heart } from "lucide-react";
+import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
+import { PhotoLightbox } from "./_lightbox";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
 
@@ -29,14 +31,18 @@ function SectionTitle({ children }) {
   );
 }
 
-function ServiceCard({ product, onAddToCart }) {
+function ServiceCard({ product, onAddToCart, onImageClick }) {
   const imgUrl = product.image_url || product.image || null;
   return (
     <div className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow mt-2">
       {imgUrl ? (
-        <div className="w-full aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden">
+        <button
+          type="button"
+          onClick={() => onImageClick(imgUrl)}
+          className="w-full aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden"
+        >
           <img src={imgUrl} alt={product.name} className="w-full h-full object-contain" loading="lazy" />
-        </div>
+        </button>
       ) : (
         <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
           <ShoppingBag className="h-8 w-8 text-gray-300" />
@@ -212,7 +218,9 @@ export default function SiteClassic({ business }) {
               {services.map(p => (
                 <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors">
                   {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-gray-50 border shrink-0" />
+                    <button type="button" onClick={() => setLightbox(p.image_url)} className="shrink-0">
+                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-gray-50 border" />
+                    </button>
                   ) : (
                     <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                       <Wrench className="h-4 w-4 text-gray-400" />
@@ -255,6 +263,7 @@ export default function SiteClassic({ business }) {
                   key={p.id}
                   product={p}
                   onAddToCart={null}
+                  onImageClick={setLightbox}
                 />
               ))}
             </div>
@@ -319,7 +328,7 @@ export default function SiteClassic({ business }) {
               </section>
             )}
 
-            {(location.city || location.street_address) && (
+            {(location.city || location.street_address || hasMapLocation(location)) && (
               <section>
                 <SectionTitle>
                   <MapPin className="h-3.5 w-3.5 inline-block mr-1" />Location
@@ -330,16 +339,28 @@ export default function SiteClassic({ business }) {
                     <p>{[location.city, location.region].filter(Boolean).join(", ")}</p>
                   )}
                   {location.postal_code && <p>{location.postal_code}</p>}
-                  {location.city && (
-                    <a
-                      href={`https://maps.google.com/?q=${encodeURIComponent([location.street_address, location.city, location.region].filter(Boolean).join(", "))}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline mt-1"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Open in Google Maps
-                    </a>
+                  {hasMapLocation(location) && (
+                    <>
+                      <div className="rounded overflow-hidden border border-gray-200">
+                        <iframe
+                          title="Location map"
+                          width="100%"
+                          height="220"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          src={mapEmbedUrl(location)}
+                        />
+                      </div>
+                      <a
+                        href={mapLinkUrl(location)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline mt-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open in Google Maps
+                      </a>
+                    </>
                   )}
                 </div>
               </section>
@@ -439,27 +460,8 @@ export default function SiteClassic({ business }) {
         </div>
       )}
 
-      {/* ── GALLERY LIGHTBOX ────────────────────────────────────────────────── */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/30 rounded-full p-2"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img
-            src={lightbox}
-            alt=""
-            className="max-h-[90vh] max-w-full object-contain rounded-lg"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {/* ── PHOTO LIGHTBOX ──────────────────────────────────────────────────── */}
+      {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer className="border-t text-center text-xs text-gray-400 py-5">
