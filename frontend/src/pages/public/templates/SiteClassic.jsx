@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Phone, Mail, MessageCircle, Globe, MapPin, Clock, ExternalLink, Wrench, ShoppingBag, ShoppingCart, Heart } from "lucide-react";
 import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
+import { colorVars, resolveColors } from "@/lib/palette";
 import { PhotoLightbox } from "./_lightbox";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
@@ -24,8 +25,8 @@ function primaryImage(images, type, primary, sizeTag) {
 
 function SectionTitle({ children }) {
   return (
-    <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 mb-4 flex items-center gap-2">
-      <span className="block w-6 h-0.5 bg-gray-300" />
+    <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--c-faint)] mb-4 flex items-center gap-2">
+      <span className="block w-6 h-0.5 bg-[var(--c-rule)]" />
       {children}
     </h2>
   );
@@ -34,37 +35,37 @@ function SectionTitle({ children }) {
 function ServiceCard({ product, onAddToCart, onImageClick }) {
   const imgUrl = product.image_url || product.image || null;
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow mt-2">
+    <div className="rounded-xl overflow-hidden border border-[var(--c-line)] bg-[var(--c-base)] shadow-sm hover:shadow-md transition-shadow mt-2">
       {imgUrl ? (
         <button
           type="button"
           onClick={() => onImageClick(imgUrl)}
-          className="w-full aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden"
+          className="w-full aspect-[4/3] bg-[var(--c-wash)] flex items-center justify-center overflow-hidden"
         >
           <img src={imgUrl} alt={product.name} className="w-full h-full object-contain" loading="lazy" />
         </button>
       ) : (
-        <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-          <ShoppingBag className="h-8 w-8 text-gray-300" />
+        <div className="w-full aspect-[4/3] bg-gradient-to-br from-[var(--c-soft)] to-[var(--c-lineStrong)] flex items-center justify-center">
+          <ShoppingBag className="h-8 w-8 text-[var(--c-rule)]" />
         </div>
       )}
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-semibold text-sm text-gray-900 leading-snug">{product.name}</p>
+          <p className="font-semibold text-sm text-[var(--c-text)] leading-snug">{product.name}</p>
           {product.price && (
-            <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+            <span className="text-xs font-bold text-[var(--c-body)] bg-[var(--c-soft)] px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
               KES {product.price}
             </span>
           )}
         </div>
         {product.description && (
-          <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{product.description}</p>
+          <p className="text-xs text-[var(--c-muted)] mt-1 leading-relaxed line-clamp-2">{product.description}</p>
         )}
         {onAddToCart && (
           <button
             type="button"
             onClick={() => onAddToCart(product)}
-            className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-200 hover:bg-gray-900 hover:text-white hover:border-gray-900 py-1.5 rounded-lg transition-colors"
+            className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--c-body)] border border-[var(--c-lineStrong)] hover:bg-[var(--c-accent)] hover:text-[var(--c-accentText)] hover:border-[var(--c-accent)] py-1.5 rounded-lg transition-colors"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
             Add to Cart
@@ -75,7 +76,7 @@ function ServiceCard({ product, onAddToCart, onImageClick }) {
   );
 }
 
-export default function SiteClassic({ business }) {
+export default function SiteClassic({ business, palette }) {
   const {
     business_name = "",
     logo_url,
@@ -96,6 +97,7 @@ export default function SiteClassic({ business }) {
   // const [cartOpen, setCartOpen] = useState(false);           // CART/BOOK
   // const cart = useCart();                                     // CART/BOOK
 
+  const colors = colorVars(resolveColors(palette, "classic"));
   const services = products.filter(p => (p.type || "service") === "service");
   const productItems = products.filter(p => p.type === "product");
 
@@ -109,14 +111,14 @@ export default function SiteClassic({ business }) {
   const waNumber = contact.whatsapp?.replace(/\D/g, "") || contact.phone?.replace(/\D/g, "");
 
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <div className="min-h-screen bg-[var(--c-base)] font-sans" style={colors}>
 
       {/* ── HERO ───────────────────────────────────────────────────────────── */}
-      <section className="relative w-full h-[55vw] max-h-[420px] min-h-[220px] bg-gray-800 overflow-hidden">
+      <section className="relative w-full h-[55vw] max-h-[420px] min-h-[220px] bg-[var(--c-hero)] overflow-hidden">
         {bannerUrl ? (
           <img src={bannerUrl} alt={business_name} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--c-heroFrom)] to-[var(--c-heroTo)]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
@@ -157,12 +159,12 @@ export default function SiteClassic({ business }) {
 
       {/* ── CONTACT BAR ─────────────────────────────────────────────────────── */}
       {(contact.phone || contact.whatsapp || contact.email || contact.website || location.city) && (
-        <section className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <section className="bg-[var(--c-base)] border-b border-[var(--c-lineStrong)] shadow-sm sticky top-0 z-10">
           <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-1 overflow-x-auto scrollbar-none">
             {contact.phone && (
               <a href={`tel:${contact.phone}`}
-                className="flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900 font-medium whitespace-nowrap px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0">
-                <Phone className="h-3.5 w-3.5 text-gray-400" />
+                className="flex items-center gap-1.5 text-sm text-[var(--c-body)] hover:text-[var(--c-text)] font-medium whitespace-nowrap px-3 py-1.5 rounded-lg hover:bg-[var(--c-soft)] transition-colors shrink-0">
+                <Phone className="h-3.5 w-3.5 text-[var(--c-faint)]" />
                 {contact.phone}
               </a>
             )}
@@ -175,21 +177,21 @@ export default function SiteClassic({ business }) {
             )}
             {contact.email && (
               <a href={`mailto:${contact.email}`}
-                className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0">
-                <Mail className="h-3.5 w-3.5 text-gray-400" />
+                className="flex items-center gap-1.5 text-sm text-[var(--c-secondary)] hover:text-[var(--c-text)] whitespace-nowrap px-3 py-1.5 rounded-lg hover:bg-[var(--c-soft)] transition-colors shrink-0">
+                <Mail className="h-3.5 w-3.5 text-[var(--c-faint)]" />
                 {contact.email}
               </a>
             )}
             {contact.website && (
               <a href={contact.website} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0">
-                <Globe className="h-3.5 w-3.5 text-gray-400" />
+                className="flex items-center gap-1.5 text-sm text-[var(--c-secondary)] hover:text-[var(--c-text)] whitespace-nowrap px-3 py-1.5 rounded-lg hover:bg-[var(--c-soft)] transition-colors shrink-0">
+                <Globe className="h-3.5 w-3.5 text-[var(--c-faint)]" />
                 {contact.website.replace(/^https?:\/\//, "")}
               </a>
             )}
             {location.city && (
-              <span className="flex items-center gap-1.5 text-sm text-gray-500 whitespace-nowrap px-3 py-1.5 shrink-0">
-                <MapPin className="h-3.5 w-3.5 text-gray-400" />
+              <span className="flex items-center gap-1.5 text-sm text-[var(--c-muted)] whitespace-nowrap px-3 py-1.5 shrink-0">
+                <MapPin className="h-3.5 w-3.5 text-[var(--c-faint)]" />
                 {[location.street_address, location.city].filter(Boolean).join(", ")}
               </span>
             )}
@@ -204,7 +206,7 @@ export default function SiteClassic({ business }) {
         {profile.description && (
           <section>
             <SectionTitle>About Us</SectionTitle>
-            <p className="text-gray-700 leading-relaxed text-sm sm:text-base whitespace-pre-line max-w-2xl">
+            <p className="text-[var(--c-body)] leading-relaxed text-sm sm:text-base whitespace-pre-line max-w-2xl">
               {profile.description}
             </p>
           </section>
@@ -214,26 +216,26 @@ export default function SiteClassic({ business }) {
         {services.length > 0 && (
           <section className="mt-8">
             <SectionTitle>Our Services</SectionTitle>
-            <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+            <div className="divide-y divide-[var(--c-line)] rounded-xl border border-[var(--c-line)] overflow-hidden">
               {services.map(p => (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors">
+                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-[var(--c-base)] hover:bg-[var(--c-wash)] transition-colors">
                   {p.image_url ? (
                     <button type="button" onClick={() => setLightbox(p.image_url)} className="shrink-0">
-                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-gray-50 border" />
+                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-[var(--c-wash)] border border-[var(--c-lineStrong)]" />
                     </button>
                   ) : (
-                    <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                      <Wrench className="h-4 w-4 text-gray-400" />
+                    <div className="h-10 w-10 rounded-lg bg-[var(--c-soft)] flex items-center justify-center shrink-0">
+                      <Wrench className="h-4 w-4 text-[var(--c-faint)]" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
+                    <p className="text-sm font-semibold text-[var(--c-text)] truncate">{p.name}</p>
                     {p.description && (
-                      <p className="text-xs text-gray-500 truncate">{p.description}</p>
+                      <p className="text-xs text-[var(--c-muted)] truncate">{p.description}</p>
                     )}
                   </div>
                   {p.price && (
-                    <span className="text-sm font-bold text-gray-700 shrink-0">KES {p.price}</span>
+                    <span className="text-sm font-bold text-[var(--c-body)] shrink-0">KES {p.price}</span>
                   )}
                   {/* BOOK: restore when ready:
                   {waNumber && (
@@ -316,10 +318,10 @@ export default function SiteClassic({ business }) {
                       : `${info.open || "08:00"} – ${info.close || "17:00"}`;
                     return (
                       <div key={day} className="flex justify-between text-sm">
-                        <span className="text-gray-500 w-10">{DAY_SHORT[day]}</span>
+                        <span className="text-[var(--c-muted)] w-10">{DAY_SHORT[day]}</span>
                         {isClosed
-                          ? <span className="text-gray-300">Closed</span>
-                          : <span className="text-gray-700 font-medium">{timeStr}</span>
+                          ? <span className="text-[var(--c-rule)]">Closed</span>
+                          : <span className="text-[var(--c-body)] font-medium">{timeStr}</span>
                         }
                       </div>
                     );
@@ -333,7 +335,7 @@ export default function SiteClassic({ business }) {
                 <SectionTitle>
                   <MapPin className="h-3.5 w-3.5 inline-block mr-1" />Location
                 </SectionTitle>
-                <div className="space-y-2 text-sm text-gray-700">
+                <div className="space-y-2 text-sm text-[var(--c-body)]">
                   {location.street_address && <p>{location.street_address}</p>}
                   {(location.city || location.region) && (
                     <p>{[location.city, location.region].filter(Boolean).join(", ")}</p>
@@ -341,7 +343,7 @@ export default function SiteClassic({ business }) {
                   {location.postal_code && <p>{location.postal_code}</p>}
                   {hasMapLocation(location) && (
                     <>
-                      <div className="rounded overflow-hidden border border-gray-200">
+                      <div className="rounded overflow-hidden border border-[var(--c-lineStrong)]">
                         <iframe
                           title="Location map"
                           width="100%"
@@ -355,7 +357,7 @@ export default function SiteClassic({ business }) {
                         href={mapLinkUrl(location)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline mt-1"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[var(--c-highlight)] hover:underline mt-1"
                       >
                         <ExternalLink className="h-3 w-3" />
                         Open in Google Maps
@@ -372,7 +374,7 @@ export default function SiteClassic({ business }) {
         {profile.how_to_find && (
           <section>
             <SectionTitle>How to Find Us</SectionTitle>
-            <p className="text-gray-600 leading-relaxed text-sm sm:text-base whitespace-pre-line max-w-2xl">
+            <p className="text-[var(--c-secondary)] leading-relaxed text-sm sm:text-base whitespace-pre-line max-w-2xl">
               {profile.how_to_find}
             </p>
           </section>
@@ -385,8 +387,8 @@ export default function SiteClassic({ business }) {
             <div className="flex flex-col sm:flex-row flex-wrap gap-3">
               {contact.phone && (
                 <a href={`tel:${contact.phone}`}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-800 bg-gray-50 border rounded-lg px-4 py-2.5 hover:bg-gray-100 transition-colors">
-                  <Phone className="h-4 w-4 text-gray-500" />
+                  className="flex items-center gap-2 text-sm font-medium text-[var(--c-ink)] bg-[var(--c-wash)] border border-[var(--c-lineStrong)] rounded-lg px-4 py-2.5 hover:bg-[var(--c-soft)] transition-colors">
+                  <Phone className="h-4 w-4 text-[var(--c-muted)]" />
                   {contact.phone}
                 </a>
               )}
@@ -399,15 +401,15 @@ export default function SiteClassic({ business }) {
               )}
               {contact.email && (
                 <a href={`mailto:${contact.email}`}
-                  className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 border rounded-lg px-4 py-2.5 hover:bg-gray-100 transition-colors">
-                  <Mail className="h-4 w-4 text-gray-500" />
+                  className="flex items-center gap-2 text-sm text-[var(--c-body)] bg-[var(--c-wash)] border border-[var(--c-lineStrong)] rounded-lg px-4 py-2.5 hover:bg-[var(--c-soft)] transition-colors">
+                  <Mail className="h-4 w-4 text-[var(--c-muted)]" />
                   {contact.email}
                 </a>
               )}
               {contact.website && (
                 <a href={contact.website} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 border rounded-lg px-4 py-2.5 hover:bg-gray-100 transition-colors">
-                  <Globe className="h-4 w-4 text-gray-500" />
+                  className="flex items-center gap-2 text-sm text-[var(--c-body)] bg-[var(--c-wash)] border border-[var(--c-lineStrong)] rounded-lg px-4 py-2.5 hover:bg-[var(--c-soft)] transition-colors">
+                  <Globe className="h-4 w-4 text-[var(--c-muted)]" />
                   {contact.website.replace(/^https?:\/\//, "")}
                 </a>
               )}
@@ -442,10 +444,10 @@ export default function SiteClassic({ business }) {
 
       {/* ── MOBILE STICKY CTA ───────────────────────────────────────────────── */}
       {(contact.phone || waNumber) && (
-        <div className="fixed bottom-0 left-0 right-0 md:hidden bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3 flex gap-3 z-20 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+        <div className="fixed bottom-0 left-0 right-0 md:hidden bg-[color-mix(in_srgb,var(--c-base)_95%,transparent)] backdrop-blur border-t border-[var(--c-lineStrong)] px-4 py-3 flex gap-3 z-20 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
           {contact.phone && (
             <a href={`tel:${contact.phone}`}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 text-white font-semibold text-sm active:scale-95 transition-transform">
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[var(--c-accent)] text-[var(--c-accentText)] font-semibold text-sm active:scale-95 transition-transform">
               <Phone className="h-4 w-4" />
               Call
             </a>
@@ -464,9 +466,9 @@ export default function SiteClassic({ business }) {
       {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
-      <footer className="border-t text-center text-xs text-gray-400 py-5">
+      <footer className="border-t border-[var(--c-lineStrong)] text-center text-xs text-[var(--c-faint)] py-5">
         Listed on{" "}
-        <a href="https://tafuta.ke" className="hover:text-gray-600 underline underline-offset-2">
+        <a href="https://tafuta.ke" className="hover:text-[var(--c-secondary)] underline underline-offset-2">
           Tafuta.ke
         </a>
       </footer>

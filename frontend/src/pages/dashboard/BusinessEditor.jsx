@@ -11,6 +11,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/Alert";
 import { Spinner } from "@/components/ui/Spinner";
 import { businessAPI, searchAPI, adminAPI, paymentAPI } from "@/lib/api";
 import { parseCoordinate } from "@/lib/location";
+import { DEFAULT_PALETTE, loadPalettes } from "@/lib/palette";
 import ImageManager from "@/components/ImageManager";
 import useAuthStore from "@/store/useAuthStore";
 
@@ -135,11 +136,14 @@ export default function BusinessEditor() {
     hideMap: false,
     hours: { ...defaultHours },
     siteTemplate: "classic",
+    colorPalette: DEFAULT_PALETTE,
     locallyOwned: false,
     products: [],
   });
   const [locating, setLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState(null);
+  const [paletteList, setPaletteList] = useState(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Slugify a string into a valid business_tag
   const slugifyTag = useCallback(
@@ -221,6 +225,7 @@ export default function BusinessEditor() {
         hideMap: c.location?.hide_map === true,
         hours: c.hours || { ...defaultHours },
         siteTemplate: c.site_template || "classic",
+        colorPalette: c.color_palette || DEFAULT_PALETTE,
         locallyOwned: c.locally_owned === true,
         products: Array.isArray(c.products) ? c.products : [],
       });
@@ -428,6 +433,27 @@ export default function BusinessEditor() {
     setSuccess(false);
   };
 
+  // Opens the palette list, loading the palette file the first time.
+  const togglePaletteList = async () => {
+    if (paletteOpen) {
+      setPaletteOpen(false);
+      return;
+    }
+    setPaletteOpen(true);
+    if (paletteList === null) {
+      try {
+        setPaletteList(await loadPalettes());
+      } catch {
+        setPaletteList([]);
+      }
+    }
+  };
+
+  const selectPalette = (palette) => {
+    handleChange("colorPalette", palette);
+    setPaletteOpen(false);
+  };
+
   // Fills the coordinate fields from the phone's GPS fix. The owner still presses Save.
   const useCurrentLocation = () => {
     setLocationMessage(null);
@@ -499,6 +525,7 @@ export default function BusinessEditor() {
     },
     hours: formData.hours,
     site_template: formData.siteTemplate,
+    color_palette: formData.colorPalette,
     locally_owned: formData.locallyOwned,
     products: formData.products,
     metadata: { last_updated: new Date().toISOString() },
@@ -1304,7 +1331,7 @@ export default function BusinessEditor() {
                       </button>
                       {formData.businessTag && (
                         <a
-                          href={`/site/${formData.businessTag}?template=${tpl.id}`}
+                          href={`/site/${formData.businessTag}?template=${tpl.id}&palette=${formData.colorPalette.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-center text-primary underline hover:no-underline"
@@ -1317,8 +1344,59 @@ export default function BusinessEditor() {
                 })}
               </div>
 
+              {/* Colors */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-sm text-muted-foreground shrink-0">Colors:</span>
+                    <img src={formData.colorPalette.icon} alt="" className="h-10 w-10 shrink-0" />
+                    <span className="text-sm font-semibold truncate">{formData.colorPalette.title}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-auto py-1 px-2 text-xs"
+                    onClick={togglePaletteList}
+                  >
+                    {paletteOpen ? "Close" : "Change"}
+                  </Button>
+                </div>
+
+                {paletteOpen && (
+                  <div className="max-h-72 overflow-y-auto divide-y rounded-md border">
+                    {paletteList === null && (
+                      <p className="p-3 text-xs text-muted-foreground">Loading colors…</p>
+                    )}
+                    {paletteList?.length === 0 && (
+                      <p className="p-3 text-xs text-destructive">Color palettes could not be loaded.</p>
+                    )}
+                    {(paletteList || []).map((p) => {
+                      const selected = p.id === formData.colorPalette.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => selectPalette(p)}
+                          className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted ${
+                            selected ? "bg-primary/5 font-semibold" : ""
+                          }`}
+                        >
+                          <img src={p.icon} alt="" className="h-8 w-8 shrink-0" />
+                          <span>{p.title}</span>
+                          {selected && <span className="ml-auto text-xs text-primary">Selected</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Use a template's preview link to see these colors before saving.
+                </p>
+              </div>
+
               <p className="text-xs text-muted-foreground">
-                Save changes below to apply the selected template.
+                Save changes below to apply the selected template and colors.
               </p>
 
               {/* Website live status / purchase */}

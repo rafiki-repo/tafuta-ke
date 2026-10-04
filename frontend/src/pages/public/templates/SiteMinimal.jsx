@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Phone, Mail, MessageCircle, MapPin, Globe, Wrench, ShoppingBag, ShoppingCart, Heart, ExternalLink } from "lucide-react";
 import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
+import { colorVars, resolveColors } from "@/lib/palette";
 import { PhotoLightbox } from "./_lightbox";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
@@ -25,7 +26,7 @@ function primaryImage(images, type, primary, sizeTag) {
 // ── Section heading ──────────────────────────────────────────────────────────
 function SecHead({ children, light = false }) {
   return (
-    <p className={`text-[11px] font-extrabold uppercase tracking-[0.22em] mb-5 text-center ${light ? "text-gray-400" : "text-gray-400"}`}>
+    <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] mb-5 text-center text-[var(--c-faint)]">
       {children}
     </p>
   );
@@ -35,39 +36,39 @@ function SecHead({ children, light = false }) {
 function ServiceBlock({ product, onAddToCart, onImageClick }) {
   const imgUrl = product.image_url || product.image || null;
   return (
-    <div className="border-b border-gray-100 pb-8 last:border-0 last:pb-0">
+    <div className="border-b border-[var(--c-line)] pb-8 last:border-0 last:pb-0">
       {imgUrl ? (
         <button
           type="button"
           onClick={() => onImageClick(imgUrl)}
-          className="w-full aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden"
+          className="w-full aspect-[4/3] bg-[var(--c-wash)] flex items-center justify-center overflow-hidden"
         >
           <img src={imgUrl} alt={product.name} className="w-full h-full object-contain" loading="lazy" />
         </button>
       ) : (
-        <div className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center">
-          <ShoppingBag className="h-10 w-10 text-gray-300" />
+        <div className="w-full aspect-[4/3] bg-[var(--c-line)] flex items-center justify-center">
+          <ShoppingBag className="h-10 w-10 text-[var(--c-rule)]" />
         </div>
       )}
       <div className="px-4 pt-4">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="font-black uppercase text-base tracking-wide text-gray-900 leading-tight">
+          <h3 className="font-black uppercase text-base tracking-wide text-[var(--c-text)] leading-tight">
             {product.name}
           </h3>
           {product.price && (
-            <span className="shrink-0 text-sm font-bold text-gray-700 bg-gray-100 px-2.5 py-0.5 rounded-full">
+            <span className="shrink-0 text-sm font-bold text-[var(--c-body)] bg-[var(--c-line)] px-2.5 py-0.5 rounded-full">
               KES {product.price}
             </span>
           )}
         </div>
         {product.description && (
-          <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{product.description}</p>
+          <p className="text-sm text-[var(--c-muted)] mt-1.5 leading-relaxed">{product.description}</p>
         )}
         {onAddToCart && (
           <button
             type="button"
             onClick={() => onAddToCart(product)}
-            className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white bg-[#111111] px-4 py-2 hover:bg-black transition-colors"
+            className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--c-accentText)] bg-[var(--c-accent)] px-4 py-2 hover:opacity-90 transition-opacity"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
             Add to Cart
@@ -93,7 +94,7 @@ function CtaButton({ href, bg, children, external = false }) {
 }
 
 // ── Main template ─────────────────────────────────────────────────────────────
-export default function SiteMinimal({ business }) {
+export default function SiteMinimal({ business, palette }) {
   const {
     business_name = "",
     logo_url,
@@ -114,6 +115,7 @@ export default function SiteMinimal({ business }) {
   // const [cartOpen, setCartOpen] = useState(false);           // CART/BOOK
   // const cart = useCart();                                     // CART/BOOK
 
+  const colors = colorVars(resolveColors(palette, "minimal"));
   const services = products.filter(p => (p.type || "service") === "service");
   const productItems = products.filter(p => p.type === "product");
 
@@ -128,16 +130,16 @@ export default function SiteMinimal({ business }) {
   const locationStr = [location.street_address, location.city, location.region].filter(Boolean).join(", ");
 
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <div className="min-h-screen bg-[var(--c-base)] font-sans" style={colors}>
 
       {/* ── DARK HEADER ─────────────────────────────────────────────────── */}
-      <header className="bg-[#111111] text-white text-center px-5 pt-10 pb-8">
+      <header className="bg-[var(--c-dark)] text-[var(--c-onDark)] text-center px-5 pt-10 pb-8">
         {logoImgUrl && (
           <div className="mb-5">
             <img
               src={logoImgUrl}
               alt={business_name}
-              className="h-20 w-20 rounded-full object-cover border-[3px] border-white mx-auto shadow-lg"
+              className="h-20 w-20 rounded-full object-cover border-[3px] border-[var(--c-onDark)] mx-auto shadow-lg"
             />
           </div>
         )}
@@ -145,15 +147,15 @@ export default function SiteMinimal({ business }) {
           {business_name}
         </h1>
         {profile.tagline && (
-          <p className="mt-3 text-xs uppercase tracking-[0.2em] text-gray-400">{profile.tagline}</p>
+          <p className="mt-3 text-xs uppercase tracking-[0.2em] text-[var(--c-onDarkBody)]">{profile.tagline}</p>
         )}
         {(category || region) && (
-          <p className="mt-1.5 text-[11px] uppercase tracking-widest text-gray-600">
+          <p className="mt-1.5 text-[11px] uppercase tracking-widest text-[var(--c-onDarkSubtle)]">
             {[category, region].filter(Boolean).join(" · ")}
           </p>
         )}
         {locally_owned && (
-          <p className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white border border-white/30 rounded-full px-3 py-1">
+          <p className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--c-onDark)] border border-[color-mix(in_srgb,var(--c-onDark)_30%,transparent)] rounded-full px-3 py-1">
             <Heart className="h-3 w-3 fill-current" />
             Locally Owned
           </p>
@@ -174,20 +176,20 @@ export default function SiteMinimal({ business }) {
 
       {/* ── CONTACT STRIP ───────────────────────────────────────────────── */}
       {(contact.phone || locationStr) && (
-        <div className="bg-[#f5f5f5] border-b border-gray-200 px-5 py-4">
+        <div className="bg-[var(--c-strip)] border-b border-[var(--c-lineStrong)] px-5 py-4">
           <div className="max-w-sm mx-auto space-y-2.5">
             {contact.phone && (
               <a
                 href={`tel:${contact.phone}`}
-                className="flex items-center gap-3 text-sm font-semibold text-gray-900"
+                className="flex items-center gap-3 text-sm font-semibold text-[var(--c-text)]"
               >
-                <Phone className="h-4 w-4 shrink-0 text-gray-500" />
+                <Phone className="h-4 w-4 shrink-0 text-[var(--c-muted)]" />
                 {contact.phone}
               </a>
             )}
             {locationStr && (
-              <div className="flex items-start gap-3 text-sm text-gray-600">
-                <MapPin className="h-4 w-4 shrink-0 text-gray-500 mt-0.5" />
+              <div className="flex items-start gap-3 text-sm text-[var(--c-secondary)]">
+                <MapPin className="h-4 w-4 shrink-0 text-[var(--c-muted)] mt-0.5" />
                 <span>{locationStr}</span>
               </div>
             )}
@@ -197,10 +199,10 @@ export default function SiteMinimal({ business }) {
 
       {/* ── ABOUT ───────────────────────────────────────────────────────── */}
       {profile.description && (
-        <section className="bg-[#111111] text-white px-5 py-12">
+        <section className="bg-[var(--c-dark)] text-[var(--c-onDark)] px-5 py-12">
           <div className="max-w-sm mx-auto text-center">
             <SecHead>About Us</SecHead>
-            <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-[var(--c-onDarkBody)] leading-relaxed whitespace-pre-line">
               {profile.description}
             </p>
           </div>
@@ -209,29 +211,29 @@ export default function SiteMinimal({ business }) {
 
       {/* ── SERVICES ────────────────────────────────────────────────────── */}
       {services.length > 0 && (
-        <section className="bg-white py-10">
+        <section className="bg-[var(--c-base)] py-10">
           <div className="max-w-sm mx-auto px-5">
             <SecHead>Our Services</SecHead>
-            <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+            <div className="divide-y divide-[var(--c-line)] border border-[var(--c-line)] rounded-xl overflow-hidden">
               {services.map(p => (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-white">
+                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-[var(--c-base)]">
                   {p.image_url ? (
                     <button type="button" onClick={() => setLightbox(p.image_url)} className="shrink-0">
-                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-gray-50 border" />
+                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-lg object-contain bg-[var(--c-wash)] border border-[var(--c-lineStrong)]" />
                     </button>
                   ) : (
-                    <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                      <Wrench className="h-4 w-4 text-gray-400" />
+                    <div className="h-10 w-10 rounded-lg bg-[var(--c-line)] flex items-center justify-center shrink-0">
+                      <Wrench className="h-4 w-4 text-[var(--c-faint)]" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black uppercase tracking-wide text-gray-900 truncate">{p.name}</p>
+                    <p className="text-sm font-black uppercase tracking-wide text-[var(--c-text)] truncate">{p.name}</p>
                     {p.description && (
-                      <p className="text-xs text-gray-500 truncate">{p.description}</p>
+                      <p className="text-xs text-[var(--c-muted)] truncate">{p.description}</p>
                     )}
                   </div>
                   {p.price && (
-                    <span className="text-sm font-bold text-gray-700 shrink-0">KES {p.price}</span>
+                    <span className="text-sm font-bold text-[var(--c-body)] shrink-0">KES {p.price}</span>
                   )}
                   {/* BOOK: restore when ready:
                   {waNumber && (
@@ -254,7 +256,7 @@ export default function SiteMinimal({ business }) {
 
       {/* ── PRODUCTS ────────────────────────────────────────────────────── */}
       {productItems.length > 0 && (
-        <section className="bg-[#f5f5f5] py-10">
+        <section className="bg-[var(--c-strip)] py-10">
           <div className="max-w-sm mx-auto px-0">
             <div className="px-5 mb-6">
               <SecHead>Products</SecHead>
@@ -270,7 +272,7 @@ export default function SiteMinimal({ business }) {
 
       {/* ── GALLERY ─────────────────────────────────────────────────────── */}
       {galleryItems.length > 0 && (
-        <section className="bg-[#111111] py-10">
+        <section className="bg-[var(--c-dark)] py-10">
           <div className="max-w-sm mx-auto px-1">
             <div className="px-4 mb-5">
               <SecHead light>Gallery</SecHead>
@@ -302,7 +304,7 @@ export default function SiteMinimal({ business }) {
 
       {/* ── BUSINESS HOURS ──────────────────────────────────────────────── */}
       {hasHours && (
-        <section className="bg-white px-5 py-12 border-b border-gray-100">
+        <section className="bg-[var(--c-base)] px-5 py-12 border-b border-[var(--c-line)]">
           <div className="max-w-sm mx-auto">
             <SecHead>Business Hours</SecHead>
             <div className="space-y-2">
@@ -315,10 +317,10 @@ export default function SiteMinimal({ business }) {
                   : `${info.open || "08:00"} – ${info.close || "17:00"}`;
                 return (
                   <div key={day} className="flex justify-between text-sm">
-                    <span className="font-semibold uppercase text-[11px] tracking-wide text-gray-500 w-10">{DAY_SHORT[day]}</span>
+                    <span className="font-semibold uppercase text-[11px] tracking-wide text-[var(--c-muted)] w-10">{DAY_SHORT[day]}</span>
                     {isClosed
-                      ? <span className="text-gray-300 text-xs">Closed</span>
-                      : <span className="text-gray-800 font-medium">{timeStr}</span>
+                      ? <span className="text-[var(--c-rule)] text-xs">Closed</span>
+                      : <span className="text-[var(--c-ink)] font-medium">{timeStr}</span>
                     }
                   </div>
                 );
@@ -329,23 +331,23 @@ export default function SiteMinimal({ business }) {
       )}
 
       {/* ── COME VISIT US ───────────────────────────────────────────────── */}
-      <section className="bg-[#111111] text-white px-5 py-12">
+      <section className="bg-[var(--c-dark)] text-[var(--c-onDark)] px-5 py-12">
         <div className="max-w-sm mx-auto text-center">
           <SecHead>Come Visit Us</SecHead>
 
           {locationStr && (
-            <p className="text-sm text-gray-400 mb-6">{locationStr}</p>
+            <p className="text-sm text-[var(--c-onDarkBody)] mb-6">{locationStr}</p>
           )}
 
           {profile.how_to_find && (
-            <p className="text-sm text-gray-500 leading-relaxed mb-8 whitespace-pre-line">
+            <p className="text-sm text-[var(--c-onDarkMuted)] leading-relaxed mb-8 whitespace-pre-line">
               {profile.how_to_find}
             </p>
           )}
 
           {hasMapLocation(location) && (
             <div className="mb-8">
-              <div className="border border-gray-800 overflow-hidden">
+              <div className="border border-[var(--c-darkLine)] overflow-hidden">
                 <iframe
                   title="Location map"
                   width="100%"
@@ -359,7 +361,7 @@ export default function SiteMinimal({ business }) {
                 href={mapLinkUrl(location)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-white mt-2"
+                className="inline-flex items-center gap-1 text-xs font-medium text-[var(--c-onDarkBody)] hover:text-[var(--c-onDark)] mt-2"
               >
                 <ExternalLink className="h-3 w-3" />
                 Open in Google Maps
@@ -376,7 +378,7 @@ export default function SiteMinimal({ business }) {
               </CtaButton>
             )}
             {contact.phone && (
-              <CtaButton href={`tel:${contact.phone}`} bg="#222222">
+              <CtaButton href={`tel:${contact.phone}`} bg="var(--c-accent)">
                 <Phone className="h-5 w-5" />
                 Call {contact.phone}
               </CtaButton>
@@ -384,7 +386,7 @@ export default function SiteMinimal({ business }) {
             {contact.email && (
               <a
                 href={`mailto:${contact.email}`}
-                className="flex items-center justify-center gap-3 w-full py-3.5 px-6 text-sm font-medium text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 transition-colors"
+                className="flex items-center justify-center gap-3 w-full py-3.5 px-6 text-sm font-medium text-[var(--c-onDarkBody)] hover:text-[var(--c-onDark)] border border-[var(--c-darkBorder)] hover:border-[var(--c-onDarkMuted)] transition-colors"
               >
                 <Mail className="h-4 w-4" />
                 {contact.email}
@@ -395,7 +397,7 @@ export default function SiteMinimal({ business }) {
                 href={contact.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 w-full py-3 px-6 text-xs font-medium text-gray-500 hover:text-gray-300 transition-colors"
+                className="flex items-center justify-center gap-3 w-full py-3 px-6 text-xs font-medium text-[var(--c-onDarkMuted)] hover:text-[var(--c-onDarkSoft)] transition-colors"
               >
                 <Globe className="h-4 w-4" />
                 {contact.website.replace(/^https?:\/\//, "")}
@@ -434,11 +436,11 @@ export default function SiteMinimal({ business }) {
 
       {/* ── MOBILE STICKY CTA ───────────────────────────────────────────── */}
       {(contact.phone || waNumber) && (
-        <div className="fixed bottom-0 left-0 right-0 md:hidden bg-[#111111] border-t border-gray-800 px-3 py-2.5 flex gap-2 z-30">
+        <div className="fixed bottom-0 left-0 right-0 md:hidden bg-[var(--c-dark)] border-t border-[var(--c-darkLine)] px-3 py-2.5 flex gap-2 z-30">
           {contact.phone && (
             <a
               href={`tel:${contact.phone}`}
-              className="flex-1 flex items-center justify-center gap-2 py-3 font-bold text-sm uppercase tracking-wide text-white bg-[#222222] rounded"
+              className="flex-1 flex items-center justify-center gap-2 py-3 font-bold text-sm uppercase tracking-wide text-[var(--c-accentText)] bg-[var(--c-accent)] rounded"
             >
               <Phone className="h-4 w-4" />
               Call
@@ -460,9 +462,9 @@ export default function SiteMinimal({ business }) {
       )}
 
       {/* ── FOOTER ──────────────────────────────────────────────────────── */}
-      <footer className="bg-[#0a0a0a] text-center text-[11px] text-gray-700 py-5 pb-20 md:pb-5 tracking-wider uppercase">
+      <footer className="bg-[var(--c-deepDark)] text-center text-[11px] text-[var(--c-body)] py-5 pb-20 md:pb-5 tracking-wider uppercase">
         Listed on{" "}
-        <a href="https://tafuta.ke" className="text-gray-500 hover:text-gray-300 underline">
+        <a href="https://tafuta.ke" className="text-[var(--c-onDarkMuted)] hover:text-[var(--c-onDarkSoft)] underline">
           Tafuta.ke
         </a>
       </footer>
