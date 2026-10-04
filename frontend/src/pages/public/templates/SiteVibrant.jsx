@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Phone, MessageCircle, MapPin, Globe, Wrench, ShoppingBag, ExternalLink, ShoppingCart, Heart } from "lucide-react";
 import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
+import { colorVars, resolveColors } from "@/lib/palette";
 import { PhotoLightbox } from "./_lightbox";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
@@ -25,9 +26,9 @@ function primaryImage(images, type, primary, sizeTag) {
 function InfoPill({ label, value }) {
   if (!value) return null;
   return (
-    <div className="rounded-2xl border-2 border-white/40 px-4 py-3 text-center">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-white/70">{label}</p>
-      <p className="mt-0.5 text-base font-extrabold text-white break-words">{value}</p>
+    <div className="rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-text)_40%,transparent)] px-4 py-3 text-center">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-[color-mix(in_srgb,var(--c-text)_70%,transparent)]">{label}</p>
+      <p className="mt-0.5 text-base font-extrabold text-[var(--c-text)] break-words">{value}</p>
     </div>
   );
 }
@@ -36,33 +37,33 @@ function ItemCard({ item, isProduct, onAddToCart, onImageClick }) {
   const imgUrl = item.image_url || item.image || null;
   const PlaceholderIcon = isProduct ? ShoppingBag : Wrench;
   return (
-    <div className="rounded-2xl overflow-hidden bg-white/10 border-2 border-white/25">
+    <div className="rounded-2xl overflow-hidden bg-[color-mix(in_srgb,var(--c-text)_10%,transparent)] border-2 border-[color-mix(in_srgb,var(--c-text)_25%,transparent)]">
       <button
         type="button"
         onClick={imgUrl ? () => onImageClick(imgUrl) : undefined}
-        className="block w-full aspect-square bg-white/10 flex items-center justify-center overflow-hidden"
+        className="block w-full aspect-square bg-[color-mix(in_srgb,var(--c-text)_10%,transparent)] flex items-center justify-center overflow-hidden"
       >
         {imgUrl ? (
           <img src={imgUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <PlaceholderIcon className="h-10 w-10 text-white/40" />
+          <PlaceholderIcon className="h-10 w-10 text-[color-mix(in_srgb,var(--c-text)_40%,transparent)]" />
         )}
       </button>
       <div className="p-3 text-center">
-        <p className="font-extrabold uppercase tracking-wide text-sm text-white">{item.name}</p>
+        <p className="font-extrabold uppercase tracking-wide text-sm text-[var(--c-text)]">{item.name}</p>
         {item.price && (
-          <span className="inline-block mt-1 text-xs font-bold text-pink-900 bg-white px-2.5 py-0.5 rounded-full">
+          <span className="inline-block mt-1 text-xs font-bold text-[var(--c-highlight)] bg-[var(--c-pill)] px-2.5 py-0.5 rounded-full">
             KES {item.price}
           </span>
         )}
         {item.description && (
-          <p className="text-xs text-white/70 mt-1 leading-relaxed line-clamp-2">{item.description}</p>
+          <p className="text-xs text-[color-mix(in_srgb,var(--c-text)_70%,transparent)] mt-1 leading-relaxed line-clamp-2">{item.description}</p>
         )}
         {onAddToCart && (
           <button
             type="button"
             onClick={() => onAddToCart(item)}
-            className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-white border-2 border-white/40 hover:bg-white hover:text-pink-700 py-1.5 rounded-xl transition-colors"
+            className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--c-text)] border-2 border-[color-mix(in_srgb,var(--c-text)_40%,transparent)] hover:bg-[var(--c-text)] hover:text-[var(--c-deep)] py-1.5 rounded-xl transition-colors"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
             Add to Cart
@@ -73,7 +74,7 @@ function ItemCard({ item, isProduct, onAddToCart, onImageClick }) {
   );
 }
 
-export default function SiteVibrant({ business }) {
+export default function SiteVibrant({ business, palette }) {
   const {
     business_name = "",
     logo_url,
@@ -94,6 +95,7 @@ export default function SiteVibrant({ business }) {
   // const [cartOpen, setCartOpen] = useState(false);           // CART/BOOK
   // const cart = useCart();                                     // CART/BOOK
 
+  const colors = colorVars(resolveColors(palette, "vibrant"));
   const services = products.filter(p => (p.type || "service") === "service");
   const productItems = products.filter(p => p.type === "product");
 
@@ -108,7 +110,7 @@ export default function SiteVibrant({ business }) {
   const locationStr = [location.street_address, location.city, location.region].filter(Boolean).join(", ");
 
   return (
-    <div className="min-h-screen bg-pink-600 text-white font-sans">
+    <div className="min-h-screen bg-[var(--c-page)] text-[var(--c-text)] font-sans" style={colors}>
       <main className="max-w-lg mx-auto px-4 py-8 space-y-6 pb-24">
 
         {/* ── HERO ────────────────────────────────────────────────────────── */}
@@ -117,35 +119,35 @@ export default function SiteVibrant({ business }) {
             <img
               src={logoImgUrl}
               alt={business_name}
-              className="h-20 w-20 rounded-full object-cover border-4 border-white/40 mx-auto mb-4 shadow-xl"
+              className="h-20 w-20 rounded-full object-cover border-4 border-[color-mix(in_srgb,var(--c-text)_40%,transparent)] mx-auto mb-4 shadow-xl"
             />
           )}
           <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight leading-tight">{business_name}</h1>
-          {profile.tagline && <p className="mt-2 text-white/80">{profile.tagline}</p>}
+          {profile.tagline && <p className="mt-2 text-[color-mix(in_srgb,var(--c-text)_80%,transparent)]">{profile.tagline}</p>}
           {(category || region) && (
             <div className="mt-3 flex justify-center gap-2 flex-wrap">
-              {category && <span className="bg-white/20 rounded-full px-3 py-1 text-xs font-semibold capitalize">{category}</span>}
-              {region && <span className="bg-white/20 rounded-full px-3 py-1 text-xs font-semibold">{region}</span>}
+              {category && <span className="bg-[color-mix(in_srgb,var(--c-text)_20%,transparent)] rounded-full px-3 py-1 text-xs font-semibold capitalize">{category}</span>}
+              {region && <span className="bg-[color-mix(in_srgb,var(--c-text)_20%,transparent)] rounded-full px-3 py-1 text-xs font-semibold">{region}</span>}
             </div>
           )}
         </header>
 
         {/* ── HERO CARD: image + quick info ──────────────────────────────── */}
-        <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-4 space-y-3">
+        <section className="rounded-[2rem] bg-[var(--c-card)] shadow-xl shadow-black/25 p-4 space-y-3">
           {heroUrl && (
             <button
               type="button"
               onClick={() => setLightbox(heroUrl)}
-              className="block w-full rounded-2xl overflow-hidden border-4 border-white/20"
+              className="block w-full rounded-2xl overflow-hidden border-4 border-[color-mix(in_srgb,var(--c-text)_20%,transparent)]"
             >
               <img src={heroUrl} alt={business_name} className="w-full aspect-[4/3] object-cover" />
             </button>
           )}
           <div className="space-y-2">
             {locally_owned && (
-              <div className="rounded-2xl border-2 border-white/40 px-4 py-3 text-center flex items-center justify-center gap-2">
+              <div className="rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-text)_40%,transparent)] px-4 py-3 text-center flex items-center justify-center gap-2">
                 <Heart className="h-4 w-4 fill-current shrink-0" />
-                <p className="text-base font-extrabold uppercase tracking-wide text-white">Locally Owned Business</p>
+                <p className="text-base font-extrabold uppercase tracking-wide text-[var(--c-text)]">Locally Owned Business</p>
               </div>
             )}
             <InfoPill label="Phone Number" value={contact.phone} />
@@ -155,10 +157,10 @@ export default function SiteVibrant({ business }) {
 
         {/* ── ABOUT / STORE ───────────────────────────────────────────────── */}
         {(profile.description || storeStrip.length > 0) && (
-          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 text-center space-y-3">
+          <section className="rounded-[2rem] bg-[var(--c-card)] shadow-xl shadow-black/25 p-6 text-center space-y-3">
             <h2 className="text-xl font-black uppercase">Check Out Our Store!</h2>
             {storeStrip.length > 0 && (
-              <div className="flex gap-1.5 rounded-2xl overflow-hidden border-4 border-white/20">
+              <div className="flex gap-1.5 rounded-2xl overflow-hidden border-4 border-[color-mix(in_srgb,var(--c-text)_20%,transparent)]">
                 {storeStrip.map(img => {
                   const url = img.sizes?.medium || img.sizes?.thumb || Object.values(img.sizes || {})[0];
                   return url ? (
@@ -175,23 +177,23 @@ export default function SiteVibrant({ business }) {
 
         {/* ── SERVICES ────────────────────────────────────────────────────── */}
         {services.length > 0 && (
-          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 space-y-3">
+          <section className="rounded-[2rem] bg-[var(--c-card)] shadow-xl shadow-black/25 p-6 space-y-3">
             <h2 className="text-xl font-black uppercase text-center">Our Services</h2>
             <div className="space-y-2">
               {services.map(p => (
-                <div key={p.id} className="flex items-center gap-3 rounded-2xl border-2 border-white/25 px-4 py-3">
+                <div key={p.id} className="flex items-center gap-3 rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-text)_25%,transparent)] px-4 py-3">
                   {p.image_url ? (
                     <button type="button" onClick={() => setLightbox(p.image_url)} className="shrink-0">
                       <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-xl object-cover" />
                     </button>
                   ) : (
-                    <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/25 flex items-center justify-center shrink-0">
-                      <Wrench className="h-4 w-4 text-white/60" />
+                    <div className="h-10 w-10 rounded-xl bg-[color-mix(in_srgb,var(--c-text)_10%,transparent)] border border-[color-mix(in_srgb,var(--c-text)_25%,transparent)] flex items-center justify-center shrink-0">
+                      <Wrench className="h-4 w-4 text-[color-mix(in_srgb,var(--c-text)_60%,transparent)]" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold truncate">{p.name}</p>
-                    {p.description && <p className="text-xs text-white/70 truncate">{p.description}</p>}
+                    {p.description && <p className="text-xs text-[color-mix(in_srgb,var(--c-text)_70%,transparent)] truncate">{p.description}</p>}
                   </div>
                   {p.price && <span className="text-sm font-bold shrink-0">KES {p.price}</span>}
                   {/* BOOK: restore when ready:
@@ -214,7 +216,7 @@ export default function SiteVibrant({ business }) {
 
         {/* ── PRODUCTS / CATALOG (falls back to gallery) ─────────────────── */}
         {(productItems.length > 0 || (services.length === 0 && galleryItems.length > 0)) && (
-          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 space-y-3">
+          <section className="rounded-[2rem] bg-[var(--c-card)] shadow-xl shadow-black/25 p-6 space-y-3">
             <h2 className="text-xl font-black uppercase text-center">
               {productItems.length > 0 ? "Our Products" : "Take A Look"}
             </h2>
@@ -234,10 +236,10 @@ export default function SiteVibrant({ business }) {
         )}
 
         {/* ── VISIT US ────────────────────────────────────────────────────── */}
-        <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6 space-y-4 text-center">
+        <section className="rounded-[2rem] bg-[var(--c-card)] shadow-xl shadow-black/25 p-6 space-y-4 text-center">
           <h2 className="text-xl font-black uppercase">Come Visit Us!</h2>
           {profile.how_to_find && (
-            <p className="text-white/90 leading-relaxed whitespace-pre-line">{profile.how_to_find}</p>
+            <p className="text-[color-mix(in_srgb,var(--c-text)_90%,transparent)] leading-relaxed whitespace-pre-line">{profile.how_to_find}</p>
           )}
 
           <div className="flex flex-col gap-2.5">
@@ -255,7 +257,7 @@ export default function SiteVibrant({ business }) {
             {contact.phone && (
               <a
                 href={`tel:${contact.phone}`}
-                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-white/40 py-3 font-bold hover:bg-white/10 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-text)_40%,transparent)] py-3 font-bold hover:bg-[color-mix(in_srgb,var(--c-text)_10%,transparent)] transition-colors"
               >
                 <Phone className="h-5 w-5" />
                 {contact.phone}
@@ -266,7 +268,7 @@ export default function SiteVibrant({ business }) {
                 href={contact.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-white/40 py-3 font-bold hover:bg-white/10 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-text)_40%,transparent)] py-3 font-bold hover:bg-[color-mix(in_srgb,var(--c-text)_10%,transparent)] transition-colors"
               >
                 <Globe className="h-5 w-5" />
                 Visit Our Page
@@ -275,21 +277,21 @@ export default function SiteVibrant({ business }) {
           </div>
 
           {locationStr && (
-            <p className="flex items-center justify-center gap-1.5 text-white/90 text-sm font-semibold">
+            <p className="flex items-center justify-center gap-1.5 text-[color-mix(in_srgb,var(--c-text)_90%,transparent)] text-sm font-semibold">
               <MapPin className="h-4 w-4 shrink-0" />
               {locationStr}
             </p>
           )}
           {contact.email && (
             <p>
-              <span className="text-xs uppercase tracking-widest text-white/60 block">Email Address</span>
+              <span className="text-xs uppercase tracking-widest text-[color-mix(in_srgb,var(--c-text)_60%,transparent)] block">Email Address</span>
               <a href={`mailto:${contact.email}`} className="font-bold underline">{contact.email}</a>
             </p>
           )}
 
           {hasMapLocation(location) && (
             <>
-              <div className="rounded-2xl overflow-hidden border-4 border-white/20">
+              <div className="rounded-2xl overflow-hidden border-4 border-[color-mix(in_srgb,var(--c-text)_20%,transparent)]">
                 <iframe
                   title="Location map"
                   width="100%"
@@ -314,7 +316,7 @@ export default function SiteVibrant({ business }) {
 
         {/* ── HOURS ───────────────────────────────────────────────────────── */}
         {hasHours && (
-          <section className="rounded-[2rem] bg-pink-500 shadow-xl shadow-black/25 p-6">
+          <section className="rounded-[2rem] bg-[var(--c-card)] shadow-xl shadow-black/25 p-6">
             <h2 className="text-xl font-black uppercase text-center mb-3">Business Hours</h2>
             <div className="space-y-1.5">
               {DAYS.map(day => {
@@ -326,9 +328,9 @@ export default function SiteVibrant({ business }) {
                   : `${info.open || "08:00"} – ${info.close || "17:00"}`;
                 return (
                   <div key={day} className="flex justify-between text-sm">
-                    <span className="text-white/70 w-10">{DAY_SHORT[day]}</span>
+                    <span className="text-[color-mix(in_srgb,var(--c-text)_70%,transparent)] w-10">{DAY_SHORT[day]}</span>
                     {isClosed
-                      ? <span className="text-white/50">Closed</span>
+                      ? <span className="text-[color-mix(in_srgb,var(--c-text)_50%,transparent)]">Closed</span>
                       : <span className="font-semibold">{timeStr}</span>
                     }
                   </div>
@@ -365,10 +367,10 @@ export default function SiteVibrant({ business }) {
 
       {/* ── MOBILE STICKY CTA ────────────────────────────────────────────── */}
       {(contact.phone || waNumber) && (
-        <div className="fixed bottom-0 left-0 right-0 bg-pink-700 border-t border-white/20 px-3 py-2.5 flex gap-2 z-30">
+        <div className="fixed bottom-0 left-0 right-0 bg-[var(--c-deep)] border-t border-[color-mix(in_srgb,var(--c-text)_20%,transparent)] px-3 py-2.5 flex gap-2 z-30">
           {contact.phone && (
             <a href={`tel:${contact.phone}`}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-white/40 text-white font-bold text-sm active:scale-95 transition-transform">
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-text)_40%,transparent)] text-[var(--c-text)] font-bold text-sm active:scale-95 transition-transform">
               <Phone className="h-4 w-4" />Call
             </a>
           )}
@@ -384,9 +386,9 @@ export default function SiteVibrant({ business }) {
       {/* ── PHOTO LIGHTBOX ──────────────────────────────────────────────── */}
       {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
-      <footer className="text-center text-xs text-white/60 py-5 pb-24">
+      <footer className="text-center text-xs text-[color-mix(in_srgb,var(--c-text)_60%,transparent)] py-5 pb-24">
         Listed on{" "}
-        <a href="https://tafuta.ke" className="text-white/80 underline hover:text-white">
+        <a href="https://tafuta.ke" className="text-[color-mix(in_srgb,var(--c-text)_80%,transparent)] underline hover:text-[var(--c-text)]">
           Tafuta.ke
         </a>
       </footer>

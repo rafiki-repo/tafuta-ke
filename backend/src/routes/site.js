@@ -75,6 +75,7 @@ router.get('/:tag', async (req, res, next) => {
       logo_url: b.logo_url,
       verification_tier: b.verification_tier,
       site_template: c.site_template || 'classic',
+      color_palette: c.color_palette || null,
       website_enabled: websiteEnabled === true || b.has_website_hosting,
       locally_owned: c.locally_owned === true,
       profile: c.profile?.en || {},

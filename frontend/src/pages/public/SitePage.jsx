@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { Spinner } from "@/components/ui/Spinner";
 import { siteAPI } from "@/lib/api";
+import { loadPalettes } from "@/lib/palette";
 import SiteClassic from "./templates/SiteClassic";
 import SiteBold from "./templates/SiteBold";
 import SiteMinimal from "./templates/SiteMinimal";
@@ -18,7 +19,9 @@ export default function SitePage() {
   const { tag } = useParams();
   const [searchParams] = useSearchParams();
   const previewTemplate = searchParams.get("template");
+  const previewPaletteId = searchParams.get("palette");
   const [business, setBusiness] = useState(null);
+  const [previewPalette, setPreviewPalette] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +36,17 @@ export default function SitePage() {
       })
       .finally(() => setLoading(false));
   }, [tag]);
+
+  // Owner preview: ?palette=ID shows that palette without it being saved to the business.
+  useEffect(() => {
+    if (!previewPaletteId) {
+      setPreviewPalette(null);
+      return;
+    }
+    loadPalettes()
+      .then((list) => setPreviewPalette(list.find((p) => p.id === previewPaletteId) || null))
+      .catch(() => setPreviewPalette(null));
+  }, [previewPaletteId]);
 
   if (loading) {
     return (
@@ -61,15 +75,19 @@ export default function SitePage() {
   }
 
   const Template = TEMPLATES[previewTemplate] || TEMPLATES[business.site_template] || SiteClassic;
+  const palette = (previewPaletteId && previewPalette) || business.color_palette || null;
   return (
     <>
       {previewTemplate && (
         <div className="sticky top-0 z-50 bg-amber-500 text-white text-xs font-medium px-4 py-1.5 flex items-center justify-between">
-          <span>Preview: <strong className="capitalize">{previewTemplate}</strong> template</span>
+          <span>
+            Preview: <strong className="capitalize">{previewTemplate}</strong> template
+            {previewPalette && <> · <strong>{previewPalette.title}</strong> colors</>}
+          </span>
           <button onClick={() => window.close()} className="underline hover:no-underline">Close preview</button>
         </div>
       )}
-      <Template business={business} />
+      <Template business={business} palette={palette} />
     </>
   );
 }
