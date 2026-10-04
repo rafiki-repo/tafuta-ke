@@ -1,0 +1,36 @@
+Favorites and Likes
+[FUTURE]
+- White heart icon with count = user did not favorite the business - count is the number of people who did favorite the business
+- Red indicates it is a "favorite" 
+- Heart icon and count are visible on both the search list and when you open the business listing "card"
+- Do not want to have dislikes or comments at the moment - only positive "likes/favorites"
+- User can "vote" for a business (three per week - only one vote per business) 
+- can only vote from the business "card" view of a business.
+- Later will use "votes" to run a contest
+- Favorites will be kept in a new table "favorites"
+- Votes will be kept in a new table "votes"
+- Votes are not shown to the public
+- When a user "votes" for a business, the app will also make that business a "favorite" (the user can turn off the favorite without canceling the vote)
+- When a user clicks a white heart, it fills in with red indicating their "like/favorite" and increases the count by 1 - the favorite is sent to the back-end and saved in the "favorites" table along with the user's fav-JWT
+- When the user clicks the same like again the count is decremented by one - the "favorite" removal is sent to the back-end.
+- When someone clicks a like/favorite "heart" OR a "vote" icon for the first time, the app asks them for their name and phone number. (these will not be verified) "Let us know who you are!"
+- System captures a course signature from the app (only when they sign up for the first time) and sends to the backend and also captures the Carrier and IP (back-end). A fav-JWT is returned that identifies the user and is stored permanently in the browser storage. Once created, the user should never have to re-identify.
+- the fav-JWT is used to idetnify "favorites" and to count "votes"
+- Coarse device signature: only stable attributes that browsers don't randomize: screen size and pixel ratio, Android model and OS version from Client Hints, CPU core count, device memory, timezone, language, and the GPU renderer name. This is less unique, but the same phone produces the same signature every time, incognito or not.
+- Not sure if this is helpful: iPhones all report nearly the same Safari user-agent, so this tells you little there. On Android, Chrome hides the phone model by default, but if your server sends an Accept-CH header requesting Sec-CH-UA-Model and Sec-CH-UA-Platform-Version, later requests include the exact model (e.g., a specific Tecno or Infinix model) and the Android version.
+- The system captures the time from both the device and from the server. Store in the "votes" table for forensics.
+- The timezone is captured from the app in addition to the course signature - used to determine if the user is likely in Kenya.
+- Forensics later can determine if the user is likely in Kenya: phone number (starts with +254 or 0) ... timezone ... time of the night the person is "voting" for the business ... Carrier
+- Carrier/network (ASN) of the IP. If the IP belongs to Safaricom, Airtel Kenya, or Telkom Kenya, the voter is almost certainly in Kenya, regardless of what the geolocation database says. Build an allow-list of Kenyan carrier and major ISP networks.
+- Forensics is "future" and will only be used if needed.
+- Suspicious bursts of votes: New identifications arriving in a burst from the same IP or carrier and all voting for the same business.
+- Inlcude the "week" the vote occured. Users can "vote" again each new week.
+- Need two track user's "favorites" separate from business "votes". One is a business rating, the other is how the user marks their favorite businesses so they can find them in the future.
+- FUTURE: If a user is not perceived to be using the app after 6mo or year, then do we stop counting their "favorites"?
+- "favorites" do not expire in terms of a user continuing to use the app
+- Once we allow a user to authenticate their phone number, we can persist a set of "favorites" when they get a new phone or use another device. At the moement, each device will be a separate fav-JWT and the favorites will not transfer to a new phone
+- Count the favorites nightly to sync the count on the screen?
+- Post rules about how "votes" are calculated
+- Post rules on how "favorites" are counted
+- Contest: Users vote for their favorite business "this week". Up to 3 votes (only 1 vote per business)
+- We pick 1 business each week. Who ever "voted" for that business during the week gets entered into a drawing to win a prize (a t-shirt or gift card - maybe a gift certificate to a certain business... maybe the business selected).
