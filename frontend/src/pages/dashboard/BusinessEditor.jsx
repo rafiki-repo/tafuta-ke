@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/Alert";
 import { Spinner } from "@/components/ui/Spinner";
 import { businessAPI, searchAPI, adminAPI, paymentAPI } from "@/lib/api";
+import { parseCoordinate } from "@/lib/location";
 import ImageManager from "@/components/ImageManager";
 import useAuthStore from "@/store/useAuthStore";
 
@@ -129,11 +130,16 @@ export default function BusinessEditor() {
     city: "",
     streetAddress: "",
     postalCode: "",
+    latitude: "",
+    longitude: "",
+    hideMap: false,
     hours: { ...defaultHours },
     siteTemplate: "classic",
     locallyOwned: false,
     products: [],
   });
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState(null);
 
   // Slugify a string into a valid business_tag
   const slugifyTag = useCallback(
@@ -210,6 +216,9 @@ export default function BusinessEditor() {
         city: c.location?.city || "",
         streetAddress: c.location?.street_address || "",
         postalCode: c.location?.postal_code || "",
+        latitude: c.location?.latitude ?? "",
+        longitude: c.location?.longitude ?? "",
+        hideMap: c.location?.hide_map === true,
         hours: c.hours || { ...defaultHours },
         siteTemplate: c.site_template || "classic",
         locallyOwned: c.locally_owned === true,
@@ -419,6 +428,38 @@ export default function BusinessEditor() {
     setSuccess(false);
   };
 
+  // Fills the coordinate fields from the phone's GPS fix. The owner still presses Save.
+  const useCurrentLocation = () => {
+    setLocationMessage(null);
+    if (!navigator.geolocation) {
+      setLocationMessage({ type: "error", text: "This device cannot share its location." });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: pos.coords.latitude.toFixed(6),
+          longitude: pos.coords.longitude.toFixed(6),
+        }));
+        setLocating(false);
+        setLocationMessage({ type: "success", text: "Location captured. Press Save to keep it." });
+      },
+      (err) => {
+        setLocating(false);
+        setLocationMessage({
+          type: "error",
+          text:
+            err.code === 1
+              ? "Location access was denied. Allow it in your browser settings and try again."
+              : "Could not get your location. Try again, or type the coordinates.",
+        });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  };
+
   const handleHoursChange = (day, field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -452,6 +493,9 @@ export default function BusinessEditor() {
       street_address: formData.streetAddress,
       postal_code: formData.postalCode,
       region: formData.region,
+      latitude: parseCoordinate(formData.latitude, -90, 90) ?? undefined,
+      longitude: parseCoordinate(formData.longitude, -180, 180) ?? undefined,
+      hide_map: formData.hideMap,
     },
     hours: formData.hours,
     site_template: formData.siteTemplate,
@@ -478,6 +522,14 @@ export default function BusinessEditor() {
     if (!formData.region) {
       setError("Please select a region.");
       setActiveTab("basic");
+      return;
+    }
+    if (
+      Number.isNaN(parseCoordinate(formData.latitude, -90, 90)) ||
+      Number.isNaN(parseCoordinate(formData.longitude, -180, 180))
+    ) {
+      setError("Latitude must be between -90 and 90, and longitude between -180 and 180.");
+      setActiveTab("location");
       return;
     }
 
@@ -1032,6 +1084,74 @@ export default function BusinessEditor() {
                 <p className="text-xs text-muted-foreground mt-1">
                   Kenya post office postal code (not a zip code).
                 </p>
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold">Map coordinates</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Used to show a Google map on your website. Type the decimal
+                    degrees (e.g. Machakos ≈ -1.52, 37.26), or use your phone's
+                    current location while you are at the business.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Latitude
+                    </label>
+                    <Input
+                      inputMode="decimal"
+                      value={formData.latitude}
+                      onChange={(e) => handleChange("latitude", e.target.value)}
+                      placeholder="e.g. -1.5177"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Longitude
+                    </label>
+                    <Input
+                      inputMode="decimal"
+                      value={formData.longitude}
+                      onChange={(e) => handleChange("longitude", e.target.value)}
+                      placeholder="e.g. 37.2634"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={useCurrentLocation}
+                    disabled={locating}
+                  >
+                    {locating ? "Getting location…" : "Use my current location"}
+                  </Button>
+                  {locationMessage && (
+                    <span
+                      className={`text-xs ${locationMessage.type === "error" ? "text-red-600" : "text-green-700"}`}
+                    >
+                      {locationMessage.text}
+                    </span>
+                  )}
+                </div>
+
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.hideMap}
+                    onChange={(e) => handleChange("hideMap", e.target.checked)}
+                    className="mt-0.5 h-4 w-4"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">Hide location on website</span>
+                    <span className="block text-xs text-muted-foreground">
+                      When ticked, the map and the "View location on google maps" link are not shown.
+                    </span>
+                  </span>
+                </label>
               </div>
             </CardContent>
           </Card>

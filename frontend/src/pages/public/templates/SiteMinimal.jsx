@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ShoppingCart, Heart } from "lucide-react";
+import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ShoppingCart, Heart, ExternalLink } from "lucide-react";
+import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
 
@@ -333,6 +334,30 @@ export default function SiteMinimal({ business }) {
             <p className="text-sm text-gray-500 leading-relaxed mb-8 whitespace-pre-line">
               {profile.how_to_find}
             </p>
+          )}
+
+          {hasMapLocation(location) && (
+            <div className="mb-8">
+              <div className="border border-gray-800 overflow-hidden">
+                <iframe
+                  title="Location map"
+                  width="100%"
+                  height="220"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  src={mapEmbedUrl(location)}
+                />
+              </div>
+              <a
+                href={mapLinkUrl(location)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-white mt-2"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Open in Google Maps
+              </a>
+            </div>
           )}
 
           {/* CTA stack */}

@@ -2,6 +2,7 @@ import express from 'express';
 import { success, error } from '../utils/response.js';
 import pool from '../config/database.js';
 import { readAppConfig, getBusinessFolder, listImagesForType } from '../services/media.js';
+import { redactHiddenCoordinates } from '../utils/location.js';
 
 const router = express.Router();
 
@@ -78,7 +79,7 @@ router.get('/:tag', async (req, res, next) => {
       locally_owned: c.locally_owned === true,
       profile: c.profile?.en || {},
       contact: c.contact || {},
-      location: c.location || {},
+      location: redactHiddenCoordinates(c.location || {}),
       hours: c.hours || {},
       images,
       media_primary: mediaPrimary,

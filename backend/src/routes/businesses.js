@@ -8,6 +8,7 @@ import { checkBusinessPermission, isBusinessOwner } from '../utils/permissions.j
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 import { getBusinessFolder } from '../services/media.js';
+import { validateLocation, redactHiddenCoordinates } from '../utils/location.js';
 
 const router = express.Router();
 
@@ -51,6 +52,11 @@ router.post('/', requireAuth, async (req, res, next) => {
 
     if (typeof content_json !== 'object') {
       return res.status(400).json(error('content_json must be a valid JSON object', 'INVALID_JSON'));
+    }
+
+    const locationError = validateLocation(content_json.location);
+    if (locationError) {
+      return res.status(400).json(error(locationError, 'INVALID_LOCATION'));
     }
 
     // Validate business_tag format if provided
@@ -218,6 +224,15 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
       ? { user_id: owner_user_id, full_name: owner_full_name, email: owner_email }
       : null;
 
+    // Coordinates are hidden from public viewers when the owner has turned the map off (PRD-17).
+    // Staff editing the business still receive them.
+    if (!canViewOwner && business.content_json) {
+      business.content_json = {
+        ...business.content_json,
+        location: redactHiddenCoordinates(business.content_json.location),
+      };
+    }
+
     res.json(success({
       ...business,
       user_role: userRole,
@@ -241,6 +256,11 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
 
     if (!content_json || typeof content_json !== 'object') {
       return res.status(400).json(error('content_json is required and must be a valid JSON object', 'INVALID_JSON'));
+    }
+
+    const locationError = validateLocation(content_json.location);
+    if (locationError) {
+      return res.status(400).json(error(locationError, 'INVALID_LOCATION'));
     }
 
     // Validate business_tag format if provided

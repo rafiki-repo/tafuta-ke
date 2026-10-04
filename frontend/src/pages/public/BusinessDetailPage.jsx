@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MapPin, Phone, Mail, Globe, Star, ArrowLeft, X } from "lucide-react";
+import { MapPin, Phone, Mail, Globe, Star, ArrowLeft, X, ExternalLink } from "lucide-react";
+import { hasMapLocation, mapLinkUrl } from "@/lib/location";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -336,10 +337,21 @@ export default function BusinessDetailPage() {
                         {location.city}
                       </p>
                     )}
-                    {location.address && (
+                    {location.street_address && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        {location.address}
+                        {location.street_address}
                       </p>
+                    )}
+                    {hasMapLocation(location) && (
+                      <a
+                        href={mapLinkUrl(location)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View location on google maps
+                      </a>
                     )}
                   </div>
                 </div>

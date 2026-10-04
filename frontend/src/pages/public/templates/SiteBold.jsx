@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Phone, Mail, MessageCircle, MapPin, Globe, X, Wrench, ShoppingBag, ExternalLink, ShoppingCart, Heart } from "lucide-react";
+import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
 // CalendarPlus — restore to lucide import above when re-enabling booking
 // import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
 
@@ -276,7 +277,7 @@ export default function SiteBold({ business }) {
               </section>
             )}
 
-            {location.city && (
+            {(location.city || hasMapLocation(location)) && (
               <section>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-3">Location</h2>
                 <div className="space-y-1.5 text-sm text-gray-300">
@@ -287,15 +288,29 @@ export default function SiteBold({ business }) {
                   {profile.how_to_find && (
                     <p className="text-gray-500 text-xs mt-2 leading-relaxed whitespace-pre-line">{profile.how_to_find}</p>
                   )}
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent([location.street_address, location.city, location.region].filter(Boolean).join(", "))}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-orange-400 hover:text-orange-300 mt-1"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Open in Google Maps
-                  </a>
+                  {hasMapLocation(location) && (
+                    <>
+                      <div className="rounded overflow-hidden border border-gray-800">
+                        <iframe
+                          title="Location map"
+                          width="100%"
+                          height="220"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          src={mapEmbedUrl(location)}
+                        />
+                      </div>
+                      <a
+                        href={mapLinkUrl(location)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-orange-400 hover:text-orange-300 mt-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open in Google Maps
+                      </a>
+                    </>
+                  )}
                 </div>
               </section>
             )}
