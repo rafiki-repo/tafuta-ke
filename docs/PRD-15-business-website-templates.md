@@ -1,9 +1,9 @@
 # PRD-15: Business Website Templates & One-Page Site Builder
 
 **Product Requirements Document**
-**Version:** 1.2
+**Version:** 1.3
 **Last Updated:** October 2026
-**Status:** Implemented — cart/book behind `website_commerce` paid subscription (see §4.7)
+**Status:** Implemented — cart/book behind `website_commerce` paid subscription (see §4.7); billing type inherited from `website_hosting`
 
 ---
 
@@ -112,11 +112,19 @@ Billing types supported: `weekly`, `monthly`, `annual`, `one_time`. All four are
 
 The WhatsApp ordering and booking layer (`_booking.jsx`) is a paid add-on, gated by an active `website_commerce` subscription. Without it the site is display-only; with it, the full commerce layer activates.
 
+**Billing type inheritance:**
+
+`website_commerce` always inherits the billing period of the owner's `website_hosting` subscription — it is never billed on a different cycle. In practice this means:
+
+- The **period selector** in the checkout page (`PaymentCheckout.jsx`) and the **billing label** in the dashboard Services tab (`BusinessEditor.jsx`) both derive the billing type from `website_hosting`'s configured type, not from `website_commerce`'s own service-type definition in `system_config`.
+- `processCompletedPayment` in `payments.js` overrides `website_commerce`'s billing type at subscription-creation time using the same lookup (`typeMap['website_hosting']?.billing_type`), so the stored `expiration_date` matches the hosting period.
+- The admin still sets a `billing_type` on the `website_commerce` service type (required by the services form), but it is ignored at runtime in favour of the hosting type.
+
 **How it works:**
 
-1. Admin creates a `website_commerce` service type in admin → Services (label, price, billing type). No code change needed.
-2. Owner goes to dashboard → their business → Services tab and purchases it. Payment follows the same PesaPal flow as `website_hosting`.
-3. On successful payment, `processCompletedPayment` inserts an active `website_commerce` row in `service_subscriptions`.
+1. Admin creates a `website_commerce` service type in admin → Services (label, price, any billing type — overridden at runtime). No code change needed.
+2. Owner goes to dashboard → their business → Services tab and purchases it. The displayed billing period matches their `website_hosting` billing type. Payment follows the same PesaPal flow as `website_hosting`.
+3. On successful payment, `processCompletedPayment` inserts an active `website_commerce` row in `service_subscriptions` with an expiration date matching the hosting billing period.
 4. The public site endpoint (`GET /api/site/:tag`) queries for an active `website_commerce` subscription and includes `commerce_enabled: true` in the response.
 5. All four templates read `commerce_enabled` from the `business` prop. When `true`:
    - **Book button** appears on each service row (sends a pre-filled WhatsApp booking message)
