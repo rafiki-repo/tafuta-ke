@@ -1639,10 +1639,16 @@ export default function BusinessEditor() {
               {subsLoading && <Spinner size="sm" />}
               {subscriptions && (
                 <div className="divide-y">
-                  {subscriptions.service_types.filter(stDef => isAdminContext || stDef.enabled !== false).map((stDef) => {
+                  {(() => {
+                    const stMap = Object.fromEntries(subscriptions.service_types.map(s => [s.id, s]));
+                    const resolvedBillingType = (stDef) =>
+                      stDef.id === 'website_commerce'
+                        ? (stMap['website_hosting']?.billing_type || stDef.billing_type || 'monthly')
+                        : (stDef.billing_type || 'monthly');
+                    return subscriptions.service_types.filter(stDef => isAdminContext || stDef.enabled !== false).map((stDef) => {
                     const type = stDef.id ?? stDef;
                     const label = stDef.label ?? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-                    const billingType = stDef.billing_type || 'monthly';
+                    const billingType = resolvedBillingType(stDef);
                     const isOneTime = billingType === 'one_time';
                     const billingLabel = billingType === 'weekly' ? 'weekly' : billingType === 'annual' ? 'annual' : billingType === 'one_time' ? 'one-time' : 'monthly';
                     const stPrice = Number(stDef.price ?? stDef.price_per_month ?? 0);
@@ -1722,7 +1728,8 @@ export default function BusinessEditor() {
                         )}
                       </div>
                     );
-                  })}
+                  })
+                  })()}
                 </div>
               )}
             </CardContent>
