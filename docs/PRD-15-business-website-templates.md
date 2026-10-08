@@ -1,9 +1,9 @@
 # PRD-15: Business Website Templates & One-Page Site Builder
 
 **Product Requirements Document**
-**Version:** 1.3
+**Version:** 1.4
 **Last Updated:** October 2026
-**Status:** Implemented — cart/book behind `website_commerce` paid subscription (see §4.7); billing type inherited from `website_hosting`
+**Status:** Implemented — cart/book behind `website_commerce` paid subscription (see §4.7); billing type inherited from `website_hosting`; site URL is path-based, not subdomain (see §4.1, §4.5)
 
 ---
 
@@ -33,6 +33,8 @@ The public site is **not** pregenerated or server-rendered. `/site/:tag` is a cl
 - Route: `frontend/src/App.jsx` → `<Route path="/site/:tag" element={<SitePage />} />`
 - Page: `frontend/src/pages/public/SitePage.jsx` fetches `GET /api/site/:tag` on mount, then picks a template component from a lookup map keyed by `business.site_template` and renders it with the fetched data as its `business` prop.
 - Backend: `backend/src/routes/site.js` runs a live Postgres query per request (no caching layer), gates access on `content_json.website_enabled` / an active `website_hosting` subscription, and returns JSON — it never renders HTML.
+
+**Public URL format:** `https://tafuta.ke/site/:business_tag` — path-based, not subdomain. The `business_tag` slug is set once when a business is created (editable by the owner from Basic Info). There is no `{subdomain}.tafuta.ke` routing; the legacy `subdomain` DB column is no longer written or read for this purpose.
 
 A `?template=<id>` query param on the `/site/:tag` URL overrides which design renders, without persisting anything — this is what powers the "Preview Classic / Bold / Minimal / Vibrant" links in the dashboard.
 
@@ -91,6 +93,16 @@ Both routes render the same JSX, but the component switches behaviour based on `
 The `PATCH` toggle endpoint updates only `website_enabled` inside `content_json` using `jsonb_set` — it does not touch any other key. The main form save (`businessAPI.update`) preserves `website_enabled` from the current DB value, so saving the form after toggling never overwrites the toggle state.
 
 Saving submits the entire `content_json` in one PUT with `website_enabled` preserved (see §4.6 for why this matters). `site_template` and `locally_owned` are plain top-level keys in that payload.
+
+**Contact tab — website link:** The owner (or admin) picks one of three options for the public website field:
+
+| Option | Stored as | Notes |
+|---|---|---|
+| No website link | nothing in `contact.website` | Default |
+| Tafuta-hosted page | `contact.website = https://tafuta.ke/site/{business_tag}` | Read-only display; URL is derived from `business_tag`, no input needed |
+| External website | `contact.website = <owner-entered URL>` | Owner pastes their own URL |
+
+The "Tafuta-hosted page" option no longer prompts for a subdomain — the URL is always `tafuta.ke/site/{business_tag}`. The legacy `subdomain` DB column is left intact but is no longer written on save.
 
 ### 4.6 Website subscription lifecycle
 
