@@ -97,7 +97,10 @@ async function processCompletedPayment(trackingId, paymentMethod) {
           [tx.business_id, item.service_type]
         );
       } else {
-        const billingType = typeMap[item.service_type]?.billing_type || 'monthly';
+        // website_commerce always inherits the billing period of website_hosting
+        const billingType = item.service_type === 'website_commerce'
+          ? (typeMap['website_hosting']?.billing_type || 'monthly')
+          : (typeMap[item.service_type]?.billing_type || 'monthly');
         await client.query(
           `INSERT INTO service_subscriptions
              (business_id, service_type, months_paid, expiration_date, status)

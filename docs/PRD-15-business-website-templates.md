@@ -1,9 +1,9 @@
 # PRD-15: Business Website Templates & One-Page Site Builder
 
 **Product Requirements Document**
-**Version:** 1.2
+**Version:** 1.4
 **Last Updated:** October 2026
-**Status:** Implemented — display-only mode active (cart/book suspended, see §4.7)
+**Status:** Implemented — cart/book behind `website_commerce` paid subscription (see §4.7); billing type inherited from `website_hosting`; site URL is path-based, not subdomain (see §4.1, §4.5)
 
 ---
 
@@ -33,6 +33,8 @@ The public site is **not** pregenerated or server-rendered. `/site/:tag` is a cl
 - Route: `frontend/src/App.jsx` → `<Route path="/site/:tag" element={<SitePage />} />`
 - Page: `frontend/src/pages/public/SitePage.jsx` fetches `GET /api/site/:tag` on mount, then picks a template component from a lookup map keyed by `business.site_template` and renders it with the fetched data as its `business` prop.
 - Backend: `backend/src/routes/site.js` runs a live Postgres query per request (no caching layer), gates access on `content_json.website_enabled` / an active `website_hosting` subscription, and returns JSON — it never renders HTML.
+
+**Public URL format:** `https://tafuta.ke/site/:business_tag` — path-based, not subdomain. The `business_tag` slug is set once when a business is created (editable by the owner from Basic Info). There is no `{subdomain}.tafuta.ke` routing; the legacy `subdomain` DB column is no longer written or read for this purpose.
 
 A `?template=<id>` query param on the `/site/:tag` URL overrides which design renders, without persisting anything — this is what powers the "Preview Classic / Bold / Minimal / Vibrant" links in the dashboard.
 
@@ -92,6 +94,16 @@ The `PATCH` toggle endpoint updates only `website_enabled` inside `content_json`
 
 Saving submits the entire `content_json` in one PUT with `website_enabled` preserved (see §4.6 for why this matters). `site_template` and `locally_owned` are plain top-level keys in that payload.
 
+**Contact tab — website link:** The owner (or admin) picks one of three options for the public website field:
+
+| Option | Stored as | Notes |
+|---|---|---|
+| No website link | nothing in `contact.website` | Default |
+| Tafuta-hosted page | `contact.website = https://tafuta.ke/site/{business_tag}` | Read-only display; URL is derived from `business_tag`, no input needed |
+| External website | `contact.website = <owner-entered URL>` | Owner pastes their own URL |
+
+The "Tafuta-hosted page" option no longer prompts for a subdomain — the URL is always `tafuta.ke/site/{business_tag}`. The legacy `subdomain` DB column is left intact but is no longer written on save.
+
 ### 4.6 Website subscription lifecycle
 
 The site is gated by an active `website_hosting` subscription. The full lifecycle:
@@ -108,20 +120,35 @@ The site is gated by an active `website_hosting` subscription. The full lifecycl
 
 Billing types supported: `weekly`, `monthly`, `annual`, `one_time`. All four are configurable in admin → Services. The "period selector" in the owner's payment modal adapts its label (Weeks / Months / Years) and summary text to the service's billing type.
 
-### 4.7 Display-only mode (cart/book suspended)
+### 4.7 Website Commerce — paid add-on
 
-As of October 2026, the WhatsApp ordering and booking layer has been **temporarily suspended** across all four templates. The site now serves as a display showcase only — contact buttons (Phone, WhatsApp, Email) remain active, but:
+The WhatsApp ordering and booking layer (`_booking.jsx`) is a paid add-on, gated by an active `website_commerce` subscription. Without it the site is display-only; with it, the full commerce layer activates.
 
-- **Book button** (services) — commented out in all four template files. Search for `// BOOK:` to restore.
-- **Add to Cart button** (products) — `onAddToCart={null}` in all four templates; the card's button renders only when `onAddToCart` is non-null.
-- **Cart FAB** — commented out. Search for `// ── CART FAB` to restore.
-- **Booking modal** — commented out. Search for `// ── BOOKING MODAL` to restore.
-- **Cart drawer** — commented out. Search for `// ── CART DRAWER` to restore.
-- **`_booking.jsx` import** — commented out at the top of each template. Restore the import line alongside the UI elements above.
+**Billing type inheritance:**
 
-The `_booking.jsx` module itself is unchanged. Re-enabling the full flow requires uncommenting the import and the six JSX blocks (one per template file × four templates). No DB changes are needed; the cart was always in-memory only.
+`website_commerce` always inherits the billing period of the owner's `website_hosting` subscription — it is never billed on a different cycle. In practice this means:
 
-**Decision:** The commerce layer was suspended because the WhatsApp-redirect model needs UX review before going live with paying subscribers. No timeline for restoration has been committed. This section and the in-code comments are the record of where to resume.
+- The **period selector** in the checkout page (`PaymentCheckout.jsx`) and the **billing label** in the dashboard Services tab (`BusinessEditor.jsx`) both derive the billing type from `website_hosting`'s configured type, not from `website_commerce`'s own service-type definition in `system_config`.
+- `processCompletedPayment` in `payments.js` overrides `website_commerce`'s billing type at subscription-creation time using the same lookup (`typeMap['website_hosting']?.billing_type`), so the stored `expiration_date` matches the hosting period.
+- The admin still sets a `billing_type` on the `website_commerce` service type (required by the services form), but it is ignored at runtime in favour of the hosting type.
+
+**How it works:**
+
+1. Admin creates a `website_commerce` service type in admin → Services (label, price, any billing type — overridden at runtime). No code change needed.
+2. Owner goes to dashboard → their business → Services tab and purchases it. The displayed billing period matches their `website_hosting` billing type. Payment follows the same PesaPal flow as `website_hosting`.
+3. On successful payment, `processCompletedPayment` inserts an active `website_commerce` row in `service_subscriptions` with an expiration date matching the hosting billing period.
+4. The public site endpoint (`GET /api/site/:tag`) queries for an active `website_commerce` subscription and includes `commerce_enabled: true` in the response.
+5. All four templates read `commerce_enabled` from the `business` prop. When `true`:
+   - **Book button** appears on each service row (sends a pre-filled WhatsApp booking message)
+   - **Add to Cart button** appears on product cards
+   - **Cart FAB** appears (floating cart icon, shows item count)
+   - **Cart drawer** and **Booking modal** are active
+6. When the subscription expires, the cron job marks it expired and `commerce_enabled` returns `false` on the next page load — buttons disappear without any template code change.
+
+**What stays visible without the subscription:**
+All contact buttons (Phone, WhatsApp, Email, website link), the business info, gallery, and hours remain fully visible. The site is still functional for discovery; it just has no ordering layer.
+
+**Admin can also grant the subscription** directly from `/admin/businesses/:id/edit` → Services tab → Grant, without requiring the owner to pay.
 
 ## 5. Future / Not Yet Built
 
@@ -137,7 +164,7 @@ These were discussed and scoped at a high level but **not started**. Full detail
 Explicit boundaries, so future work on this feature doesn't quietly grow past what's needed:
 
 - **Owner-uploaded or marketplace templates.** The template set is a fixed, developer-maintained list. There is no plan for businesses to upload custom HTML/CSS or choose from a marketplace of third-party designs.
-- **Online payment/checkout.** The WhatsApp cart and booking flow (`_booking.jsx`) is intentionally the entire extent of "commerce" considered for the site builder — a deep link to a pre-filled WhatsApp message. No payment gateway integration, no order persistence, no inventory management is planned. The commerce layer is currently suspended (see §4.7) pending UX review, but the implementation is intact in `_booking.jsx` and will be restored when ready.
+- **Online payment/checkout.** The `website_commerce` add-on (§4.7) is intentionally the entire extent of "commerce" on the site — a WhatsApp deep-link flow, not a payment gateway. No order persistence, no inventory tracking, no payment processing on the site itself is planned.
 - **A dedicated "owner profile" content type.** The legacy reference site (Vibrant's inspiration) had a named owner photo/bio section ("Joyce Mbole Mwendwa – Business Owner"). No such field exists in `content_json`, and none is planned — `profile.how_to_find` covers the equivalent "come visit us" copy without impersonating a specific unverified person.
 - **Geocoding or verified addresses.** *Superseded by [PRD-17](PRD-17-business-location.md).* `location.*` address fields stay freeform text. Map pins now come from owner-entered `location.latitude` / `location.longitude`, not from the address; no address geocoding or verification is planned.
 - **SEO tooling.** No per-business meta tags, structured data (JSON-LD), sitemap entries, or social share card editor. (Pregeneration, if built per §5, would incidentally help crawlability, but that's a side effect, not a goal.)

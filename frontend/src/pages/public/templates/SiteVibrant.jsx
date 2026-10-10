@@ -3,8 +3,8 @@ import { Phone, MessageCircle, MapPin, Globe, Wrench, ShoppingBag, ExternalLink,
 import { hasMapLocation, mapEmbedUrl, mapLinkUrl } from "@/lib/location";
 import { colorVars, resolveColors } from "@/lib/palette";
 import { PhotoLightbox } from "./_lightbox";
-// CalendarPlus — restore to lucide import above when re-enabling booking
-// import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking"; // CART/BOOK: restore when re-enabling
+import { CalendarPlus } from "lucide-react";
+import { useCart, BookingModal, CartDrawer, CartFab } from "./_booking";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_SHORT = { monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun" };
@@ -88,12 +88,13 @@ export default function SiteVibrant({ business, palette }) {
     images = {},
     media_primary = {},
     products = [],
+    commerce_enabled = false,
   } = business;
 
   const [lightbox, setLightbox] = useState(null);
-  // const [bookingService, setBookingService] = useState(null); // CART/BOOK
-  // const [cartOpen, setCartOpen] = useState(false);           // CART/BOOK
-  // const cart = useCart();                                     // CART/BOOK
+  const [bookingService, setBookingService] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const cart = useCart();
 
   const colors = colorVars(resolveColors(palette, "vibrant"));
   const services = products.filter(p => (p.type || "service") === "service");
@@ -196,8 +197,7 @@ export default function SiteVibrant({ business, palette }) {
                     {p.description && <p className="text-xs text-[color-mix(in_srgb,var(--c-text)_70%,transparent)] truncate">{p.description}</p>}
                   </div>
                   {p.price && <span className="text-sm font-bold shrink-0">KES {p.price}</span>}
-                  {/* BOOK: restore when ready:
-                  {waNumber && (
+                  {commerce_enabled && waNumber && (
                     <button
                       type="button"
                       onClick={() => setBookingService(p)}
@@ -207,7 +207,6 @@ export default function SiteVibrant({ business, palette }) {
                       Book
                     </button>
                   )}
-                  */}
                 </div>
               ))}
             </div>
@@ -223,7 +222,7 @@ export default function SiteVibrant({ business, palette }) {
             <div className="grid grid-cols-2 gap-3">
               {productItems.length > 0
                 ? productItems.map(p => (
-                    <ItemCard key={p.id} item={p} isProduct onAddToCart={null} onImageClick={setLightbox} />
+                    <ItemCard key={p.id} item={p} isProduct onAddToCart={commerce_enabled ? cart.addItem : null} onImageClick={setLightbox} />
                   ))
                 : galleryItems.map(img => {
                     const url = img.sizes?.large || img.sizes?.medium || Object.values(img.sizes || {})[0];
@@ -341,9 +340,8 @@ export default function SiteVibrant({ business, palette }) {
         )}
       </main>
 
-      {/* ── CART FAB — restore when ready: <CartFab itemCount={cart.itemCount} onClick={() => setCartOpen(true)} /> */}
+      {commerce_enabled && <CartFab itemCount={cart.itemCount} onClick={() => setCartOpen(true)} />}
 
-      {/* ── BOOKING MODAL — restore when ready:
       {bookingService && waNumber && (
         <BookingModal
           service={bookingService}
@@ -352,9 +350,7 @@ export default function SiteVibrant({ business, palette }) {
           onClose={() => setBookingService(null)}
         />
       )}
-      */}
 
-      {/* ── CART DRAWER — restore when ready:
       {cartOpen && (
         <CartDrawer
           cart={cart}
@@ -363,7 +359,6 @@ export default function SiteVibrant({ business, palette }) {
           onClose={() => setCartOpen(false)}
         />
       )}
-      */}
 
       {/* ── MOBILE STICKY CTA ────────────────────────────────────────────── */}
       {(contact.phone || waNumber) && (

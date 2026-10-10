@@ -28,7 +28,14 @@ router.get('/:tag', async (req, res, next) => {
              AND ss.service_type = 'website_hosting'
              AND ss.status = 'active'
              AND (ss.expiration_date IS NULL OR ss.expiration_date > CURRENT_DATE)
-         ) AS has_website_hosting
+         ) AS has_website_hosting,
+         EXISTS (
+           SELECT 1 FROM service_subscriptions ss
+           WHERE ss.business_id = b.business_id
+             AND ss.service_type = 'website_commerce'
+             AND ss.status = 'active'
+             AND (ss.expiration_date IS NULL OR ss.expiration_date > CURRENT_DATE)
+         ) AS has_website_commerce
        FROM businesses b
        WHERE b.business_tag = $1 AND b.status = 'active'`,
       [tag]
@@ -78,6 +85,7 @@ router.get('/:tag', async (req, res, next) => {
       color_palette: c.color_palette || null,
       website_enabled: websiteEnabled === true || b.has_website_hosting,
       locally_owned: c.locally_owned === true,
+      commerce_enabled: b.has_website_commerce === true,
       profile: c.profile?.en || {},
       contact: c.contact || {},
       location: redactHiddenCoordinates(c.location || {}),

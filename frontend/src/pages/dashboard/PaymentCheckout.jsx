@@ -57,6 +57,12 @@ export default function PaymentCheckout() {
 
   const svcMap = Object.fromEntries(services.map(s => [s.id, s]));
 
+  // website_commerce inherits the billing period of website_hosting
+  const effectiveBillingType = (svc) =>
+    svc.id === 'website_commerce'
+      ? (svcMap['website_hosting']?.billing_type || svc.billing_type || 'monthly')
+      : (svc.billing_type || 'monthly');
+
   const items = Object.entries(selected).map(([service_type, months]) => {
     const def = svcMap[service_type] || {};
     const price = Number(def.price ?? def.price_per_month ?? 200);
@@ -139,7 +145,8 @@ export default function PaymentCheckout() {
           {services.map(svc => {
             const isSelected = selected[svc.id] !== undefined;
             const price = Number(svc.price ?? svc.price_per_month ?? 0);
-            const isOneTime = svc.billing_type === 'one_time';
+            const bt = effectiveBillingType(svc);
+            const isOneTime = bt === 'one_time';
             return (
               <div
                 key={svc.id}
@@ -165,7 +172,7 @@ export default function PaymentCheckout() {
                   <div className="text-right shrink-0">
                     <p className="text-sm font-medium">KES {fmt(price)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {isOneTime ? 'one-time' : svc.billing_type === 'weekly' ? '/week' : svc.billing_type === 'annual' ? '/year' : '/month'}
+                      {isOneTime ? 'one-time' : bt === 'weekly' ? '/week' : bt === 'annual' ? '/year' : '/month'}
                     </p>
                   </div>
                 </div>
@@ -176,7 +183,7 @@ export default function PaymentCheckout() {
                     onClick={e => e.stopPropagation()}
                   >
                     <label className="text-sm text-muted-foreground shrink-0">
-                      {svc.billing_type === 'weekly' ? 'Weeks:' : svc.billing_type === 'annual' ? 'Years:' : 'Months:'}
+                      {bt === 'weekly' ? 'Weeks:' : bt === 'annual' ? 'Years:' : 'Months:'}
                     </label>
                     <div className="flex items-center gap-2">
                       <button
@@ -220,7 +227,7 @@ export default function PaymentCheckout() {
                 <span className="text-muted-foreground">
                   {svcMap[item.service_type]?.label || item.service_type}
                   {!item.isOneTime && (() => {
-                    const bt = svcMap[item.service_type]?.billing_type;
+                    const bt = effectiveBillingType(svcMap[item.service_type] || { id: item.service_type });
                     const unit = bt === 'weekly' ? 'week' : bt === 'annual' ? 'year' : 'month';
                     return ` × ${item.months} ${unit}${item.months > 1 ? 's' : ''}`;
                   })()}
