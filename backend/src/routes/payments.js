@@ -440,6 +440,116 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
+// POST /api/payments/invoices/:id/pay
+router.post('/invoices/:id/pay', requireAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid invoice ID', 'INVALID_ID'));
+    }
+
+    const invResult = await pool.query(
+      `SELECT i.invoice_id, i.business_id, i.status, i.total_amount, i.subtotal,
+              i.vat_amount, i.items, i.invoice_number
+       FROM invoices i
+       WHERE i.invoice_id = $1`,
+      [id]
+    );
+    if (invResult.rows.length === 0) {
+      return res.status(404).json(error('Invoice not found', 'NOT_FOUND'));
+    }
+    const inv = invResult.rows[0];
+
+    if (inv.status === 'paid') {
+      return res.status(409).json(error('Invoice is already paid', 'ALREADY_PAID'));
+    }
+    if (inv.status === 'cancelled') {
+      return res.status(409).json(error('Invoice has been cancelled', 'CANCELLED'));
+    }
+
+    const { hasPermission, role } = await checkBusinessPermission(req.user.userId, inv.business_id, 'owner');
+    if (!hasPermission || role !== 'owner') {
+      return res.status(403).json(error('Only business owners can pay invoices', 'FORBIDDEN'));
+    }
+
+    const userResult = await pool.query(
+      `SELECT full_name, phone, email FROM users WHERE user_id = $1`,
+      [req.user.userId]
+    );
+    const user = userResult.rows[0];
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const merchantReference = `TAFUTA-INV-${Date.now()}-${inv.business_id.substring(0, 8)}`;
+
+      const txResult = await client.query(
+        `INSERT INTO transactions
+           (business_id, user_id, pesapal_merchant_reference,
+            amount, vat_amount, total_amount, items, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')
+         RETURNING transaction_id, pesapal_merchant_reference, total_amount`,
+        [
+          inv.business_id, req.user.userId, merchantReference,
+          inv.subtotal, inv.vat_amount, inv.total_amount,
+          JSON.stringify(inv.items),
+        ]
+      );
+      const tx = txResult.rows[0];
+
+      // Link invoice to this transaction so the callback can mark it paid
+      await client.query(
+        `UPDATE invoices SET transaction_id = $1, updated_at = NOW() WHERE invoice_id = $2`,
+        [tx.transaction_id, inv.invoice_id]
+      );
+
+      const description = inv.invoice_number
+        ? `Tafuta invoice ${inv.invoice_number}`
+        : `Tafuta invoice payment`;
+
+      const pesapalResponse = await pesapalService.submitOrder({
+        merchant_reference: tx.pesapal_merchant_reference,
+        amount: tx.total_amount,
+        currency: 'KES',
+        description,
+        email: user.email || `${user.phone}@tafuta.ke`,
+        phone: user.phone,
+        first_name: user.full_name.split(' ')[0],
+        last_name: user.full_name.split(' ').slice(1).join(' ') || '',
+      });
+
+      await client.query(
+        `UPDATE transactions SET pesapal_tracking_id = $1, updated_at = NOW()
+         WHERE transaction_id = $2`,
+        [pesapalResponse.order_tracking_id, tx.transaction_id]
+      );
+
+      await client.query('COMMIT');
+
+      logger.info('Invoice payment initiated', {
+        invoiceId: inv.invoice_id,
+        transactionId: tx.transaction_id,
+        amount: tx.total_amount,
+      });
+
+      res.status(201).json(success({
+        transaction_id: tx.transaction_id,
+        merchant_reference: tx.pesapal_merchant_reference,
+        redirect_url: pesapalResponse.redirect_url,
+        order_tracking_id: pesapalResponse.order_tracking_id,
+      }, 'Payment initiated'));
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/payments/transactions/:id
 router.get('/transactions/:id', requireAuth, async (req, res, next) => {
   try {
