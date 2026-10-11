@@ -45,7 +45,7 @@ export default function InvoiceDetail() {
       const res = await paymentAPI.payInvoice(id);
       window.location.href = res.data.data.redirect_url;
     } catch (e) {
-      setError(e.response?.data?.message || 'Failed to initiate payment. Please try again.');
+      setError(e.response?.data?.error?.message || e.response?.data?.message || 'Failed to initiate payment. Please try again.');
       setPaying(false);
     }
   };

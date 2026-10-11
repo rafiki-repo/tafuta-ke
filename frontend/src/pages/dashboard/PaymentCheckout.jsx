@@ -91,7 +91,7 @@ export default function PaymentCheckout() {
         setError('No redirect URL returned from payment gateway');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to initiate payment. Please try again.');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to initiate payment. Please try again.');
     } finally {
       setSubmitting(false);
     }
