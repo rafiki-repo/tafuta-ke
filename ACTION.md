@@ -24,3 +24,4 @@ Do not work on these action items unless explicitly told to do so. [IMPLEMENT] m
 
 -In periodic msg to business owners add opportunity to fund a little money toward marketing their category.
 -Training center in the app for users and for staff.
+- Add Athi River as a location for businesses to be listed - Add Inter County Resort as a listing (once approved by the owner)
