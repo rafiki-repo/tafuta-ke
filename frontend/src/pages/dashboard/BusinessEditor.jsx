@@ -123,6 +123,8 @@ export default function BusinessEditor() {
     subdomain: "",
     websiteType: "none",
     websiteUrl: "",
+    promoText: "",
+    promoUrl: "",
     tagline: "",
     description: "",
     phone: "",
@@ -211,6 +213,8 @@ export default function BusinessEditor() {
             ? "external"
             : "none",
         websiteUrl: c.contact?.website?.includes('/site/') ? "" : (c.contact?.website || ""),
+        promoText: c.contact?.promo_text || "",
+        promoUrl: c.contact?.promo_url || "",
         tagline: c.profile?.en?.tagline || "",
         description: c.profile?.en?.description || "",
         howToFind: c.profile?.en?.how_to_find || "",
@@ -513,8 +517,12 @@ export default function BusinessEditor() {
       ...(formData.websiteType === "tafuta" && formData.businessTag
         ? { website: `https://tafuta.ke/site/${formData.businessTag}` }
         : formData.websiteType === "external" && formData.websiteUrl
-          ? { website: formData.websiteUrl }
+          ? { website: /^https?:\/\//i.test(formData.websiteUrl) ? formData.websiteUrl : `https://${formData.websiteUrl}` }
           : {}),
+      ...(formData.promoText && formData.promoUrl ? {
+        promo_text: formData.promoText,
+        promo_url: /^https?:\/\//i.test(formData.promoUrl) ? formData.promoUrl : `https://${formData.promoUrl}`,
+      } : {}),
     },
     location: {
       city: formData.city,
@@ -1035,17 +1043,40 @@ export default function BusinessEditor() {
                       </div>
                       {formData.websiteType === "external" && (
                         <Input
-                          type="url"
                           value={formData.websiteUrl}
                           onChange={(e) =>
                             handleChange("websiteUrl", e.target.value)
                           }
-                          placeholder="https://www.mywebsite.com"
+                          placeholder="e.g. www.mywebsite.com"
                           className="h-8 text-sm"
                         />
                       )}
                     </div>
                   </label>
+                </div>
+              </div>
+
+              {/* Promo Link */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Promotional Link <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                </label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  A bold call-to-action shown prominently on your listing. Both fields must be filled for it to appear.
+                </p>
+                <div className="space-y-2">
+                  <Input
+                    value={formData.promoText}
+                    onChange={(e) => handleChange("promoText", e.target.value)}
+                    placeholder="e.g. CLICK HERE TO SHOP NOW!"
+                    className="text-sm"
+                  />
+                  <Input
+                    value={formData.promoUrl}
+                    onChange={(e) => handleChange("promoUrl", e.target.value)}
+                    placeholder="e.g. tafuta.ke/business/... or www.mysite.com"
+                    className="text-sm"
+                  />
                 </div>
               </div>
             </CardContent>
