@@ -161,6 +161,16 @@ export default function BusinessDetailPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                {contact.promo_text && contact.promo_url && (
+                  <a
+                    href={contact.promo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full text-center font-bold text-lg py-3 px-4 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                  >
+                    {contact.promo_text}
+                  </a>
+                )}
                 <div>
                   <h3 className="font-semibold mb-2">About</h3>
                   <p className="text-muted-foreground">
