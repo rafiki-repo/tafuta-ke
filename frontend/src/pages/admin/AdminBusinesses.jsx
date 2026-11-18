@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { X, Search, CheckCircle, XCircle, Edit2, ShieldCheck, FileText, FileEdit } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -57,6 +57,13 @@ export default function AdminBusinesses() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Account admin filter: '' (anyone), 'me', 'unassigned', or a team member's user ID
+  const [adminFilter, setAdminFilter] = useState(searchParams.get('admin') || '');
+  const [team, setTeam] = useState([]);
+
+  useEffect(() => {
+    adminAPI.getTeam().then(r => setTeam(r.data.data || [])).catch(() => {});
+  }, []);
 
   // Modal state
   const [selected, setSelected] = useState(null);
@@ -83,30 +90,66 @@ export default function AdminBusinesses() {
     } else {
       params.set('tab', activeTab);
     }
+    if (adminFilter) {
+      params.set('admin', adminFilter);
+    } else {
+      params.delete('admin');
+    }
     setSearchParams(params, { replace: true });
     // Intentionally omits searchParams from deps — including it would re-run this
     // on every navigation and fight with the tab state.
-  }, [activeTab]);
+  }, [activeTab, adminFilter]);
+
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Incremented on every fresh load so a slow "load more" from an old filter can't append to a new list
+  const loadToken = useRef(0);
+
+  const buildParams = useCallback((pageNum) => ({
+    page: pageNum,
+    limit: PAGE_SIZE,
+    ...(activeTab !== 'all' && { status: activeTab }),
+    ...(debouncedSearch && { q: debouncedSearch }),
+    ...(adminFilter && { account_admin: adminFilter }),
+  }), [activeTab, debouncedSearch, adminFilter]);
 
   const loadBusinesses = useCallback(async () => {
+    const token = ++loadToken.current;
     setLoading(true);
     setError(null);
     try {
-      const params = {
-        page: 1,
-        limit: 50,
-        ...(activeTab !== 'all' && { status: activeTab }),
-        ...(debouncedSearch && { q: debouncedSearch }),
-      };
-      const res = await adminAPI.getAllBusinesses(params);
+      const res = await adminAPI.getAllBusinesses(buildParams(1));
+      if (token !== loadToken.current) return;
       setBusinesses(res.data.data);
+      setPage(1);
       setTotal(res.data.pagination?.total ?? res.data.data.length);
     } catch {
-      setError('Failed to load businesses.');
+      if (token === loadToken.current) setError('Failed to load businesses.');
     } finally {
-      setLoading(false);
+      if (token === loadToken.current) setLoading(false);
     }
-  }, [activeTab, debouncedSearch]);
+  }, [buildParams]);
+
+  const loadMore = async () => {
+    const token = loadToken.current;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const res = await adminAPI.getAllBusinesses(buildParams(page + 1));
+      if (token !== loadToken.current) return;
+      setBusinesses(prev => {
+        const seen = new Set(prev.map(b => b.business_id));
+        return [...prev, ...res.data.data.filter(b => !seen.has(b.business_id))];
+      });
+      setPage(page + 1);
+      setTotal(res.data.pagination?.total ?? total);
+    } catch {
+      setError('Failed to load more businesses.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     loadBusinesses();
@@ -224,14 +267,29 @@ export default function AdminBusinesses() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-3xl font-bold">Businesses</h1>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search businesses..."
-            className="pl-9"
-          />
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select
+            value={adminFilter}
+            onChange={e => setAdminFilter(e.target.value)}
+            aria-label="Filter by account admin"
+            className="w-48"
+          >
+            <option value="">All account admins</option>
+            <option value="me">My businesses</option>
+            <option value="unassigned">Unassigned</option>
+            {team.map(t => (
+              <option key={t.user_id} value={t.user_id}>{t.full_name}</option>
+            ))}
+          </Select>
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search business, owner or account admin..."
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 
@@ -284,11 +342,21 @@ export default function AdminBusinesses() {
                     <span className="ml-2 font-mono">{b.subdomain}.tafuta.ke</span>
                   )}
                 </p>
-                {(b.owner_name || b.owner_phone) && (
+                {(b.owner_full_name || b.owner_phone) && (
                   <p className="text-xs text-muted-foreground">
-                    {b.owner_name}{b.owner_phone && ` · ${b.owner_phone}`}
+                    Owner: {b.owner_full_name}{b.owner_phone && ` · ${b.owner_phone}`}
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Account admin:{' '}
+                  {b.account_admin_name ? (
+                    <span className="text-foreground">
+                      {b.account_admin_name}{!b.account_admin_active && ' (inactive)'}
+                    </span>
+                  ) : (
+                    <span className="italic">Unassigned</span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge variant={statusVariant[b.status] || 'secondary'}>{b.status}</Badge>
@@ -314,6 +382,19 @@ export default function AdminBusinesses() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && businesses.length > 0 && (
+        <div className="flex flex-col items-center gap-2 pb-4">
+          <p className="text-xs text-muted-foreground">
+            Showing {businesses.length} of {total}
+          </p>
+          {businesses.length < total && (
+            <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? 'Loading…' : `Load more (${Math.min(PAGE_SIZE, total - businesses.length)} more)`}
+            </Button>
+          )}
         </div>
       )}
 
@@ -371,8 +452,9 @@ export default function AdminBusinesses() {
                 </p>
                 <p className="text-muted-foreground">
                   Submitted {daysAgo(selected.created_at)}
-                  {selected.owner_name && ` · Owner: ${selected.owner_name}`}
+                  {selected.owner_full_name && ` · Owner: ${selected.owner_full_name}`}
                   {selected.owner_phone && ` · ${selected.owner_phone}`}
+                  {` · Account admin: ${selected.account_admin_name ? selected.account_admin_name + (selected.account_admin_active ? '' : ' (inactive)') : 'Unassigned'}`}
                 </p>
               </div>
 
