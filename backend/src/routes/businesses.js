@@ -41,9 +41,26 @@ async function generateUniqueTag(client, businessName, businessId) {
 }
 
 // POST /api/businesses - Create new business
+// Validates the private (non-public) business fields; returns an error message or null.
+function validatePrivateFields({ owner_name, employee_count, internal_notes }) {
+  if (owner_name !== undefined && owner_name !== null && String(owner_name).length > 200) {
+    return 'Owner name must be 200 characters or fewer';
+  }
+  if (employee_count !== undefined && employee_count !== null && employee_count !== '') {
+    const n = Number(employee_count);
+    if (!Number.isInteger(n) || n < 0 || n > 1000000) {
+      return 'Number of employees must be a whole number of 0 or more';
+    }
+  }
+  if (internal_notes !== undefined && internal_notes !== null && String(internal_notes).length > 10000) {
+    return 'Internal notes must be 10,000 characters or fewer';
+  }
+  return null;
+}
+
 router.post('/', requireAuth, async (req, res, next) => {
   try {
-    const { business_name, category, region, subdomain, content_json, business_tag } = req.body;
+    const { business_name, category, region, subdomain, content_json, business_tag, owner_name, employee_count } = req.body;
 
     const missing = validateRequired(['business_name', 'category', 'region', 'content_json'], req.body);
     if (missing.length > 0) {
@@ -57,6 +74,11 @@ router.post('/', requireAuth, async (req, res, next) => {
     const locationError = validateLocation(content_json.location);
     if (locationError) {
       return res.status(400).json(error(locationError, 'INVALID_LOCATION'));
+    }
+
+    const privateError = validatePrivateFields({ owner_name, employee_count });
+    if (privateError) {
+      return res.status(400).json(error(privateError, 'VALIDATION_ERROR'));
     }
 
     // Validate business_tag format if provided
@@ -104,10 +126,14 @@ router.post('/', requireAuth, async (req, res, next) => {
 
       // Create business with pending status
       const businessResult = await client.query(
-        `INSERT INTO businesses (business_id, business_name, category, region, subdomain, content_json, status, business_tag)
-         VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
+        `INSERT INTO businesses (business_id, business_name, category, region, subdomain, content_json, status, business_tag, owner_name, employee_count, account_admin_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10)
          RETURNING business_id, business_name, category, region, subdomain, business_tag, status, content_version, created_at`,
-        [newBusinessId, business_name, category, region, subdomain, JSON.stringify(content_json), finalTag]
+        [newBusinessId, business_name, category, region, subdomain, JSON.stringify(content_json), finalTag,
+         String(owner_name ?? '').trim() || null,
+         employee_count === undefined || employee_count === null || employee_count === '' ? null : Number(employee_count),
+         // A listing created by a team member starts assigned to them; owner self-signup starts unassigned.
+         req.user.isAdmin ? req.user.userId : null]
       );
 
       const business = businessResult.rows[0];
@@ -167,6 +193,10 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const result = await pool.query(
       `SELECT b.business_id, b.business_name, b.business_tag, b.category, b.region, b.subdomain, b.logo_url,
               b.verification_tier, b.status, b.content_json, b.content_version, b.created_at, b.updated_at,
+              b.owner_name, b.employee_count, b.internal_notes,
+              b.account_admin_user_id,
+              (SELECT full_name FROM users WHERE user_id = b.account_admin_user_id) AS account_admin_name,
+              EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = b.account_admin_user_id AND au.is_active = TRUE) AS account_admin_active,
               EXISTS (
                 SELECT 1 FROM service_subscriptions ss
                 WHERE ss.business_id = b.business_id
@@ -189,7 +219,11 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
       return res.status(404).json(error('Business not found', 'NOT_FOUND'));
     }
 
-    const { owner_user_id, owner_full_name, owner_email, ...business } = result.rows[0];
+    const {
+      owner_user_id, owner_full_name, owner_email,
+      account_admin_user_id, account_admin_name, account_admin_active,
+      ...business
+    } = result.rows[0];
 
     // Only show active businesses to non-authenticated users
     if (!req.user && business.status !== 'active') {
@@ -233,10 +267,26 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
       };
     }
 
+    // Private fields: owner_name / employee_count go to business staff and admins only;
+    // internal_notes goes to platform admins only. Never returned to the public.
+    if (!canViewOwner) {
+      delete business.owner_name;
+      delete business.employee_count;
+    }
+    if (!req.user?.isAdmin) {
+      delete business.internal_notes;
+    }
+
+    // Account admin is internal: platform admins only, never owners or the public.
+    const account_admin = req.user?.isAdmin && account_admin_user_id
+      ? { user_id: account_admin_user_id, full_name: account_admin_name, active: account_admin_active }
+      : null;
+
     res.json(success({
       ...business,
       user_role: userRole,
       owner,
+      ...(req.user?.isAdmin ? { account_admin } : {}),
     }));
 
   } catch (err) {
@@ -248,7 +298,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 router.patch('/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { content_json, change_summary, business_tag, subdomain } = req.body;
+    const { content_json, change_summary, business_tag, subdomain, owner_name, employee_count, internal_notes } = req.body;
 
     if (!isValidUUID(id)) {
       return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
@@ -261,6 +311,11 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
     const locationError = validateLocation(content_json.location);
     if (locationError) {
       return res.status(400).json(error(locationError, 'INVALID_LOCATION'));
+    }
+
+    const privateError = validatePrivateFields({ owner_name, employee_count, internal_notes });
+    if (privateError) {
+      return res.status(400).json(error(privateError, 'VALIDATION_ERROR'));
     }
 
     // Validate business_tag format if provided
@@ -387,6 +442,19 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       if (subdomain !== undefined) {
         params.push(subdomain || null);
         extraClauses += `, subdomain = $${params.length}`;
+      }
+      if (owner_name !== undefined) {
+        params.push(String(owner_name ?? '').trim() || null);
+        extraClauses += `, owner_name = $${params.length}`;
+      }
+      if (employee_count !== undefined) {
+        params.push(employee_count === null || employee_count === '' ? null : Number(employee_count));
+        extraClauses += `, employee_count = $${params.length}`;
+      }
+      // Internal notes are admin-only; silently ignored for everyone else.
+      if (internal_notes !== undefined && req.user.isAdmin) {
+        params.push(String(internal_notes ?? '').trim() || null);
+        extraClauses += `, internal_notes = $${params.length}`;
       }
       params.push(id);
 

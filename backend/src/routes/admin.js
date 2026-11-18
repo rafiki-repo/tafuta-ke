@@ -24,10 +24,13 @@ router.get('/businesses/pending', async (req, res, next) => {
     const result = await pool.query(
       `SELECT b.business_id, b.business_name, b.category, b.region, b.subdomain,
               b.content_json, b.created_at,
-              u.full_name as owner_name, u.phone as owner_phone, u.email as owner_email
+              u.full_name as owner_full_name, u.phone as owner_phone, u.email as owner_email,
+              b.account_admin_user_id, aa.full_name as account_admin_name,
+              EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = b.account_admin_user_id AND au.is_active = TRUE) as account_admin_active
        FROM businesses b
        JOIN user_business_roles ubr ON b.business_id = ubr.business_id AND ubr.role = 'owner'
        JOIN users u ON ubr.user_id = u.user_id
+       LEFT JOIN users aa ON aa.user_id = b.account_admin_user_id
        WHERE b.status = 'pending'
        ORDER BY b.created_at ASC
        LIMIT $1 OFFSET $2`,
@@ -179,7 +182,7 @@ router.post('/businesses/:id/reject', async (req, res, next) => {
 // GET /api/admin/businesses - Get all businesses (with optional status filter and search)
 router.get('/businesses', async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, status, q, category } = req.query;
+    const { page = 1, limit = 50, status, q, category, account_admin } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
@@ -200,9 +203,27 @@ router.get('/businesses', async (req, res, next) => {
       conditionParams.push(category);
     }
 
+    // Text search matches the business name, the owner's name/phone, or the account admin's name
     if (q) {
-      conditions.push(`b.business_name ILIKE $${paramCount++}`);
+      const p = paramCount++;
+      conditions.push(
+        `(b.business_name ILIKE $${p} OR u.full_name ILIKE $${p} OR u.phone ILIKE $${p} OR aa.full_name ILIKE $${p})`
+      );
       conditionParams.push(`%${q}%`);
+    }
+
+    // Account admin filter: 'me', 'unassigned', or a specific team member's user ID
+    if (account_admin === 'unassigned') {
+      conditions.push(`b.account_admin_user_id IS NULL`);
+    } else if (account_admin === 'me') {
+      conditions.push(`b.account_admin_user_id = $${paramCount++}`);
+      conditionParams.push(req.user.userId);
+    } else if (account_admin) {
+      if (!isValidUUID(account_admin)) {
+        return res.status(400).json(error('Invalid account_admin filter', 'VALIDATION_ERROR'));
+      }
+      conditions.push(`b.account_admin_user_id = $${paramCount++}`);
+      conditionParams.push(account_admin);
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
@@ -211,18 +232,26 @@ router.get('/businesses', async (req, res, next) => {
     const result = await pool.query(
       `SELECT b.business_id, b.business_name, b.category, b.region, b.subdomain,
               b.status, b.verification_tier, b.content_json, b.created_at,
-              u.full_name as owner_name, u.phone as owner_phone
+              u.full_name as owner_full_name, u.phone as owner_phone,
+              b.account_admin_user_id, aa.full_name as account_admin_name,
+              EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = b.account_admin_user_id AND au.is_active = TRUE) as account_admin_active
        FROM businesses b
        LEFT JOIN user_business_roles ubr ON b.business_id = ubr.business_id AND ubr.role = 'owner'
        LEFT JOIN users u ON ubr.user_id = u.user_id
+       LEFT JOIN users aa ON aa.user_id = b.account_admin_user_id
        ${whereClause}
-       ORDER BY b.created_at DESC
+       ORDER BY b.created_at DESC, b.business_id
        LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
       allParams
     );
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) as total FROM businesses b ${whereClause}`,
+      `SELECT COUNT(*) as total
+       FROM businesses b
+       LEFT JOIN user_business_roles ubr ON b.business_id = ubr.business_id AND ubr.role = 'owner'
+       LEFT JOIN users u ON ubr.user_id = u.user_id
+       LEFT JOIN users aa ON aa.user_id = b.account_admin_user_id
+       ${whereClause}`,
       conditionParams
     );
 
@@ -1344,6 +1373,102 @@ router.patch('/businesses/:id/owner', requireRole('admin'), async (req, res, nex
         owner: { user_id: newOwner.user_id, full_name: newOwner.full_name, email: newOwner.email },
       }, 'Business owner updated'));
 
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/team - Active admin team members (for the account-admin picker)
+router.get('/team', async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.user_id, u.full_name, u.email
+       FROM users u
+       WHERE u.status != 'deleted'
+         AND EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = u.user_id AND au.is_active = TRUE)
+       ORDER BY u.full_name ASC`
+    );
+    res.json(success(result.rows));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/businesses/:id/account-admin - Assign or clear the account admin (any admin)
+router.put('/businesses/:id/account-admin', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.body;
+
+    if (!isValidUUID(id)) {
+      return res.status(400).json(error('Invalid business ID', 'INVALID_ID'));
+    }
+    if (user_id !== null && (typeof user_id !== 'string' || !isValidUUID(user_id))) {
+      return res.status(400).json(error('user_id must be a valid user ID or null', 'VALIDATION_ERROR'));
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const current = await client.query(
+        `SELECT account_admin_user_id FROM businesses WHERE business_id = $1 FOR UPDATE`,
+        [id]
+      );
+      if (current.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json(error('Business not found', 'NOT_FOUND'));
+      }
+      const oldUserId = current.rows[0].account_admin_user_id;
+
+      let assignee = null;
+      if (user_id !== null) {
+        const adminResult = await client.query(
+          `SELECT u.user_id, u.full_name
+           FROM users u
+           JOIN admin_users au ON au.user_id = u.user_id AND au.is_active = TRUE
+           WHERE u.user_id = $1
+           LIMIT 1`,
+          [user_id]
+        );
+        if (adminResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json(error('User is not an active admin team member', 'VALIDATION_ERROR'));
+        }
+        assignee = adminResult.rows[0];
+      }
+
+      if (oldUserId === user_id) {
+        await client.query('ROLLBACK');
+        return res.json(success({
+          account_admin: assignee && { user_id: assignee.user_id, full_name: assignee.full_name, active: true },
+        }, 'No change'));
+      }
+
+      await client.query(
+        `UPDATE businesses SET account_admin_user_id = $1 WHERE business_id = $2`,
+        [user_id, id]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_value, new_value)
+         VALUES ($1, 'business_account_admin_changed', 'business', $2, $3, $4)`,
+        [req.user.userId, id, JSON.stringify({ user_id: oldUserId }), JSON.stringify({ user_id })]
+      );
+
+      await client.query('COMMIT');
+
+      logger.info('Business account admin changed', { businessId: id, adminId: req.user.userId, from: oldUserId, to: user_id });
+
+      res.json(success({
+        account_admin: assignee && { user_id: assignee.user_id, full_name: assignee.full_name, active: true },
+      }, 'Account admin updated'));
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

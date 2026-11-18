@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Save, Building2, Globe, Monitor, Zap, Minus, Sparkles, Plus, Trash2, Package, Camera, ImageOff, X, CreditCard, Search } from "lucide-react";
+import { ArrowLeft, Save, Building2, Globe, Monitor, Zap, Minus, Sparkles, Plus, Trash2, Package, Camera, ImageOff, X, CreditCard, Search, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -67,6 +67,8 @@ export default function BusinessEditor() {
   const { isAdmin, user } = useAuthStore();
   // Admin UI (toggle switch, grant buttons) only on /admin/ routes — not on /dashboard/ even if user is admin
   const isAdminContext = pathname.startsWith('/admin/');
+  // Internal team notes: admin edit page only, never on the owner's dashboard
+  const showInternalNotes = isAdminContext && isEditMode && isAdmin();
   const canChangeOwner =
     isAdminContext && (ADMIN_ROLE_HIERARCHY[user?.admin_role] || 0) >= ADMIN_ROLE_HIERARCHY.admin;
 
@@ -130,6 +132,9 @@ export default function BusinessEditor() {
     phone: "",
     email: "",
     whatsapp: "",
+    ownerName: "",
+    employeeCount: "",
+    internalNotes: "",
     city: "",
     streetAddress: "",
     postalCode: "",
@@ -221,6 +226,9 @@ export default function BusinessEditor() {
         phone: c.contact?.phone || "",
         email: c.contact?.email || "",
         whatsapp: c.contact?.whatsapp || "",
+        ownerName: business.owner_name || "",
+        employeeCount: business.employee_count ?? "",
+        internalNotes: business.internal_notes || "",
         city: c.location?.city || "",
         streetAddress: c.location?.street_address || "",
         postalCode: c.location?.postal_code || "",
@@ -320,6 +328,30 @@ export default function BusinessEditor() {
       await loadSubscriptions();
     } catch (err) {
       setSubsError(err.response?.data?.message || "Failed to deactivate subscription.");
+    }
+  };
+
+  // Account admin (team member responsible for this listing) — admin edit page only.
+  const [team, setTeam] = useState([]);
+  const [accountAdminSaving, setAccountAdminSaving] = useState(false);
+  const [accountAdminError, setAccountAdminError] = useState("");
+
+  useEffect(() => {
+    if (isAdminContext && isEditMode) {
+      adminAPI.getTeam().then((r) => setTeam(r.data.data || [])).catch(() => {});
+    }
+  }, [isAdminContext, isEditMode]);
+
+  const changeAccountAdmin = async (userId) => {
+    setAccountAdminSaving(true);
+    setAccountAdminError("");
+    try {
+      const res = await adminAPI.setAccountAdmin(id, userId || null);
+      setCurrentBusiness((prev) => ({ ...prev, account_admin: res.data?.data?.account_admin || null }));
+    } catch (err) {
+      setAccountAdminError(err.response?.data?.error?.message || "Failed to update account admin.");
+    } finally {
+      setAccountAdminSaving(false);
     }
   };
 
@@ -579,6 +611,10 @@ export default function BusinessEditor() {
           change_summary: changeSummary || "Business details updated",
           business_tag: formData.businessTag || undefined,
           subdomain: "",
+          owner_name: formData.ownerName,
+          employee_count: formData.employeeCount === "" ? null : Number(formData.employeeCount),
+          // Internal notes exist only on the admin edit page; omitted elsewhere so they are never overwritten.
+          ...(showInternalNotes ? { internal_notes: formData.internalNotes } : {}),
         });
         setSuccess(true);
         setChangeSummary("");
@@ -590,6 +626,8 @@ export default function BusinessEditor() {
           business_tag: formData.businessTag || undefined,
           category: formData.category,
           region: formData.region,
+          owner_name: formData.ownerName,
+          employee_count: formData.employeeCount === "" ? null : Number(formData.employeeCount),
           content_json,
         });
         navigate("/dashboard/businesses");
@@ -858,6 +896,37 @@ export default function BusinessEditor() {
                 </div>
               )}
 
+              {isEditMode && currentBusiness && isAdminContext && (
+                <div className="pt-3 mt-1 space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <label htmlFor="accountAdmin" className="text-xs text-muted-foreground">
+                      Account admin <span className="italic">(Tafuta team only)</span>
+                    </label>
+                    <Select
+                      id="accountAdmin"
+                      value={currentBusiness.account_admin?.user_id || ""}
+                      onChange={(e) => changeAccountAdmin(e.target.value)}
+                      disabled={accountAdminSaving}
+                      className="w-56"
+                    >
+                      <option value="">Unassigned</option>
+                      {currentBusiness.account_admin &&
+                        !team.some((t) => t.user_id === currentBusiness.account_admin.user_id) && (
+                          <option value={currentBusiness.account_admin.user_id}>
+                            {currentBusiness.account_admin.full_name} (inactive)
+                          </option>
+                        )}
+                      {team.map((t) => (
+                        <option key={t.user_id} value={t.user_id}>{t.full_name}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  {accountAdminError && (
+                    <p className="text-xs text-destructive">{accountAdminError}</p>
+                  )}
+                </div>
+              )}
+
               {isEditMode && currentBusiness && canChangeOwner && (
                 <div className="pt-3 mt-1 flex items-center justify-between gap-3">
                   <p className="text-xs text-muted-foreground">
@@ -972,6 +1041,59 @@ export default function BusinessEditor() {
                   The number customers can WhatsApp to contact you.
                 </p>
               </div>
+
+              <div className="rounded-md border border-dashed bg-muted/40 p-4 space-y-4">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <EyeOff className="h-4 w-4" />
+                    Private information
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    These fields are never shown on the public directory or on any website.
+                    Only you and the Tafuta team can see them.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Owner Name</label>
+                  <Input
+                    value={formData.ownerName}
+                    onChange={(e) => handleChange("ownerName", e.target.value)}
+                    maxLength={200}
+                    placeholder="e.g. Jane Wanjiru"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1"># of Employees</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.employeeCount}
+                    onChange={(e) => handleChange("employeeCount", e.target.value)}
+                    placeholder="e.g. 5"
+                  />
+                </div>
+              </div>
+
+              {showInternalNotes && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-4 dark:bg-amber-950/20">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <EyeOff className="h-4 w-4" />
+                    Internal Notes
+                    <span className="text-xs font-normal text-amber-700">Tafuta team only</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 mb-2">
+                    Private to our team. Not visible to the business owner or the public.
+                  </p>
+                  <Textarea
+                    rows={5}
+                    value={formData.internalNotes}
+                    onChange={(e) => handleChange("internalNotes", e.target.value)}
+                    maxLength={10000}
+                    placeholder="Notes about the owner and the business…"
+                  />
+                </div>
+              )}
 
               <div className="border-t pt-4">
                 <label className="block text-sm font-medium mb-3">

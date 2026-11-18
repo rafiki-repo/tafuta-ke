@@ -158,6 +158,8 @@ export const adminAPI = {
   updateBusinessCategory: (id, category) => api.patch(`/admin/businesses/${id}/category`, { category }),
   updateBusinessOwner: (id, data) => api.patch(`/admin/businesses/${id}/owner`, data),
   updateBusinessStatus: (id, data) => api.patch(`/admin/businesses/${id}/status`, data),
+  getTeam: () => api.get('/admin/team'),
+  setAccountAdmin: (id, userId) => api.put(`/admin/businesses/${id}/account-admin`, { user_id: userId }),
   // Subscription management per business
   getBusinessSubscriptions: (id) => api.get(`/admin/businesses/${id}/subscriptions`),
   grantSubscription: (id, data) => api.post(`/admin/businesses/${id}/subscriptions`, data),
