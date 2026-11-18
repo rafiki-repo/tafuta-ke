@@ -123,6 +123,8 @@ export default function BusinessEditor() {
     subdomain: "",
     websiteType: "none",
     websiteUrl: "",
+    promoText: "",
+    promoUrl: "",
     tagline: "",
     description: "",
     phone: "",
@@ -205,12 +207,14 @@ export default function BusinessEditor() {
         category: business.category || "",
         region: business.region || "",
         subdomain: business.subdomain || "",
-        websiteType: business.subdomain
+        websiteType: (business.subdomain || c.contact?.website?.includes('/site/'))
           ? "tafuta"
           : c.contact?.website
             ? "external"
             : "none",
-        websiteUrl: c.contact?.website || "",
+        websiteUrl: c.contact?.website?.includes('/site/') ? "" : (c.contact?.website || ""),
+        promoText: c.contact?.promo_text || "",
+        promoUrl: c.contact?.promo_url || "",
         tagline: c.profile?.en?.tagline || "",
         description: c.profile?.en?.description || "",
         howToFind: c.profile?.en?.how_to_find || "",
@@ -510,9 +514,15 @@ export default function BusinessEditor() {
       phone: formData.phone,
       email: formData.email,
       whatsapp: formData.whatsapp,
-      ...(formData.websiteType === "external" && formData.websiteUrl
-        ? { website: formData.websiteUrl }
-        : {}),
+      ...(formData.websiteType === "tafuta" && formData.businessTag
+        ? { website: `https://tafuta.ke/site/${formData.businessTag}` }
+        : formData.websiteType === "external" && formData.websiteUrl
+          ? { website: /^https?:\/\//i.test(formData.websiteUrl) ? formData.websiteUrl : `https://${formData.websiteUrl}` }
+          : {}),
+      ...(formData.promoText && formData.promoUrl ? {
+        promo_text: formData.promoText,
+        promo_url: /^https?:\/\//i.test(formData.promoUrl) ? formData.promoUrl : `https://${formData.promoUrl}`,
+      } : {}),
     },
     location: {
       city: formData.city,
@@ -568,10 +578,7 @@ export default function BusinessEditor() {
           content_json,
           change_summary: changeSummary || "Business details updated",
           business_tag: formData.businessTag || undefined,
-          subdomain:
-            formData.websiteType === "tafuta"
-              ? formData.subdomain || undefined
-              : "",
+          subdomain: "",
         });
         setSuccess(true);
         setChangeSummary("");
@@ -583,7 +590,6 @@ export default function BusinessEditor() {
           business_tag: formData.businessTag || undefined,
           category: formData.category,
           region: formData.region,
-          subdomain: formData.subdomain || undefined,
           content_json,
         });
         navigate("/dashboard/businesses");
@@ -1008,27 +1014,11 @@ export default function BusinessEditor() {
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mb-2">
-                        We host a one-page website for you at a tafuta.ke
-                        address
+                        We host a one-page website for you at a tafuta.ke address
                       </div>
                       {formData.websiteType === "tafuta" && (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={formData.subdomain}
-                            onChange={(e) =>
-                              handleChange(
-                                "subdomain",
-                                e.target.value
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9-]/g, ""),
-                              )
-                            }
-                            placeholder="e.g. mamawanjiku"
-                            className="flex-1 h-8 text-sm"
-                          />
-                          <span className="text-sm text-muted-foreground whitespace-nowrap">
-                            .tafuta.ke
-                          </span>
+                        <div className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
+                          tafuta.ke/site/{formData.businessTag || <span className="italic">your-business-tag</span>}
                         </div>
                       )}
                     </div>
@@ -1053,17 +1043,40 @@ export default function BusinessEditor() {
                       </div>
                       {formData.websiteType === "external" && (
                         <Input
-                          type="url"
                           value={formData.websiteUrl}
                           onChange={(e) =>
                             handleChange("websiteUrl", e.target.value)
                           }
-                          placeholder="https://www.mywebsite.com"
+                          placeholder="e.g. www.mywebsite.com"
                           className="h-8 text-sm"
                         />
                       )}
                     </div>
                   </label>
+                </div>
+              </div>
+
+              {/* Promo Link */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Promotional Link <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                </label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  A bold call-to-action shown prominently on your listing. Both fields must be filled for it to appear.
+                </p>
+                <div className="space-y-2">
+                  <Input
+                    value={formData.promoText}
+                    onChange={(e) => handleChange("promoText", e.target.value)}
+                    placeholder="e.g. CLICK HERE TO SHOP NOW!"
+                    className="text-sm"
+                  />
+                  <Input
+                    value={formData.promoUrl}
+                    onChange={(e) => handleChange("promoUrl", e.target.value)}
+                    placeholder="e.g. tafuta.ke/business/... or www.mysite.com"
+                    className="text-sm"
+                  />
                 </div>
               </div>
             </CardContent>
@@ -1468,6 +1481,97 @@ export default function BusinessEditor() {
             </CardContent>
           </Card>
 
+          {/* Website Commerce */}
+          {isEditMode && subscriptions && (() => {
+            const commerceDef = subscriptions.service_types.find(s => s.id === 'website_commerce');
+            if (!commerceDef) return null;
+            const commerceSub = subscriptions.subscriptions['website_commerce'];
+            const commerceActive = commerceSub?.status === 'active' &&
+              (!commerceSub.expiration_date || new Date(commerceSub.expiration_date) > new Date());
+            return (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Website Commerce</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Enables the Book and Add to Cart buttons on your public website.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {subsError && <p className="text-sm text-destructive mb-2">{subsError}</p>}
+                  <div className="flex items-center justify-between rounded-lg px-4 py-3 border">
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {commerceActive ? 'Commerce is Active' : 'Commerce is Inactive'}
+                      </p>
+                      {commerceActive && commerceSub?.expiration_date && (
+                        <p className="text-xs text-muted-foreground">
+                          Expires: {new Date(commerceSub.expiration_date).toLocaleDateString()}
+                        </p>
+                      )}
+                      {!commerceActive && !isAdminContext && (
+                        <p className="text-xs text-muted-foreground">
+                          Purchase to enable ordering and booking on your site
+                        </p>
+                      )}
+                    </div>
+                    {isAdminContext ? (
+                      <div className="flex items-center gap-2">
+                        {!commerceActive ? (
+                          <>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="60"
+                              value={grantMonths['website_commerce'] || "1"}
+                              onChange={(e) => setGrantMonths(prev => ({ ...prev, website_commerce: e.target.value }))}
+                              className="w-16 h-8 text-sm text-center"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {(() => { const bt = subscriptions.service_types.find(s => s.id === 'website_hosting')?.billing_type || 'monthly'; return bt === 'weekly' ? 'wk' : bt === 'annual' ? 'yr' : 'mo'; })()}
+                            </span>
+                            <Button type="button" size="sm" onClick={() => handleGrantSubscription('website_commerce')}>
+                              Grant
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="60"
+                              value={grantMonths['website_commerce'] || "1"}
+                              onChange={(e) => setGrantMonths(prev => ({ ...prev, website_commerce: e.target.value }))}
+                              className="w-16 h-8 text-sm text-center"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {(() => { const bt = subscriptions.service_types.find(s => s.id === 'website_hosting')?.billing_type || 'monthly'; return bt === 'weekly' ? 'wk' : bt === 'annual' ? 'yr' : 'mo'; })()}
+                            </span>
+                            <Button type="button" size="sm" onClick={() => handleGrantSubscription('website_commerce')}>
+                              Extend
+                            </Button>
+                            <Button type="button" size="sm" variant="destructive" onClick={() => handleDeactivateSubscription('website_commerce')}>
+                              Revoke
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      !commerceActive && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => navigate(`/dashboard/payments/checkout/${id}`)}
+                        >
+                          Purchase
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Products / Services catalog */}
           <Card className="mt-4">
             <CardHeader>
@@ -1639,10 +1743,16 @@ export default function BusinessEditor() {
               {subsLoading && <Spinner size="sm" />}
               {subscriptions && (
                 <div className="divide-y">
-                  {subscriptions.service_types.filter(stDef => isAdminContext || stDef.enabled !== false).map((stDef) => {
+                  {(() => {
+                    const stMap = Object.fromEntries(subscriptions.service_types.map(s => [s.id, s]));
+                    const resolvedBillingType = (stDef) =>
+                      stDef.id === 'website_commerce'
+                        ? (stMap['website_hosting']?.billing_type || stDef.billing_type || 'monthly')
+                        : (stDef.billing_type || 'monthly');
+                    return subscriptions.service_types.filter(stDef => isAdminContext || stDef.enabled !== false).map((stDef) => {
                     const type = stDef.id ?? stDef;
                     const label = stDef.label ?? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-                    const billingType = stDef.billing_type || 'monthly';
+                    const billingType = resolvedBillingType(stDef);
                     const isOneTime = billingType === 'one_time';
                     const billingLabel = billingType === 'weekly' ? 'weekly' : billingType === 'annual' ? 'annual' : billingType === 'one_time' ? 'one-time' : 'monthly';
                     const stPrice = Number(stDef.price ?? stDef.price_per_month ?? 0);
@@ -1722,7 +1832,8 @@ export default function BusinessEditor() {
                         )}
                       </div>
                     );
-                  })}
+                  })
+                  })()}
                 </div>
               )}
             </CardContent>

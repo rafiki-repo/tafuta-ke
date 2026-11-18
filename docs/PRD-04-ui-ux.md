@@ -209,6 +209,7 @@ This PRD defines the user interface and experience for Tafuta MVP, covering publ
 **Key Elements:**
 - **Back button**: Return to search results
 - **Business header**: Logo, name, verification badge
+- **Promotional link** *(optional)*: A full-width bold call-to-action button rendered at the top of the card content, immediately below the badges. Appears only when the owner has set both `contact.promo_text` and `contact.promo_url` in the editor. The text and destination URL are owner-controlled — for example "CLICK HERE TO SHOP NOW!" linking to their catalogue page. URLs without a protocol (`www.example.com`) are automatically normalised to `https://` on save.
 - **Contact info**: Address, phone, email, website
 - **Action buttons**: "Call Now" (tel: link), "Visit Website"
 - **About section**: Business description
@@ -335,7 +336,7 @@ Layout similar to search results, pre-filtered by region. Shows page title "Busi
 **Key Elements:**
 - **Status indicator**: Shows approval status
 - **Language tabs**: Switch between EN/SW/KK/KY for multi-language content
-- **Form sections**: Basic info, contact info, location
+- **Form sections**: Basic info, contact info (including optional promo link), location
 - **Required fields**: Marked with asterisk (*)
 - **Logo upload**: File picker
 - **Version indicator**: Shows current version number and last updated date

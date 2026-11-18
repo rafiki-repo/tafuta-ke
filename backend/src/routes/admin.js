@@ -596,9 +596,8 @@ router.get('/users', async (req, res, next) => {
       `SELECT u.user_id, u.full_name, u.nickname, u.phone, u.email,
               u.verification_tier, u.status, u.phone_verified, u.email_verified,
               u.created_at, u.last_login_at,
-              a.role as admin_role
+              (SELECT role FROM admin_users WHERE user_id = u.user_id AND is_active = TRUE LIMIT 1) as admin_role
        FROM users u
-       LEFT JOIN admin_users a ON u.user_id = a.user_id AND a.is_active = TRUE
        ${whereClause}
        ORDER BY u.created_at DESC
        LIMIT $${paramCount++} OFFSET $${paramCount++}`,
@@ -635,9 +634,9 @@ router.get('/users/:id', async (req, res, next) => {
       `SELECT u.user_id, u.full_name, u.nickname, u.phone, u.email,
               u.verification_tier, u.status, u.phone_verified, u.email_verified,
               u.last_login_at, u.created_at,
-              a.role as admin_role, a.is_active as admin_is_active
+              (SELECT role FROM admin_users WHERE user_id = u.user_id LIMIT 1) as admin_role,
+              (SELECT is_active FROM admin_users WHERE user_id = u.user_id LIMIT 1) as admin_is_active
        FROM users u
-       LEFT JOIN admin_users a ON u.user_id = a.user_id
        WHERE u.user_id = $1`,
       [id]
     );
